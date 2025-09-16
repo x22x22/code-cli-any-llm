@@ -110,7 +110,7 @@ export class RequestTransformer {
             type: 'function',
             function: {
               name: func.name,
-              description: func.description,
+              description: func.description || '',
               parameters: func.parameters || {},
             },
           });

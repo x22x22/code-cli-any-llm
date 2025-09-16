@@ -27,11 +27,8 @@ export class LoggingMiddleware implements NestMiddleware {
     });
 
     // Override res.end to log response
-    const originalEnd = res.end.bind(res) as (...args: unknown[]) => void;
-    (res as Response & { end: (...args: unknown[]) => void }).end = function (
-      chunk?: unknown,
-      encoding?: unknown,
-    ) {
+    const originalEnd = res.end.bind(res);
+    (res as any).end = function (chunk?: unknown, encoding?: unknown): any {
       const duration = Date.now() - start;
       const { statusCode } = res;
 
@@ -42,7 +39,7 @@ export class LoggingMiddleware implements NestMiddleware {
         timestamp: new Date().toISOString(),
       });
 
-      originalEnd.call(this, chunk, encoding);
+      return originalEnd.call(this, chunk, encoding);
     };
 
     next();

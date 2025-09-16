@@ -89,7 +89,14 @@ export class StreamTransformer {
         const choice = chunk.choices[0];
         const content = {
           role: 'model' as const,
-          parts: [] as unknown[],
+          parts: [] as Array<{
+            text?: string;
+            thought?: boolean;
+            functionCall?: { name: string; args: Record<string, any> };
+            functionResponse?: { name: string; response: any };
+            inlineData?: { mimeType: string; data: string };
+            fileData?: { mimeType: string; fileUri: string };
+          }>,
         };
 
         // Handle reasoning content delta first (from models like GLM and Qwen)
@@ -255,10 +262,14 @@ export class StreamTransformer {
     }
   }
 
-  private handleStreamFinish(): unknown[] {
-    const toolCallParts: unknown[] = [];
+  private handleStreamFinish(): Array<{
+    functionCall?: { name: string; args: Record<string, any> };
+  }> {
+    const toolCallParts: Array<{
+      functionCall?: { name: string; args: Record<string, any> };
+    }> = [];
 
-    for (const [index, accumulated] of this.streamingToolCalls) {
+    for (const [, accumulated] of this.streamingToolCalls) {
       if (accumulated.name) {
         let args: Record<string, unknown> = {};
 
@@ -277,14 +288,13 @@ export class StreamTransformer {
           }
         }
 
-        // Generate a unique ID if none was provided
-        const id = accumulated.id || `call_${index}_${Date.now()}`;
+        // Note: ID is available but not used in Gemini format
+        // const id = accumulated.id || `call_${index}_${Date.now()}`;
 
         toolCallParts.push({
           functionCall: {
-            id,
             name: accumulated.name,
-            args,
+            args: args as Record<string, any>,
           },
         });
       }

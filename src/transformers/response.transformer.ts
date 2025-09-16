@@ -113,9 +113,9 @@ export class ResponseTransformer {
     };
 
     return {
-      promptTokenCount: usageObj.prompt_tokens,
-      candidatesTokenCount: usageObj.completion_tokens,
-      totalTokenCount: usageObj.total_tokens,
+      promptTokenCount: usageObj.prompt_tokens || 0,
+      candidatesTokenCount: usageObj.completion_tokens || 0,
+      totalTokenCount: usageObj.total_tokens || 0,
     };
   }
 

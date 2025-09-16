@@ -128,8 +128,9 @@ export class GeminiController {
 
               // Add thought signature if provided
               if (thoughtSignature) {
-                (geminiChunk as Record<string, unknown>).thoughtSignature =
-                  thoughtSignature;
+                (
+                  geminiChunk as unknown as Record<string, unknown>
+                ).thoughtSignature = thoughtSignature;
               }
 
               const sseData = this.streamTransformer.toSSEFormat(geminiChunk);
@@ -180,8 +181,9 @@ export class GeminiController {
                 finalChunk.thoughtSignature = thoughtSignature;
               }
 
-              const finalSSEData =
-                this.streamTransformer.toSSEFormat(finalChunk);
+              const finalSSEData = this.streamTransformer.toSSEFormat(
+                finalChunk as unknown as any,
+              );
               if (finalSSEData && finalSSEData.trim()) {
                 response.write(finalSSEData);
               }

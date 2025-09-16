@@ -27,13 +27,10 @@ export class TimeoutMiddleware implements NestMiddleware {
     }, this.timeout);
 
     // Override res.end to clear timeout when response is sent
-    const originalEnd = res.end.bind(res) as (...args: unknown[]) => void;
-    (res as Response & { end: (...args: unknown[]) => void }).end = function (
-      chunk?: unknown,
-      encoding?: unknown,
-    ) {
+    const originalEnd = res.end.bind(res);
+    (res as any).end = function (chunk?: unknown, encoding?: unknown): any {
       clearTimeout(timeoutId);
-      originalEnd.call(this, chunk, encoding);
+      return originalEnd.call(this, chunk, encoding);
     };
 
     // Handle socket errors
