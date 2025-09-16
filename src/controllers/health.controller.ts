@@ -7,8 +7,11 @@ interface HealthResponse {
   timestamp: string;
   uptime: number;
   version: string;
-  provider?: any;
-  config?: any;
+  provider?: unknown;
+  config?: {
+    model?: string;
+    baseURL?: string;
+  };
 }
 
 @Controller()
@@ -37,10 +40,11 @@ export class HealthController {
         response.provider = providerHealth.details;
 
         // Add basic config info (without sensitive data)
-        const openaiConfig = this.configService.get('openai');
+        const openaiConfig =
+          this.configService.get<Record<string, unknown>>('openai');
         response.config = {
-          model: openaiConfig.model,
-          baseURL: openaiConfig.baseURL,
+          model: openaiConfig?.model as string | undefined,
+          baseURL: openaiConfig?.baseURL as string | undefined,
         };
       } else {
         response.status = 'unhealthy';
@@ -49,7 +53,7 @@ export class HealthController {
     } catch (error) {
       response.status = 'unhealthy';
       response.provider = {
-        error: error.message,
+        error: (error as Error).message,
       };
     }
 

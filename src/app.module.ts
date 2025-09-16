@@ -35,7 +35,7 @@ export class AppModule implements OnModuleDestroy {
 
   constructor() {}
 
-  async onModuleDestroy() {
+  onModuleDestroy() {
     this.logger.log('Application is shutting down, cleaning up resources...');
     // Add any additional cleanup logic here
   }

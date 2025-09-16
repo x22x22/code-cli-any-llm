@@ -5,24 +5,27 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 
 @Catch(BadRequestException)
 export class ValidationExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ValidationExceptionFilter.name);
 
-  catch(exception: BadRequestException, host: ArgumentsHost) {
+  catch(exception: BadRequestException, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest();
+    const request = ctx.getRequest<Request>();
 
-    const exceptionResponse = exception.getResponse();
+    const exceptionResponse = exception.getResponse() as
+      | Record<string, unknown>
+      | string;
 
     // Handle validation errors from class-validator
     const message =
       typeof exceptionResponse === 'string'
         ? exceptionResponse
-        : (exceptionResponse as any).message || 'Validation failed';
+        : (exceptionResponse as { message?: unknown }).message ||
+          'Validation failed';
 
     const errors = Array.isArray(message) ? message : [message];
 
@@ -34,9 +37,11 @@ export class ValidationExceptionFilter implements ExceptionFilter {
 
       // Handle class-validator error format
       if (error && typeof error === 'object' && 'property' in error) {
-        const constraints = error.constraints || {};
-        const messages = Object.values(constraints);
-        return `${error.property}: ${messages.join(', ')}`;
+        const constraints =
+          (error as { constraints?: Record<string, unknown> }).constraints ||
+          {};
+        const messages = Object.values(constraints) as string[];
+        return `${(error as { property: string }).property}: ${messages.join(', ')}`;
       }
 
       return String(error);

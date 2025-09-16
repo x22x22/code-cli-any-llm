@@ -27,8 +27,11 @@ export class LoggingMiddleware implements NestMiddleware {
     });
 
     // Override res.end to log response
-    const originalEnd = res.end;
-    (res as any).end = function (chunk?: any, encoding?: any) {
+    const originalEnd = res.end.bind(res) as (...args: unknown[]) => void;
+    (res as Response & { end: (...args: unknown[]) => void }).end = function (
+      chunk?: unknown,
+      encoding?: unknown,
+    ) {
       const duration = Date.now() - start;
       const { statusCode } = res;
 

@@ -19,7 +19,7 @@ export class OpenAIProvider implements OnModuleInit {
     private tokenizerService: TokenizerService,
   ) {}
 
-  async onModuleInit() {
+  onModuleInit(): void {
     const config = this.configService.get<OpenAIConfig>('openai');
     if (!config) {
       throw new Error('OpenAI configuration not found');
@@ -74,7 +74,8 @@ export class OpenAIProvider implements OnModuleInit {
 
         const response = await this.openai.chat.completions.create({
           model: request.model,
-          messages: request.messages as any,
+          messages:
+            request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
           tools: request.tools,
           tool_choice: request.tool_choice,
           temperature: request.temperature,
@@ -99,10 +100,10 @@ export class OpenAIProvider implements OnModuleInit {
 
         // Don't retry on client errors (4xx) except 429
         if (
-          error.status &&
-          error.status >= 400 &&
-          error.status < 500 &&
-          error.status !== 429
+          (error as { status?: number }).status &&
+          (error as { status: number }).status >= 400 &&
+          (error as { status: number }).status < 500 &&
+          (error as { status: number }).status !== 429
         ) {
           this.logger.error('Non-retryable error, throwing immediately', error);
           throw lastError;
@@ -124,7 +125,7 @@ export class OpenAIProvider implements OnModuleInit {
         );
 
         this.logger.warn(`Attempt ${attempt} failed, retrying in ${delay}ms`, {
-          error: error.message,
+          error: (error as Error).message,
           delay,
         });
 
@@ -132,7 +133,7 @@ export class OpenAIProvider implements OnModuleInit {
       }
     }
 
-    throw lastError;
+    throw lastError || new Error('Max retries exceeded with unknown error');
   }
 
   async *generateContentStream(
@@ -147,7 +148,8 @@ export class OpenAIProvider implements OnModuleInit {
 
       // 检测是否是GLM或智谱AI模型
       const isZhipuAI = this.config.baseURL?.includes('bigmodel.cn');
-      const isGLMModel = request.model?.toLowerCase().includes('glm');
+      // Remove unused variable
+      // const isGLMModel = request.model?.toLowerCase().includes('glm');
 
       // 检查是否是智谱AI，如果是且有工具，则简化工具定义
       let processedTools = request.tools;
@@ -164,7 +166,8 @@ export class OpenAIProvider implements OnModuleInit {
       try {
         stream = await this.openai.chat.completions.create({
           model: request.model,
-          messages: request.messages as any,
+          messages:
+            request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
           tools: processedTools,
           tool_choice: processedTools ? request.tool_choice : undefined,
           temperature: request.temperature,
@@ -176,11 +179,11 @@ export class OpenAIProvider implements OnModuleInit {
         });
       } catch (createError) {
         this.logger.error('Failed to create OpenAI stream:', {
-          error: createError.message,
-          status: createError.status,
-          type: createError.type,
-          code: createError.code,
-          stack: createError.stack,
+          error: (createError as Error).message,
+          status: (createError as { status?: number }).status,
+          type: (createError as { type?: string }).type,
+          code: (createError as { code?: string }).code,
+          stack: (createError as Error).stack,
         });
         throw createError;
       }
@@ -192,17 +195,17 @@ export class OpenAIProvider implements OnModuleInit {
       } catch (iterationError) {
         this.logger.error(
           'Error during stream iteration:',
-          iterationError.message,
+          (iterationError as Error).message,
         );
         throw iterationError;
       }
     } catch (error) {
-      this.logger.error('OpenAI streaming error:', error.message);
+      this.logger.error('OpenAI streaming error:', (error as Error).message);
       throw this.transformError(error);
     }
   }
 
-  async listModels(): Promise<any> {
+  async listModels(): Promise<unknown> {
     try {
       const response = await this.openai.models.list();
       return response.data;
@@ -212,12 +215,19 @@ export class OpenAIProvider implements OnModuleInit {
     }
   }
 
-  private transformError(error: any): Error {
-    if (error.status) {
+  private transformError(error: unknown): Error {
+    if ((error as { status?: number }).status) {
       // OpenAI API error
+      const errorObj = error as {
+        status: number;
+        error?: { message?: string };
+        message?: string;
+      };
       const message =
-        error.error?.message || error.message || 'Unknown OpenAI API error';
-      const statusCode = error.status;
+        errorObj.error?.message ||
+        errorObj.message ||
+        'Unknown OpenAI API error';
+      const statusCode = errorObj.status;
 
       switch (statusCode) {
         case 401:
@@ -234,13 +244,13 @@ export class OpenAIProvider implements OnModuleInit {
     }
 
     // Network or other errors
-    if (error.code === 'ECONNREFUSED') {
+    if ((error as { code?: string }).code === 'ECONNREFUSED') {
       return new Error(
         'Connection refused - check if OpenAI service is accessible',
       );
     }
 
-    if (error.code === 'ETIMEDOUT') {
+    if ((error as { code?: string }).code === 'ETIMEDOUT') {
       return new Error(
         'Request timeout - OpenAI service did not respond in time',
       );
@@ -251,7 +261,7 @@ export class OpenAIProvider implements OnModuleInit {
 
   async healthCheck(): Promise<{
     status: 'healthy' | 'unhealthy';
-    details?: any;
+    details?: unknown;
   }> {
     try {
       // Try a simple API call to check if the service is accessible
@@ -262,7 +272,7 @@ export class OpenAIProvider implements OnModuleInit {
         details: {
           provider: 'OpenAI',
           baseURL: this.openai.baseURL,
-          model: this.configService.get('openai.model'),
+          model: this.configService.get('openai.model') as string,
         },
       };
     } catch (error) {
@@ -270,20 +280,20 @@ export class OpenAIProvider implements OnModuleInit {
         status: 'unhealthy',
         details: {
           provider: 'OpenAI',
-          error: error.message,
+          error: (error as Error).message,
         },
       };
     }
   }
 
-  async countTokens(request: GeminiRequestDto): Promise<number> {
+  countTokens(request: GeminiRequestDto): number {
     try {
       // Get the configured model
       const config = this.getConfig();
       const model = config?.model || 'glm-4.5';
 
       // Use tokenizer service to count tokens
-      const tokenCount = await this.tokenizerService.countTokensInRequest(
+      const tokenCount = this.tokenizerService.countTokensInRequest(
         request.contents,
         model,
       );
@@ -295,7 +305,7 @@ export class OpenAIProvider implements OnModuleInit {
       return tokenCount;
     } catch (error) {
       this.logger.error('Error counting tokens', error);
-      throw new Error(`Failed to count tokens: ${error.message}`);
+      throw new Error(`Failed to count tokens: ${(error as Error).message}`);
     }
   }
 }

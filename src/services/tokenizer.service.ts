@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { encoding_for_model, TiktokenModel } from 'tiktoken';
 
 @Injectable()
-export class TokenizerService {
+export class TokenizerService implements OnModuleDestroy {
   private readonly logger = new Logger(TokenizerService.name);
   private encoderCache = new Map<
     string,
@@ -12,7 +12,7 @@ export class TokenizerService {
   /**
    * Count tokens for a given text using the specified model
    */
-  async countTokens(text: string, model: string): Promise<number> {
+  countTokens(text: string, model: string): number {
     try {
       // Get or create encoder for the model
       let encoder = this.encoderCache.get(model);
@@ -22,7 +22,7 @@ export class TokenizerService {
           encoder = encoding_for_model(model as TiktokenModel);
           this.encoderCache.set(model, encoder);
           this.logger.debug(`Created encoder for model: ${model}`);
-        } catch (_error) {
+        } catch {
           // Fall back to cl100k_base encoding for newer/unknown models
           this.logger.warn(
             `No specific encoding for model ${model}, using cl100k_base`,
@@ -45,7 +45,12 @@ export class TokenizerService {
   /**
    * Count tokens for all text content in a Gemini request
    */
-  async countTokensInRequest(contents: any[], model?: string): Promise<number> {
+  countTokensInRequest(
+    contents: Array<{
+      parts?: Array<{ text?: string }>;
+    }>,
+    model?: string,
+  ): number {
     let totalTokens = 0;
 
     if (contents && Array.isArray(contents)) {
@@ -53,7 +58,7 @@ export class TokenizerService {
         if (content.parts && Array.isArray(content.parts)) {
           for (const part of content.parts) {
             if (part.text) {
-              const tokens = await this.countTokens(
+              const tokens = this.countTokens(
                 part.text,
                 model || 'gpt-3.5-turbo',
               );

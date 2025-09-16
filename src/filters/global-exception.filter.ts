@@ -12,7 +12,7 @@ import { Request, Response } from 'express';
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
 
-  catch(exception: unknown, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
@@ -23,12 +23,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
-      const response = exception.getResponse();
+      const exceptionResponse = exception.getResponse();
       message =
-        typeof response === 'string'
-          ? response
-          : (response as any).message || 'HTTP error';
-      error = (response as any).error || 'Http Exception';
+        typeof exceptionResponse === 'string'
+          ? exceptionResponse
+          : (exceptionResponse as { message?: string }).message || 'HTTP error';
+      error =
+        (exceptionResponse as { error?: string }).error || 'Http Exception';
     } else if (exception instanceof Error) {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       message = exception.message || 'Internal server error';

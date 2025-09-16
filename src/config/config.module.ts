@@ -3,7 +3,6 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import { join } from 'path';
-import { OpenAIConfig, GatewayConfig, AppConfig } from './config.schema';
 
 @Module({})
 export class ConfigModule {
@@ -18,36 +17,62 @@ export class ConfigModule {
               // Load YAML configuration
               const configPath = join(process.cwd(), 'config', 'config.yaml');
               const yamlConfig = fs.existsSync(configPath)
-                ? (yaml.load(fs.readFileSync(configPath, 'utf8')) as any)
+                ? (yaml.load(fs.readFileSync(configPath, 'utf8')) as Record<
+                    string,
+                    unknown
+                  >)
                 : {};
+
+              interface YamlConfig {
+                openai?: {
+                  apiKey?: string;
+                  baseURL?: string;
+                  model?: string;
+                  organization?: string;
+                  timeout?: number;
+                };
+                gateway?: {
+                  port?: number;
+                  host?: string;
+                  logLevel?: string;
+                };
+              }
+
+              const typedYamlConfig = yamlConfig as YamlConfig;
 
               // Use YAML config as primary source, only fallback to environment variables if not in YAML
               return {
                 openai: {
                   apiKey:
-                    yamlConfig.openai?.apiKey || process.env.OPENAI_API_KEY,
+                    typedYamlConfig.openai?.apiKey ||
+                    process.env.OPENAI_API_KEY,
                   baseURL:
-                    yamlConfig.openai?.baseURL ||
+                    typedYamlConfig.openai?.baseURL ||
                     process.env.OPENAI_BASE_URL ||
                     'https://api.openai.com/v1',
                   model:
-                    yamlConfig.openai?.model ||
+                    typedYamlConfig.openai?.model ||
                     process.env.OPENAI_MODEL ||
                     'gpt-3.5-turbo',
                   organization:
-                    yamlConfig.openai?.organization ||
+                    typedYamlConfig.openai?.organization ||
                     process.env.OPENAI_ORGANIZATION,
                   timeout:
-                    yamlConfig.openai?.timeout ||
-                    process.env.OPENAI_TIMEOUT ||
+                    typedYamlConfig.openai?.timeout ||
+                    Number(process.env.OPENAI_TIMEOUT) ||
                     30000,
                 },
                 gateway: {
-                  port: yamlConfig.gateway?.port || process.env.PORT || 3002,
+                  port:
+                    typedYamlConfig.gateway?.port ||
+                    Number(process.env.PORT) ||
+                    3002,
                   host:
-                    yamlConfig.gateway?.host || process.env.HOST || '0.0.0.0',
+                    typedYamlConfig.gateway?.host ||
+                    process.env.HOST ||
+                    '0.0.0.0',
                   logLevel:
-                    yamlConfig.gateway?.logLevel ||
+                    typedYamlConfig.gateway?.logLevel ||
                     process.env.LOG_LEVEL ||
                     'info',
                 },

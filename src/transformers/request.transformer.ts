@@ -92,12 +92,20 @@ export class RequestTransformer {
       });
   }
 
-  private transformTools(geminiTools: any[]): OpenAITool[] {
+  private transformTools(geminiTools: unknown[]): OpenAITool[] {
     const openAITools: OpenAITool[] = [];
 
     for (const tool of geminiTools) {
-      if (tool.functionDeclarations) {
-        for (const func of tool.functionDeclarations) {
+      const toolObj = tool as {
+        functionDeclarations?: Array<{
+          name: string;
+          description?: string;
+          parameters?: Record<string, unknown>;
+        }>;
+      };
+
+      if (toolObj.functionDeclarations) {
+        for (const func of toolObj.functionDeclarations) {
           openAITools.push({
             type: 'function',
             function: {
@@ -113,26 +121,33 @@ export class RequestTransformer {
     return openAITools;
   }
 
-  private transformGenerationConfig(config: any): Partial<OpenAIRequest> {
+  private transformGenerationConfig(config: unknown): Partial<OpenAIRequest> {
     const result: Partial<OpenAIRequest> = {};
+    const configObj = config as {
+      temperature?: number;
+      topP?: number;
+      maxOutputTokens?: number;
+      stopSequences?: string[];
+      candidateCount?: number;
+    };
 
-    if (config.temperature !== undefined) {
-      result.temperature = config.temperature;
+    if (configObj.temperature !== undefined) {
+      result.temperature = configObj.temperature;
     }
 
-    if (config.topP !== undefined) {
-      result.top_p = config.topP;
+    if (configObj.topP !== undefined) {
+      result.top_p = configObj.topP;
     }
 
-    if (config.maxOutputTokens !== undefined) {
-      result.max_tokens = config.maxOutputTokens;
+    if (configObj.maxOutputTokens !== undefined) {
+      result.max_tokens = configObj.maxOutputTokens;
     }
 
-    if (config.stopSequences) {
-      result.stop = config.stopSequences;
+    if (configObj.stopSequences) {
+      result.stop = configObj.stopSequences;
     }
 
-    if (config.candidateCount && config.candidateCount > 1) {
+    if (configObj.candidateCount && configObj.candidateCount > 1) {
       // OpenAI doesn't support multiple candidates natively
       // We'll handle this in the response transformation
     }

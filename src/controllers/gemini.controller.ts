@@ -112,7 +112,7 @@ export class GeminiController {
         });
 
         // Process the stream and write directly to response
-        (async () => {
+        void (async () => {
           try {
             for await (const chunk of this.openaiProvider.generateContentStream(
               openAIRequest,
@@ -128,7 +128,8 @@ export class GeminiController {
 
               // Add thought signature if provided
               if (thoughtSignature) {
-                geminiChunk.thoughtSignature = thoughtSignature;
+                (geminiChunk as Record<string, unknown>).thoughtSignature =
+                  thoughtSignature;
               }
 
               const sseData = this.streamTransformer.toSSEFormat(geminiChunk);
@@ -161,7 +162,7 @@ export class GeminiController {
             // Handle any remaining buffered text before ending the stream
             const bufferedText = this.streamTransformer.getBufferedText();
             if (bufferedText && !response.destroyed && !response.closed) {
-              const finalChunk: any = {
+              const finalChunk: Record<string, unknown> = {
                 candidates: [
                   {
                     content: {
@@ -210,7 +211,7 @@ export class GeminiController {
                 `data: ${JSON.stringify({
                   error: {
                     code: 'STREAM_ERROR',
-                    message: error.message,
+                    message: (error as Error).message,
                   },
                 })}\n\n`,
               );
@@ -225,7 +226,7 @@ export class GeminiController {
         );
 
         // Count tokens using OpenAI provider
-        const tokenCount = await this.openaiProvider.countTokens(request);
+        const tokenCount = this.openaiProvider.countTokens(request);
 
         // Return token count response
         response.json({
@@ -249,8 +250,9 @@ export class GeminiController {
           await this.openaiProvider.generateContent(openAIRequest);
 
         // Transform response back to Gemini format
-        const geminiResponse =
-          this.responseTransformer.transformResponse(openAIResponse);
+        const geminiResponse = this.responseTransformer.transformResponse(
+          openAIResponse,
+        ) as Record<string, unknown>;
 
         // Add thought signature if provided
         if (thoughtSignature) {

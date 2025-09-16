@@ -3,15 +3,12 @@ import {
   OpenAIResponse,
   OpenAIChoice,
 } from '../models/openai/openai-response.model';
-import { GeminiResponseDto } from '../models/gemini/gemini-response.dto';
-import { GeminiCandidateDto } from '../models/gemini/gemini-candidate.dto';
-import { GeminiContentDto } from '../models/gemini/gemini-content.dto';
 import { GeminiUsageMetadataDto } from '../models/gemini/gemini-usage-metadata.dto';
 
 @Injectable()
 export class ResponseTransformer {
-  transformResponse(openAIResponse: OpenAIResponse): any {
-    const geminiResponse: any = {
+  transformResponse(openAIResponse: OpenAIResponse): unknown {
+    const geminiResponse: Record<string, unknown> = {
       candidates: [],
     };
 
@@ -30,7 +27,7 @@ export class ResponseTransformer {
     return geminiResponse;
   }
 
-  private transformChoice(choice: OpenAIChoice, index: number): any {
+  private transformChoice(choice: OpenAIChoice, index: number): unknown {
     const content = this.transformOpenAIMessageToGeminiContent(choice.message);
 
     return {
@@ -40,29 +37,42 @@ export class ResponseTransformer {
     };
   }
 
-  private transformOpenAIMessageToGeminiContent(message: any): any {
-    const parts: any[] = [];
+  private transformOpenAIMessageToGeminiContent(message: unknown): unknown {
+    const parts: unknown[] = [];
+    const messageObj = message as {
+      content?: string;
+      reasoning_content?: string;
+      tool_calls?: Array<{
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }>;
+    };
 
     // Handle text content
-    if (message.content) {
-      parts.push({ text: message.content });
+    if (messageObj.content) {
+      parts.push({ text: messageObj.content });
     }
 
     // Handle reasoning content (from models like GLM) - convert to thought part
-    if (message.reasoning_content) {
+    if (messageObj.reasoning_content) {
       parts.push({
-        text: message.reasoning_content,
+        text: messageObj.reasoning_content,
         thought: true,
       });
     }
 
     // Handle tool calls
-    if (message.tool_calls && message.tool_calls.length > 0) {
-      for (const toolCall of message.tool_calls) {
+    if (messageObj.tool_calls && messageObj.tool_calls.length > 0) {
+      for (const toolCall of messageObj.tool_calls) {
         parts.push({
           functionCall: {
             name: toolCall.function.name,
-            args: JSON.parse(toolCall.function.arguments),
+            args: JSON.parse(toolCall.function.arguments) as Record<
+              string,
+              unknown
+            >,
           },
         });
       }
@@ -71,7 +81,9 @@ export class ResponseTransformer {
     // If no parts were added but message exists, add empty text to ensure parts is not empty
     if (
       parts.length === 0 &&
-      (message.content || message.reasoning_content || message.tool_calls)
+      (messageObj.content ||
+        messageObj.reasoning_content ||
+        messageObj.tool_calls)
     ) {
       parts.push({ text: '' });
     }
@@ -93,41 +105,66 @@ export class ResponseTransformer {
     return mapping[reason] || 'OTHER';
   }
 
-  private transformUsage(usage: any): GeminiUsageMetadataDto {
+  private transformUsage(usage: unknown): GeminiUsageMetadataDto {
+    const usageObj = usage as {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      total_tokens?: number;
+    };
+
     return {
-      promptTokenCount: usage.prompt_tokens,
-      candidatesTokenCount: usage.completion_tokens,
-      totalTokenCount: usage.total_tokens,
+      promptTokenCount: usageObj.prompt_tokens,
+      candidatesTokenCount: usageObj.completion_tokens,
+      totalTokenCount: usageObj.total_tokens,
     };
   }
 
   // Handle streaming response transformation
-  transformStreamChunk(chunk: any): any {
-    const geminiResponse: any = {
+  transformStreamChunk(chunk: unknown): unknown {
+    const geminiResponse: Record<string, unknown> = {
       candidates: [],
     };
 
-    if (chunk.choices && chunk.choices.length > 0) {
-      const choice = chunk.choices[0];
-      const content: any = {
+    const chunkObj = chunk as {
+      choices?: Array<{
+        index?: number;
+        finish_reason?: string;
+        delta?: {
+          content?: string;
+          tool_calls?: Array<{
+            function?: {
+              name?: string;
+              arguments?: string;
+            };
+          }>;
+        };
+      }>;
+    };
+
+    if (chunkObj.choices && chunkObj.choices.length > 0) {
+      const choice = chunkObj.choices[0];
+      const content: Record<string, unknown> = {
         role: 'model',
         parts: [],
       };
 
       // Handle delta content
       if (choice.delta && choice.delta.content) {
-        content.parts.push({ text: choice.delta.content });
+        (content.parts as unknown[]).push({ text: choice.delta.content });
       }
 
       // Handle tool call deltas
       if (choice.delta && choice.delta.tool_calls) {
         for (const toolCall of choice.delta.tool_calls) {
           if (toolCall.function && toolCall.function.name) {
-            content.parts.push({
+            (content.parts as unknown[]).push({
               functionCall: {
                 name: toolCall.function.name,
                 args: toolCall.function.arguments
-                  ? JSON.parse(toolCall.function.arguments)
+                  ? (JSON.parse(toolCall.function.arguments) as Record<
+                      string,
+                      unknown
+                    >)
                   : {},
               },
             });
@@ -135,7 +172,7 @@ export class ResponseTransformer {
         }
       }
 
-      geminiResponse.candidates.push({
+      (geminiResponse.candidates as unknown[]).push({
         content,
         index: choice.index || 0,
         finishReason: choice.finish_reason

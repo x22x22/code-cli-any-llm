@@ -6,6 +6,7 @@ import { ValidationExceptionFilter } from './filters/validation-exception.filter
 import { corsConfig } from './config/cors.config';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -25,7 +26,7 @@ async function bootstrap() {
   app.enableCors(corsConfig);
 
   // Add middleware to handle v1beta path rewriting
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith('/api/v1beta/')) {
       // Rewrite /api/v1beta/xxx to /api/v1/xxx
       req.url = req.path.replace('/api/v1beta', '/api/v1');
@@ -37,9 +38,11 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // Get port from configuration
-  const port = configService.get('gateway.port') || 3002;
+  const port = (configService.get('gateway.port') as number) || 3002;
 
-  const server = await app.listen(port);
+  const server = (await app.listen(port)) as {
+    close: (callback: () => void) => void;
+  };
 
   // Handle graceful shutdown
   const gracefulShutdown = (signal: string) => {
@@ -77,4 +80,4 @@ async function bootstrap() {
 
   logger.log(`Application is running on: http://localhost:${port}`);
 }
-bootstrap();
+void bootstrap();

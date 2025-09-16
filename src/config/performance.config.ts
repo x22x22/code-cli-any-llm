@@ -1,7 +1,17 @@
+// Type definitions for request and error objects
+interface RequestWithPath {
+  path: string;
+}
+
+interface NetworkError {
+  code?: string;
+  status?: number;
+}
+
 export const performanceConfig = {
   // Request/response size limits
-  maxRequestBodySize: '10mb',
-  maxResponseBodySize: '50mb',
+  maxRequestBodySize: '10mb' as const,
+  maxResponseBodySize: '50mb' as const,
 
   // Rate limiting configuration
   rateLimiting: {
@@ -9,7 +19,7 @@ export const performanceConfig = {
     max: process.env.RATE_LIMIT_MAX
       ? parseInt(process.env.RATE_LIMIT_MAX, 10)
       : 100, // limit each IP to 100 requests per windowMs
-    skip: (req) => {
+    skip: (req: RequestWithPath): boolean => {
       // Skip rate limiting for health checks
       return req.path === '/health';
     },
@@ -37,12 +47,12 @@ export const performanceConfig = {
     maxRetries: 3,
     initialDelayMs: 1000,
     maxDelayMs: 10000,
-    retryCondition: (error) => {
+    retryCondition: (error: NetworkError): boolean => {
       // Retry on network errors and 5xx status codes
       if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
         return true;
       }
-      if (error.status >= 500 && error.status < 600) {
+      if (error.status && error.status >= 500 && error.status < 600) {
         return true;
       }
       // Don't retry on 4xx errors (except 429)
@@ -52,4 +62,4 @@ export const performanceConfig = {
       return false;
     },
   },
-};
+} as const;

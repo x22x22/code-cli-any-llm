@@ -25,6 +25,27 @@ export class StreamTransformer {
     this.streamingToolCalls.clear();
   }
 
+  // Helper function to remove control characters
+  private removeControlCharacters(text: string): string {
+    // Remove control characters (excluding tab \t and newline \n)
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const code = char.charCodeAt(0);
+      // Keep printable characters, tab (\t), line feed (\n), and carriage return (\r)
+      if (
+        (code >= 32 && code <= 126) ||
+        code === 9 ||
+        code === 10 ||
+        code === 13 ||
+        code > 127
+      ) {
+        result += char;
+      }
+    }
+    return result;
+  }
+
   // Get any buffered text for GLM models
   getBufferedText(): string | null {
     if (this.isGLMModel && this.textBuffer.length > 0) {
@@ -68,15 +89,31 @@ export class StreamTransformer {
         const choice = chunk.choices[0];
         const content = {
           role: 'model' as const,
-          parts: [] as any[],
+          parts: [] as unknown[],
         };
 
         // Handle reasoning content delta first (from models like GLM and Qwen)
         // Convert reasoning content to a thought part (thought: true)
-        if (choice.delta.reasoning_content) {
-          const safeText = String(choice.delta.reasoning_content).replace(
-            /[\x00-\x1F\x7F]/g,
-            '',
+        const choiceWithDelta = choice as {
+          delta: {
+            reasoning_content?: string;
+            content?: string;
+            tool_calls?: Array<{
+              index: number;
+              id?: string;
+              function?: {
+                name?: string;
+                arguments?: string;
+              };
+            }>;
+          };
+          index?: number;
+          finish_reason?: string;
+        };
+
+        if (choiceWithDelta.delta.reasoning_content) {
+          const safeText = this.removeControlCharacters(
+            String(choiceWithDelta.delta.reasoning_content),
           );
           if (safeText.trim()) {
             content.parts.push({
@@ -87,11 +124,10 @@ export class StreamTransformer {
         }
 
         // Handle regular content delta with safe text handling
-        if (choice.delta.content) {
+        if (choiceWithDelta.delta.content) {
           // Ensure text is a string and filter out control characters
-          const safeText = String(choice.delta.content).replace(
-            /[\x00-\x1F\x7F]/g,
-            '',
+          const safeText = this.removeControlCharacters(
+            String(choiceWithDelta.delta.content),
           );
 
           if (safeText.trim()) {
@@ -123,9 +159,9 @@ export class StreamTransformer {
         }
 
         // Handle tool call deltas
-        if (choice.delta.tool_calls) {
+        if (choiceWithDelta.delta.tool_calls) {
           try {
-            for (const toolCall of choice.delta.tool_calls) {
+            for (const toolCall of choiceWithDelta.delta.tool_calls) {
               this.accumulateToolCall(toolCall);
             }
           } catch (error) {
@@ -134,7 +170,7 @@ export class StreamTransformer {
         }
 
         // If this is the final chunk, add complete tool calls and flush buffered text
-        if (choice.finish_reason) {
+        if (choiceWithDelta.finish_reason) {
           try {
             // For GLM models, flush any remaining buffered text
             if (this.isGLMModel && this.textBuffer.length > 0) {
@@ -155,18 +191,18 @@ export class StreamTransformer {
         if (content.parts.length > 0) {
           geminiResponse.candidates.push({
             content,
-            index: choice.index || 0,
-            finishReason: this.mapFinishReason(choice.finish_reason),
+            index: choiceWithDelta.index || 0,
+            finishReason: this.mapFinishReason(choiceWithDelta.finish_reason),
           });
-        } else if (choice.finish_reason) {
+        } else if (choiceWithDelta.finish_reason) {
           // For finish reason only, include minimal candidate
           geminiResponse.candidates.push({
             content: {
               role: 'model' as const,
               parts: [],
             },
-            index: choice.index || 0,
-            finishReason: this.mapFinishReason(choice.finish_reason),
+            index: choiceWithDelta.index || 0,
+            finishReason: this.mapFinishReason(choiceWithDelta.finish_reason),
           });
         }
       }
@@ -190,7 +226,14 @@ export class StreamTransformer {
     }
   }
 
-  private accumulateToolCall(toolCall: any): void {
+  private accumulateToolCall(toolCall: {
+    index: number;
+    id?: string;
+    function?: {
+      name?: string;
+      arguments?: string;
+    };
+  }): void {
     if (!this.streamingToolCalls.has(toolCall.index)) {
       this.streamingToolCalls.set(toolCall.index, {
         arguments: '',
@@ -212,8 +255,8 @@ export class StreamTransformer {
     }
   }
 
-  private handleStreamFinish(): any[] {
-    const toolCallParts: any[] = [];
+  private handleStreamFinish(): unknown[] {
+    const toolCallParts: unknown[] = [];
 
     for (const [index, accumulated] of this.streamingToolCalls) {
       if (accumulated.name) {
@@ -222,13 +265,13 @@ export class StreamTransformer {
         // Only parse arguments if they exist and are non-empty
         if (accumulated.arguments && accumulated.arguments.trim()) {
           try {
-            args = JSON.parse(accumulated.arguments);
+            args = JSON.parse(accumulated.arguments) as Record<string, unknown>;
           } catch (e) {
             // Invalid JSON, use empty object and log warning
             this.logger?.warn?.('Invalid JSON in tool call arguments:', {
               name: accumulated.name,
               arguments: accumulated.arguments,
-              error: e.message,
+              error: (e as Error).message,
             });
             args = {};
           }
@@ -310,7 +353,7 @@ export class StreamTransformer {
     } catch (error) {
       this.logger.error('Failed to create SSE format:', error);
       this.logger.error('Response object:', geminiResponse);
-      return `data: {"error":"SSE format creation failed","message":"${error.message}"}\n\n`;
+      return `data: {"error":"SSE format creation failed","message":"${(error as Error).message}"}\n\n`;
     }
   }
 
