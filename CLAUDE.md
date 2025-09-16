@@ -152,6 +152,51 @@ gateway:
 - Error handling and validation
 - Request/response format compliance
 
+### Gemini CLI Integration Tests
+
+The project includes comprehensive integration tests that verify compatibility with the actual Gemini CLI tool. These tests ensure that the gateway works correctly with real-world usage scenarios.
+
+**Test File**: `test/integration/gemini-cli-integration.spec.ts`
+
+**Prerequisites**:
+- Development server must be running (`pnpm run start:dev`)
+- Gemini CLI must be installed (`npm install -g @google/gemini-cli`)
+
+**Test Coverage**:
+- **Basic Functionality**: Chinese/English greetings, response validation
+- **Complex Queries**: Code generation, multi-language requests
+- **Stream Processing**: Streaming responses without JSON errors, GLM buffering
+- **Error Handling**: Long prompts, special characters
+- **Tool Calls**: Advanced features and function calling
+
+**Running the Tests**:
+```bash
+# Run all Gemini CLI integration tests
+pnpm test -- test/integration/gemini-cli-integration.spec.ts
+
+# Run specific test
+pnpm test -- test/integration/gemini-cli-integration.spec.ts -t "should handle simple Chinese greeting"
+
+# Run with verbose output
+pnpm test -- test/integration/gemini-cli-integration.spec.ts --verbose
+
+# Run with coverage
+pnpm test -- test/integration/gemini-cli-integration.spec.ts --coverage
+```
+
+**Test Features**:
+- Automatically checks if dev server is running
+- Tests real Gemini CLI commands with timeout protection
+- Validates output for expected patterns and absence of JSON errors
+- Includes skip flags for manual verification tests
+- Comprehensive error reporting for failed commands
+
+**Expected Results**:
+- All tests should pass without JSON parsing errors
+- Chinese characters should render correctly
+- Streaming responses should work without interruption
+- Tool calls should be handled gracefully
+
 ## Key Dependencies
 
 ### Core Dependencies
