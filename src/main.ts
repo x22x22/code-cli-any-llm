@@ -1,4 +1,4 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from './common/validation.pipe';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
@@ -23,6 +23,15 @@ async function bootstrap() {
 
   // Enable CORS with enhanced configuration
   app.enableCors(corsConfig);
+
+  // Add middleware to handle v1beta path rewriting
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/v1beta/')) {
+      // Rewrite /api/v1beta/xxx to /api/v1/xxx
+      req.url = req.path.replace('/api/v1beta', '/api/v1');
+    }
+    next();
+  });
 
   // Set global prefix for API routes
   app.setGlobalPrefix('api/v1');

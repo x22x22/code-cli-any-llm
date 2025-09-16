@@ -10,7 +10,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggingMiddleware } from './middleware/logging.middleware';
 import { TimeoutMiddleware } from './middleware/timeout.middleware';
-import { corsConfig } from './config/cors.config';
+import { TokenizerService } from './services/tokenizer.service';
 import { Logger } from '@nestjs/common';
 
 @Module({
@@ -26,6 +26,7 @@ import { Logger } from '@nestjs/common';
     RequestTransformer,
     ResponseTransformer,
     StreamTransformer,
+    TokenizerService,
   ],
 })
 export class AppModule implements OnModuleDestroy {

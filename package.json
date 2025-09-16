@@ -34,7 +34,8 @@
     "nestjs-rate-limiter": "^3.1.0",
     "openai": "^5.20.2",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "tiktoken": "^1.0.22"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

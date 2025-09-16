@@ -5,7 +5,6 @@ import {
   Body,
   Res,
   Logger,
-  Headers,
   Query,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -14,7 +13,6 @@ import { OpenAIProvider } from '../providers/openai/openai.provider';
 import { RequestTransformer } from '../transformers/request.transformer';
 import { ResponseTransformer } from '../transformers/response.transformer';
 import { StreamTransformer } from '../transformers/stream.transformer';
-import { Readable } from 'stream';
 
 @Controller('')
 export class GeminiController {
@@ -30,7 +28,9 @@ export class GeminiController {
     const config = this.openaiProvider.getConfig();
     if (config) {
       this.logger.log('=== OpenAI Configuration ===');
-      this.logger.log(`API Key: ${config.apiKey ? config.apiKey.substring(0, 20) + '...' : 'Not set'}`);
+      this.logger.log(
+        `API Key: ${config.apiKey ? config.apiKey.substring(0, 20) + '...' : 'Not set'}`,
+      );
       this.logger.log(`Base URL: ${config.baseURL}`);
       this.logger.log(`Model: ${config.model}`);
       this.logger.log('==========================');
@@ -44,19 +44,28 @@ export class GeminiController {
     @Query('thought_signature') thoughtSignature: string,
     @Body() request: GeminiRequestDto,
     @Res() response: Response,
-    @Headers() headers: Record<string, string>,
   ) {
     try {
       // Determine request type based on alt parameter or model suffix
-      const isStreamRequest = alt === 'streamGenerateContent' || model.endsWith(':streamGenerateContent');
-      const isGenerateRequest = alt === 'generateContent' || model.endsWith(':generateContent');
+      const isStreamRequest =
+        alt === 'streamGenerateContent' ||
+        model.endsWith(':streamGenerateContent');
+      const isGenerateRequest =
+        alt === 'generateContent' || model.endsWith(':generateContent');
+      const isCountTokensRequest =
+        alt === 'countTokens' || model.endsWith(':countTokens');
 
-      if (!isStreamRequest && !isGenerateRequest) {
-        throw new Error('Invalid request. Expected generateContent or streamGenerateContent action.');
+      if (!isStreamRequest && !isGenerateRequest && !isCountTokensRequest) {
+        throw new Error(
+          'Invalid request. Expected generateContent, streamGenerateContent or countTokens action.',
+        );
       }
 
       // Extract actual model name
-      const actualModel = model.replace(/:(generateContent|streamGenerateContent)$/, '');
+      const actualModel = model.replace(
+        /:(generateContent|streamGenerateContent|countTokens)$/,
+        '',
+      );
 
       // Use the configured model from YAML instead of the requested model
       const config = this.openaiProvider.getConfig();
@@ -65,31 +74,57 @@ export class GeminiController {
 
       if (isStreamRequest) {
         // Handle streaming request
-        this.logger.debug(`Received streamGenerateContent request for model: ${actualModel}`);
+        this.logger.debug(
+          `Received streamGenerateContent request for model: ${actualModel}`,
+        );
 
-        // Set SSE headers
+        // Set SSE headers with explicit buffering control
         response.writeHead(200, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           Connection: 'keep-alive',
           'X-Accel-Buffering': 'no',
+          'Transfer-Encoding': 'chunked',
         });
+
+        // Force flush any existing buffers
+        if (typeof response.flushHeaders === 'function') {
+          response.flushHeaders();
+        }
 
         // Transform Gemini request to OpenAI format
-        const openAIRequest = this.requestTransformer.transformRequest(request, targetModel);
+        const openAIRequest = this.requestTransformer.transformRequest(
+          request,
+          targetModel,
+        );
         openAIRequest.stream = true;
 
-        // Create readable stream for SSE
-        const readable = new Readable({
-          read() {},
-          objectMode: true,
+        // Initialize stream transformer for the specific model
+        this.streamTransformer.initializeForModel(targetModel);
+
+        // Handle client disconnect
+        response.on('close', () => {
+          this.logger.debug('Client disconnected');
         });
 
-        // Process the stream
+        response.on('error', (err) => {
+          this.logger.error('Response error:', err);
+        });
+
+        // Process the stream and write directly to response
         (async () => {
           try {
-            for await (const chunk of this.openaiProvider.generateContentStream(openAIRequest)) {
-              const geminiChunk = this.streamTransformer.transformStreamChunk(chunk);
+            for await (const chunk of this.openaiProvider.generateContentStream(
+              openAIRequest,
+            )) {
+              // Check if response is still writable
+              if (response.destroyed || response.closed) {
+                this.logger.debug('Response closed, stopping stream');
+                break;
+              }
+
+              const geminiChunk =
+                this.streamTransformer.transformStreamChunk(chunk);
 
               // Add thought signature if provided
               if (thoughtSignature) {
@@ -97,39 +132,125 @@ export class GeminiController {
               }
 
               const sseData = this.streamTransformer.toSSEFormat(geminiChunk);
-              readable.push(sseData);
+
+              // Only write if SSE data is not empty (skip empty chunks)
+              if (
+                sseData &&
+                sseData.trim() &&
+                !response.destroyed &&
+                !response.closed
+              ) {
+                const writeSuccess = response.write(sseData);
+                if (!writeSuccess) {
+                  this.logger.warn('Write buffer full, waiting for drain');
+                  // Wait for drain event if buffer is full
+                  await new Promise((resolve) => {
+                    response.once('drain', resolve);
+                    // Timeout after 5 seconds to prevent hanging
+                    setTimeout(resolve, 5000);
+                  });
+                }
+              } else if (!sseData || !sseData.trim()) {
+                // Skip empty SSE chunk
+              } else {
+                // Response closed during data write
+                break;
+              }
             }
 
-            // Send end marker
-            readable.push(this.streamTransformer.createSSEEndMarker());
-            readable.push(null); // End of stream
+            // Handle any remaining buffered text before ending the stream
+            const bufferedText = this.streamTransformer.getBufferedText();
+            if (bufferedText && !response.destroyed && !response.closed) {
+              const finalChunk: any = {
+                candidates: [
+                  {
+                    content: {
+                      role: 'model' as const,
+                      parts: [{ text: bufferedText }],
+                    },
+                    index: 0,
+                    finishReason: 'STOP',
+                  },
+                ],
+              };
+
+              // Add thought signature if provided
+              if (thoughtSignature) {
+                finalChunk.thoughtSignature = thoughtSignature;
+              }
+
+              const finalSSEData =
+                this.streamTransformer.toSSEFormat(finalChunk);
+              if (finalSSEData && finalSSEData.trim()) {
+                response.write(finalSSEData);
+              }
+            }
+
+            // Send end marker only if response is still open
+            if (!response.destroyed && !response.closed) {
+              try {
+                const endMarker = this.streamTransformer.createSSEEndMarker();
+                if (endMarker) {
+                  response.write(endMarker);
+                }
+                response.end();
+              } catch (endError) {
+                this.logger.error('Error ending response:', endError);
+                try {
+                  response.end();
+                } catch (e) {
+                  this.logger.error('Failed to end response:', e);
+                }
+              }
+            }
           } catch (error) {
             this.logger.error('Stream processing error:', error);
-            readable.push(`data: ${JSON.stringify({
-              error: {
-                code: 'STREAM_ERROR',
-                message: error.message,
-              },
-            })}\n\n`);
-            readable.push(null);
+            if (!response.destroyed && !response.closed) {
+              response.write(
+                `data: ${JSON.stringify({
+                  error: {
+                    code: 'STREAM_ERROR',
+                    message: error.message,
+                  },
+                })}\n\n`,
+              );
+              response.end();
+            }
           }
         })();
+      } else if (isCountTokensRequest) {
+        // Handle countTokens request
+        this.logger.debug(
+          `Received countTokens request for model: ${actualModel}`,
+        );
 
-        // Pipe the readable stream to response
-        readable.pipe(response);
+        // Count tokens using OpenAI provider
+        const tokenCount = await this.openaiProvider.countTokens(request);
+
+        // Return token count response
+        response.json({
+          totalTokens: tokenCount,
+        });
       } else {
         // Handle regular request
-        this.logger.debug(`Received generateContent request for model: ${actualModel}`);
+        this.logger.debug(
+          `Received generateContent request for model: ${actualModel}`,
+        );
         this.logger.debug(`Request path: /api/v1/models/${model}`);
 
         // Transform Gemini request to OpenAI format
-        const openAIRequest = this.requestTransformer.transformRequest(request, targetModel);
+        const openAIRequest = this.requestTransformer.transformRequest(
+          request,
+          targetModel,
+        );
 
         // Send to OpenAI provider
-        const openAIResponse = await this.openaiProvider.generateContent(openAIRequest);
+        const openAIResponse =
+          await this.openaiProvider.generateContent(openAIRequest);
 
         // Transform response back to Gemini format
-        const geminiResponse = this.responseTransformer.transformResponse(openAIResponse);
+        const geminiResponse =
+          this.responseTransformer.transformResponse(openAIResponse);
 
         // Add thought signature if provided
         if (thoughtSignature) {
@@ -138,7 +259,9 @@ export class GeminiController {
 
         // 打印转换后的 Gemini 响应
         this.logger.debug('=== Transformed Gemini Response ===');
-        this.logger.debug(`Response: ${JSON.stringify(geminiResponse, null, 2)}`);
+        this.logger.debug(
+          `Response: ${JSON.stringify(geminiResponse, null, 2)}`,
+        );
         this.logger.debug('=====================================');
 
         // 添加日志：即将返回响应

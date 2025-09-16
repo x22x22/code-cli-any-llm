@@ -32,7 +32,7 @@ describe('StreamGenerateContentController (e2e)', () => {
     };
 
     const response = await supertest(app.getHttpServer())
-      .post('/api/v1/v1/models/gemini-pro/streamGenerateContent')
+      .post('/api/v1/models/gemini-pro:streamGenerateContent')
       .send(requestBody)
       .expect(200)
       .expect('Content-Type', /text\/event-stream/);
@@ -54,7 +54,7 @@ describe('StreamGenerateContentController (e2e)', () => {
     };
 
     const response = await supertest(app.getHttpServer())
-      .post('/api/v1/v1/models/gemini-pro/streamGenerateContent')
+      .post('/api/v1/models/gemini-pro:streamGenerateContent')
       .send(requestBody)
       .expect(200);
 
@@ -84,7 +84,7 @@ describe('StreamGenerateContentController (e2e)', () => {
     };
 
     await supertest(app.getHttpServer())
-      .post('/api/v1/v1/models/gemini-pro/streamGenerateContent')
+      .post('/api/v1/models/gemini-pro:streamGenerateContent')
       .send(requestBody)
       .expect(400);
   });
@@ -120,7 +120,7 @@ describe('StreamGenerateContentController (e2e)', () => {
     };
 
     const response = await supertest(app.getHttpServer())
-      .post('/api/v1/v1/models/gemini-pro/streamGenerateContent')
+      .post('/api/v1/models/gemini-pro:streamGenerateContent')
       .send(requestBody)
       .expect(200);
 
