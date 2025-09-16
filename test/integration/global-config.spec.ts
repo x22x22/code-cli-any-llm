@@ -157,10 +157,25 @@ gateway:
 `;
       fs.writeFileSync(testConfigFile, globalConfig);
 
-      // 创建项目配置目录和文件（只包含部分字段）
       const projectConfigDir = path.join(process.cwd(), 'config');
       const projectConfigFile = path.join(projectConfigDir, 'config.yaml');
-      fs.mkdirSync(projectConfigDir, { recursive: true });
+
+      // 备份现有配置文件（如果存在）
+      const backupConfigFile = projectConfigFile + '.backup';
+      let hadExistingConfig = false;
+      let hadExistingDir = false;
+
+      if (fs.existsSync(projectConfigFile)) {
+        fs.copyFileSync(projectConfigFile, backupConfigFile);
+        hadExistingConfig = true;
+      }
+
+      if (fs.existsSync(projectConfigDir)) {
+        hadExistingDir = true;
+      } else {
+        fs.mkdirSync(projectConfigDir, { recursive: true });
+      }
+
       const projectConfig = `openai:
   apiKey: "sk-project456"
   model: "gpt-4"
@@ -171,7 +186,6 @@ gateway:
 
       try {
         // Act - 应该只使用项目配置，不读取全局配置
-        // Use direct import instead of dynamic import
         const configService = new GlobalConfigService();
         const result = configService.loadGlobalConfig();
 
@@ -184,12 +198,28 @@ gateway:
         expect(result.config!.gateway.port).toBe(3003); // 项目配置值
         expect(result.config!.configSource).toContain('config/config.yaml'); // 项目配置路径
       } finally {
-        // Clean up project config
-        if (fs.existsSync(projectConfigFile)) {
-          fs.rmSync(projectConfigFile);
+        // 恢复原始状态
+        if (hadExistingConfig) {
+          fs.copyFileSync(backupConfigFile, projectConfigFile);
+          fs.rmSync(backupConfigFile);
+        } else {
+          if (fs.existsSync(projectConfigFile)) {
+            fs.rmSync(projectConfigFile);
+          }
         }
-        if (fs.existsSync(projectConfigDir)) {
-          fs.rmSync(projectConfigDir, { recursive: true });
+
+        // 只在测试创建目录的情况下删除目录
+        if (!hadExistingDir) {
+          try {
+            if (fs.existsSync(projectConfigDir)) {
+              const dirContents = fs.readdirSync(projectConfigDir);
+              if (dirContents.length === 0) {
+                fs.rmSync(projectConfigDir);
+              }
+            }
+          } catch (error) {
+            // Directory not empty or other error, skip removal
+          }
         }
       }
     });

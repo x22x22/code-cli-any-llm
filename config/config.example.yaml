@@ -1,0 +1,15 @@
+# Example configuration for gemini-any-llm
+# Copy this file to config.yaml and modify as needed for project-specific settings
+
+# API Configuration
+openai:
+  apiKey: 'your-api-key-here'
+  baseURL: 'https://open.bigmodel.cn/api/paas/v4'  # 智谱AI endpoint
+  model: 'glm-4.5'  # Default model
+  timeout: 30000
+
+# Gateway Configuration
+gateway:
+  port: 3002
+  host: '0.0.0.0'
+  logLevel: 'info'
