@@ -23,38 +23,71 @@ export class GlobalConfigService {
 
   loadGlobalConfig(): ConfigValidationResult {
     try {
-      // 优先检查项目配置文件
+      // 配置优先级：项目配置 > 全局配置 > 环境变量
+      let mergedConfig: any = {};
+      let configSources: string[] = [];
+
+      // 1. 环境变量作为基础配置（最低优先级）
+      const envConfig = {
+        openai: {
+          apiKey: process.env.OPENAI_API_KEY || '',
+          baseURL: process.env.OPENAI_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4',
+          model: process.env.OPENAI_MODEL || 'glm-4.5',
+          timeout: Number(process.env.OPENAI_TIMEOUT) || 30000,
+        },
+        gateway: {
+          port: Number(process.env.PORT) || 3002,
+          host: process.env.HOST || '0.0.0.0',
+          logLevel: process.env.LOG_LEVEL || 'info',
+        },
+      };
+      mergedConfig = this.deepMerge(mergedConfig, envConfig);
+      if (process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL || process.env.OPENAI_MODEL ||
+          process.env.PORT || process.env.HOST || process.env.LOG_LEVEL) {
+        configSources.push('环境变量');
+      }
+
+      // 2. 全局配置覆盖环境变量（中等优先级）
+      // 检查全局配置文件是否存在，不存在则创建
+      if (!fs.existsSync(this.configFile)) {
+        this.createConfigTemplate();
+      }
+
+      const globalConfigContent = fs.readFileSync(this.configFile, 'utf8');
+      const globalConfig = yaml.load(globalConfigContent) as any;
+      if (globalConfig) {
+        mergedConfig = this.deepMerge(mergedConfig, globalConfig);
+        configSources.push(this.configFile);
+      }
+
+      // 3. 项目配置覆盖全局配置（最高优先级）
       const projectConfigFile = path.join(
         process.cwd(),
         'config',
         'config.yaml',
       );
 
-      let config: any;
-      let configSource: string;
-
       if (fs.existsSync(projectConfigFile)) {
-        // 如果项目配置存在，使用项目配置（不读取全局配置）
         const projectConfigContent = fs.readFileSync(projectConfigFile, 'utf8');
-        config = yaml.load(projectConfigContent) as any;
-        configSource = projectConfigFile;
-      } else {
-        // 项目配置不存在，使用全局配置
-        // 检查全局配置文件是否存在，不存在则创建
-        if (!fs.existsSync(this.configFile)) {
-          this.createConfigTemplate();
+        const projectConfig = yaml.load(projectConfigContent) as any;
+        if (projectConfig) {
+          mergedConfig = this.deepMerge(mergedConfig, projectConfig);
+          configSources.unshift(projectConfigFile); // 项目配置放在最前面
         }
-
-        // 读取全局配置文件
-        const globalConfigContent = fs.readFileSync(this.configFile, 'utf8');
-        config = yaml.load(globalConfigContent) as any;
-        configSource = this.configFile;
       }
 
-      // 验证配置
-      const result = this.validateConfig(config);
+      // 验证合并后的配置
+      const result = this.validateConfig(mergedConfig);
       if (result.config) {
-        result.config.configSource = configSource;
+        // 确定主要配置来源：优先使用配置文件而不是环境变量
+        let primarySource = '默认配置';
+        if (configSources.length > 0) {
+          // 查找第一个文件配置来源
+          const fileSource = configSources.find(source => source.includes('.yaml'));
+          primarySource = fileSource || configSources[0];
+        }
+        result.config.configSource = primarySource;
+        result.config.configSources = configSources;
       }
 
       return result;
@@ -72,6 +105,26 @@ export class GlobalConfigService {
         warnings: [],
       };
     }
+  }
+
+  private deepMerge(target: any, source: any): any {
+    const result = { ...target };
+
+    for (const key in source) {
+      if (source.hasOwnProperty(key)) {
+        if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+          // 如果是对象，递归合并
+          result[key] = this.deepMerge(result[key] || {}, source[key]);
+        } else {
+          // 如果不是对象，覆盖（但跳过空字符串，除非target中也没有值）
+          if (source[key] !== '' || !result[key]) {
+            result[key] = source[key];
+          }
+        }
+      }
+    }
+
+    return result;
   }
 
   private createConfigTemplate(): void {

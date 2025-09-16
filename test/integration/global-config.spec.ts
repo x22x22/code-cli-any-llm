@@ -11,10 +11,18 @@ describe('GlobalConfig Integration Tests', () => {
   const mockHomedir = '/tmp/test-home';
   const testConfigDir = path.join(mockHomedir, '.gemini-any-llm');
   const testConfigFile = path.join(testConfigDir, 'config.yaml');
+  let originalEnv: any;
 
   beforeAll(() => {
     // Setup os.homedir mock
     (os.homedir as jest.Mock).mockReturnValue(mockHomedir);
+    // Save original environment
+    originalEnv = { ...process.env };
+  });
+
+  afterAll(() => {
+    // Restore original environment
+    process.env = originalEnv;
   });
 
   beforeEach(() => {
@@ -28,6 +36,14 @@ describe('GlobalConfig Integration Tests', () => {
     if (fs.existsSync(projectConfigFile)) {
       fs.rmSync(projectConfigFile, { force: true });
     }
+    // Clear environment variables for each test to ensure isolation
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_BASE_URL;
+    delete process.env.OPENAI_MODEL;
+    delete process.env.OPENAI_TIMEOUT;
+    delete process.env.PORT;
+    delete process.env.HOST;
+    delete process.env.LOG_LEVEL;
   });
 
   afterEach(() => {
@@ -144,7 +160,7 @@ gateway:
   });
 
   describe('配置优先级覆盖', () => {
-    it('should use project config exclusively when it exists (not merge)', async () => {
+    it('should merge project config over global config with field-level priority', async () => {
       // Arrange - 创建全局配置和项目配置
       fs.mkdirSync(testConfigDir, { recursive: true });
       const globalConfig = `openai:
@@ -154,6 +170,7 @@ gateway:
 gateway:
   port: 3002
   logLevel: "info"
+  host: "0.0.0.0"
 `;
       fs.writeFileSync(testConfigFile, globalConfig);
 
@@ -177,25 +194,26 @@ gateway:
       }
 
       const projectConfig = `openai:
-  apiKey: "sk-project456"
-  model: "gpt-4"
+  model: "gpt-4"  # 覆盖全局配置
+  timeout: 60000  # 新增字段
 gateway:
-  port: 3003
+  port: 3003  # 覆盖全局配置
 `;
       fs.writeFileSync(projectConfigFile, projectConfig);
 
       try {
-        // Act - 应该只使用项目配置，不读取全局配置
+        // Act - 应该使用字段级合并：项目配置 > 全局配置 > 环境变量
         const configService = new GlobalConfigService();
         const result = configService.loadGlobalConfig();
 
-        // Assert - 验证完全使用项目配置，未设置的字段使用默认值
-        expect(result.config!.openai.apiKey).toBe('sk-project456'); // 项目配置值
-        expect(result.config!.openai.model).toBe('gpt-4'); // 项目配置值
-        expect(result.config!.openai.baseURL).toBe(
-          'https://open.bigmodel.cn/api/paas/v4',
-        ); // 默认值（不是全局配置值）
-        expect(result.config!.gateway.port).toBe(3003); // 项目配置值
+        // Assert - 验证字段级合并
+        expect(result.config!.openai.apiKey).toBe('sk-global123'); // 全局配置值（项目配置中未指定）
+        expect(result.config!.openai.model).toBe('gpt-4'); // 项目配置值（覆盖全局配置）
+        expect(result.config!.openai.baseURL).toBe('https://global.example.com'); // 全局配置值（项目配置中未指定）
+        expect(result.config!.openai.timeout).toBe(60000); // 项目配置值（新增字段）
+        expect(result.config!.gateway.port).toBe(3003); // 项目配置值（覆盖全局配置）
+        expect(result.config!.gateway.host).toBe('0.0.0.0'); // 全局配置值（项目配置中未指定）
+        expect(result.config!.gateway.logLevel).toBe('info'); // 全局配置值（项目配置中未指定）
         expect(result.config!.configSource).toContain('config/config.yaml'); // 项目配置路径
       } finally {
         // 恢复原始状态
@@ -246,6 +264,47 @@ gateway:
       expect(result.config!.configSource).toContain(
         '.gemini-any-llm/config.yaml',
       );
+    });
+
+    it('should use environment variables as lowest priority fallback', async () => {
+      // Arrange - 设置环境变量
+      const originalEnv = process.env;
+      process.env = {
+        ...originalEnv,
+        OPENAI_API_KEY: 'sk-env-key',
+        OPENAI_MODEL: 'gpt-3.5-turbo',
+        PORT: '3001',
+        LOG_LEVEL: 'debug',
+      };
+
+      // 创建全局配置（覆盖部分环境变量）
+      fs.mkdirSync(testConfigDir, { recursive: true });
+      const globalConfig = `openai:
+  apiKey: "sk-global123"  # 覆盖环境变量
+  model: "glm-4.5"        # 覆盖环境变量
+gateway:
+  port: 3002  # 覆盖环境变量
+  # logLevel 未指定，应该使用环境变量的 'debug'
+`;
+      fs.writeFileSync(testConfigFile, globalConfig);
+
+      try {
+        // Act - 应该使用环境变量作为最低优先级
+        const configService = new GlobalConfigService();
+        const result = configService.loadGlobalConfig();
+
+        // Assert - 验证环境变量作为fallback
+        expect(result.config!.openai.apiKey).toBe('sk-global123'); // 全局配置覆盖环境变量
+        expect(result.config!.openai.model).toBe('glm-4.5'); // 全局配置覆盖环境变量
+        expect(result.config!.gateway.port).toBe(3002); // 全局配置覆盖环境变量
+        expect(result.config!.gateway.logLevel).toBe('debug'); // 环境变量值（全局配置中未指定）
+        expect(result.config!.configSource).toContain(
+          '.gemini-any-llm/config.yaml',
+        );
+      } finally {
+        // 恢复环境变量
+        process.env = originalEnv;
+      }
     });
   });
 

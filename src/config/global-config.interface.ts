@@ -15,6 +15,7 @@ export interface GlobalConfig {
   openai: OpenAIConfig;
   gateway: GatewayConfig;
   configSource: string;
+  configSources?: string[]; // 可选字段，记录所有配置来源
   isValid: boolean;
 }
 
