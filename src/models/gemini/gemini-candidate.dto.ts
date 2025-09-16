@@ -1,4 +1,10 @@
-import { IsEnum, IsNumber, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { GeminiContentDto } from './gemini-content.dto';
 import { GeminiSafetyRatingDto } from './gemini-safety-rating.dto';

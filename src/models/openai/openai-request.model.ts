@@ -2,7 +2,10 @@ export interface OpenAIRequest {
   model: string;
   messages: OpenAIMessage[];
   tools?: OpenAITool[];
-  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+  tool_choice?:
+    | 'auto'
+    | 'none'
+    | { type: 'function'; function: { name: string } };
   temperature?: number;
   top_p?: number;
   max_tokens?: number;

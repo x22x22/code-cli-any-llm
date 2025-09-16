@@ -1,4 +1,11 @@
-import { IsOptional, IsNumber, Min, Max, IsString, IsArray } from 'class-validator';
+import {
+  IsOptional,
+  IsNumber,
+  Min,
+  Max,
+  IsString,
+  IsArray,
+} from 'class-validator';
 
 export class GeminiGenerationConfigDto {
   @IsOptional()
