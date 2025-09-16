@@ -49,15 +49,15 @@ describe('StreamingResponse (e2e)', () => {
     expect(chunks.length).toBeGreaterThan(0);
 
     // Verify SSE format
-    chunks.forEach(chunk => {
+    chunks.forEach((chunk) => {
       expect(chunk.startsWith('data: ')).toBe(true);
       expect(chunk.endsWith('\n\n')).toBe(true);
     });
 
     // Parse chunks and verify they form a complete response
     const parsedChunks = chunks
-      .filter(chunk => chunk.trim() !== '')
-      .map(chunk => JSON.parse(chunk.slice(6))); // Remove 'data: ' prefix
+      .filter((chunk) => chunk.trim() !== '')
+      .map((chunk) => JSON.parse(chunk.slice(6))); // Remove 'data: ' prefix
 
     expect(parsedChunks.length).toBeGreaterThan(0);
     expect(parsedChunks[0]).toHaveProperty('candidates');
@@ -68,7 +68,9 @@ describe('StreamingResponse (e2e)', () => {
       contents: [
         {
           role: 'user',
-          parts: [{ text: 'Write a detailed explanation about quantum computing' }],
+          parts: [
+            { text: 'Write a detailed explanation about quantum computing' },
+          ],
         },
       ],
     };
@@ -80,7 +82,7 @@ describe('StreamingResponse (e2e)', () => {
 
     // Stream should continue for a reasonable time
     const chunks: string[] = [];
-    let startTime = Date.now();
+    const startTime = Date.now();
 
     await new Promise((resolve) => {
       response.on('data', (chunk: Buffer) => {
@@ -130,7 +132,7 @@ describe('StreamingResponse (e2e)', () => {
   it('should maintain conversation context in streaming mode', async () => {
     const conversation = [
       { role: 'user', text: 'My favorite color is blue.' },
-      { role: 'model', text: 'I\'ll remember that you like blue!' },
+      { role: 'model', text: "I'll remember that you like blue!" },
       { role: 'user', text: 'What did I just tell you about my preferences?' },
     ];
 
@@ -190,6 +192,8 @@ describe('StreamingResponse (e2e)', () => {
     });
 
     const finalResponse = JSON.parse(chunks2[chunks2.length - 1].slice(6));
-    expect(finalResponse.candidates[0].content.parts[0].text.toLowerCase()).toMatch(/blue/);
+    expect(
+      finalResponse.candidates[0].content.parts[0].text.toLowerCase(),
+    ).toMatch(/blue/);
   });
 });

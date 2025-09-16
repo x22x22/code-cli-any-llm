@@ -33,7 +33,9 @@ describe('BasicConversationFlow (e2e)', () => {
       })
       .expect(200);
 
-    expect(firstResponse.body.candidates[0].content.parts[0].text).toBeDefined();
+    expect(
+      firstResponse.body.candidates[0].content.parts[0].text,
+    ).toBeDefined();
 
     // Follow-up message with context
     const secondResponse = await request(app.getHttpServer())
@@ -46,25 +48,35 @@ describe('BasicConversationFlow (e2e)', () => {
           },
           {
             role: 'model',
-            parts: [{ text: firstResponse.body.candidates[0].content.parts[0].text }],
+            parts: [
+              { text: firstResponse.body.candidates[0].content.parts[0].text },
+            ],
           },
           {
             role: 'user',
-            parts: [{ text: 'What\'s my name?' }],
+            parts: [{ text: "What's my name?" }],
           },
         ],
       })
       .expect(200);
 
-    expect(secondResponse.body.candidates[0].content.parts[0].text).toContain('Alice');
+    expect(secondResponse.body.candidates[0].content.parts[0].text).toContain(
+      'Alice',
+    );
   });
 
   it('should handle multi-turn conversation', async () => {
     const conversation = [
       { role: 'user', text: 'Can you help me plan a vacation?' },
-      { role: 'model', text: 'I\'d be happy to help you plan a vacation! Where would you like to go?' },
-      { role: 'user', text: 'I\'m thinking about visiting Japan.' },
-      { role: 'model', text: 'Japan is a wonderful choice! What time of year are you planning to visit?' },
+      {
+        role: 'model',
+        text: "I'd be happy to help you plan a vacation! Where would you like to go?",
+      },
+      { role: 'user', text: "I'm thinking about visiting Japan." },
+      {
+        role: 'model',
+        text: 'Japan is a wonderful choice! What time of year are you planning to visit?',
+      },
       { role: 'user', text: 'Probably in the spring for cherry blossoms.' },
     ];
 
@@ -88,7 +100,9 @@ describe('BasicConversationFlow (e2e)', () => {
           // Add model response to conversation
           contents.push({
             role: 'model',
-            parts: [{ text: response.body.candidates[0].content.parts[0].text }],
+            parts: [
+              { text: response.body.candidates[0].content.parts[0].text },
+            ],
           });
         }
       }
@@ -122,7 +136,8 @@ describe('BasicConversationFlow (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/v1/models/gemini-pro/generateContent')
       .send({
-        systemInstruction: 'You are a helpful assistant that always responds in rhyme.',
+        systemInstruction:
+          'You are a helpful assistant that always responds in rhyme.',
         contents: [
           {
             role: 'user',
@@ -137,7 +152,9 @@ describe('BasicConversationFlow (e2e)', () => {
     const words = responseText.toLowerCase().split(/\s+/);
     if (words.length >= 2) {
       // Very simple rhyme check - in real test would use proper rhyming dictionary
-      console.log(`Checking if "${words[words.length - 2]}" rhymes with "${words[words.length - 1]}"`);
+      console.log(
+        `Checking if "${words[words.length - 2]}" rhymes with "${words[words.length - 1]}"`,
+      );
     }
   });
 });

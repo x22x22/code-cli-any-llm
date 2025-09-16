@@ -24,7 +24,7 @@ describe('ToolCalling (e2e)', () => {
       contents: [
         {
           role: 'user',
-          parts: [{ text: 'What\'s the weather like in London?' }],
+          parts: [{ text: "What's the weather like in London?" }],
         },
       ],
       tools: [
@@ -62,7 +62,9 @@ describe('ToolCalling (e2e)', () => {
     // Should either call the function or ask for clarification
     const candidate = response.body.candidates[0];
     if (candidate.content.parts[0].functionCall) {
-      expect(candidate.content.parts[0].functionCall.name).toBe('get_current_weather');
+      expect(candidate.content.parts[0].functionCall.name).toBe(
+        'get_current_weather',
+      );
     } else {
       // Should ask for more information or acknowledge the request
       expect(candidate.content.parts[0].text).toBeDefined();
@@ -74,32 +76,36 @@ describe('ToolCalling (e2e)', () => {
       contents: [
         {
           role: 'user',
-          parts: [{ text: 'What\'s the weather like in London?' }],
+          parts: [{ text: "What's the weather like in London?" }],
         },
         {
           role: 'model',
-          parts: [{
-            functionCall: {
-              name: 'get_current_weather',
-              args: {
-                location: 'London',
-                unit: 'celsius',
+          parts: [
+            {
+              functionCall: {
+                name: 'get_current_weather',
+                args: {
+                  location: 'London',
+                  unit: 'celsius',
+                },
               },
             },
-          }],
+          ],
         },
         {
           role: 'user',
-          parts: [{
-            functionResponse: {
-              name: 'get_current_weather',
-              response: {
-                temperature: 15,
-                condition: 'Cloudy',
-                humidity: 80,
+          parts: [
+            {
+              functionResponse: {
+                name: 'get_current_weather',
+                response: {
+                  temperature: 15,
+                  condition: 'Cloudy',
+                  humidity: 80,
+                },
               },
             },
-          }],
+          ],
         },
       ],
     };
@@ -160,12 +166,17 @@ describe('ToolCalling (e2e)', () => {
 
     // Parse chunks to look for function calls
     const functionCalls: any[] = [];
-    chunks.forEach(chunk => {
+    chunks.forEach((chunk) => {
       if (chunk.startsWith('data: ') && chunk.trim() !== '') {
         try {
           const data = JSON.parse(chunk.slice(6));
-          if (data.candidates && data.candidates[0].content.parts[0].functionCall) {
-            functionCalls.push(data.candidates[0].content.parts[0].functionCall);
+          if (
+            data.candidates &&
+            data.candidates[0].content.parts[0].functionCall
+          ) {
+            functionCalls.push(
+              data.candidates[0].content.parts[0].functionCall,
+            );
           }
         } catch (e) {
           // Skip invalid JSON

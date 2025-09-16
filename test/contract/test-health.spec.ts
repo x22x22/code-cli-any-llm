@@ -58,8 +58,6 @@ describe('HealthController (e2e)', () => {
   });
 
   it('/api/v1/health (GET) - should be accessible without authentication', async () => {
-    await supertest(app.getHttpServer())
-      .get('/api/v1/health')
-      .expect(200);
+    await supertest(app.getHttpServer()).get('/api/v1/health').expect(200);
   });
 });

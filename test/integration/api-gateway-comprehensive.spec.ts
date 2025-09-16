@@ -61,8 +61,12 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
           expect(res.body.candidates.length).toBeGreaterThan(0);
           expect(res.body.candidates[0]).toHaveProperty('content');
           expect(res.body.candidates[0].content).toHaveProperty('parts');
-          expect(Array.isArray(res.body.candidates[0].content.parts)).toBe(true);
-          expect(res.body.candidates[0].content.parts[0]).toHaveProperty('text');
+          expect(Array.isArray(res.body.candidates[0].content.parts)).toBe(
+            true,
+          );
+          expect(res.body.candidates[0].content.parts[0]).toHaveProperty(
+            'text',
+          );
         });
     });
   });
@@ -93,7 +97,8 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
   describe('System Instruction', () => {
     it('should handle system instruction', async () => {
       const requestBody = {
-        systemInstruction: '你是一个专业的Python程序员，请用简洁的代码回答问题。',
+        systemInstruction:
+          '你是一个专业的Python程序员，请用简洁的代码回答问题。',
         contents: [
           {
             role: 'user',
@@ -164,7 +169,9 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
         .send(secondRequestBody)
         .expect(200)
         .expect((res) => {
-          expect(res.body.candidates[0].content.parts[0].text).toContain('张三');
+          expect(res.body.candidates[0].content.parts[0].text).toContain(
+            '张三',
+          );
         });
     });
   });
