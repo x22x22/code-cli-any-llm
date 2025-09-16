@@ -3,6 +3,7 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import { join } from 'path';
+import { GlobalConfigService } from './global-config.service';
 
 @Module({})
 export class ConfigModule {
@@ -14,67 +15,41 @@ export class ConfigModule {
           isGlobal: true,
           load: [
             () => {
-              // Load YAML configuration
-              const configPath = join(process.cwd(), 'config', 'config.yaml');
-              const yamlConfig = fs.existsSync(configPath)
-                ? (yaml.load(fs.readFileSync(configPath, 'utf8')) as Record<
-                    string,
-                    unknown
-                  >)
-                : {};
+              // Use GlobalConfigService to load configuration with proper hierarchy
+              const globalConfigService = new GlobalConfigService();
+              const globalConfigResult = globalConfigService.loadGlobalConfig();
 
-              interface YamlConfig {
-                openai?: {
-                  apiKey?: string;
-                  baseURL?: string;
-                  model?: string;
-                  organization?: string;
-                  timeout?: number;
-                };
-                gateway?: {
-                  port?: number;
-                  host?: string;
-                  logLevel?: string;
+              // If global config is valid, use it; otherwise fallback to environment variables
+              if (globalConfigResult.isValid && globalConfigResult.config) {
+                const config = globalConfigResult.config;
+                return {
+                  openai: {
+                    apiKey: config.openai.apiKey,
+                    baseURL: config.openai.baseURL,
+                    model: config.openai.model,
+                    timeout: config.openai.timeout,
+                  },
+                  gateway: {
+                    port: config.gateway.port,
+                    host: config.gateway.host,
+                    logLevel: config.gateway.logLevel,
+                  },
                 };
               }
 
-              const typedYamlConfig = yamlConfig as YamlConfig;
-
-              // Use YAML config as primary source, only fallback to environment variables if not in YAML
+              // Fallback to environment variables if global config fails
               return {
                 openai: {
-                  apiKey:
-                    typedYamlConfig.openai?.apiKey ||
-                    process.env.OPENAI_API_KEY,
-                  baseURL:
-                    typedYamlConfig.openai?.baseURL ||
-                    process.env.OPENAI_BASE_URL ||
-                    'https://api.openai.com/v1',
-                  model:
-                    typedYamlConfig.openai?.model ||
-                    process.env.OPENAI_MODEL ||
-                    'gpt-3.5-turbo',
-                  organization:
-                    typedYamlConfig.openai?.organization ||
-                    process.env.OPENAI_ORGANIZATION,
-                  timeout:
-                    typedYamlConfig.openai?.timeout ||
-                    Number(process.env.OPENAI_TIMEOUT) ||
-                    30000,
+                  apiKey: process.env.OPENAI_API_KEY,
+                  baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+                  model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+                  organization: process.env.OPENAI_ORGANIZATION,
+                  timeout: Number(process.env.OPENAI_TIMEOUT) || 30000,
                 },
                 gateway: {
-                  port:
-                    typedYamlConfig.gateway?.port ||
-                    Number(process.env.PORT) ||
-                    3002,
-                  host:
-                    typedYamlConfig.gateway?.host ||
-                    process.env.HOST ||
-                    '0.0.0.0',
-                  logLevel:
-                    typedYamlConfig.gateway?.logLevel ||
-                    process.env.LOG_LEVEL ||
-                    'info',
+                  port: Number(process.env.PORT) || 3002,
+                  host: process.env.HOST || '0.0.0.0',
+                  logLevel: process.env.LOG_LEVEL || 'info',
                 },
               };
             },
