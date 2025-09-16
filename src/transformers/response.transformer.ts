@@ -4,9 +4,11 @@ import {
   OpenAIChoice,
 } from '../models/openai/openai-response.model';
 import { GeminiUsageMetadataDto } from '../models/gemini/gemini-usage-metadata.dto';
+import { ToolCallProcessor } from '../utils/zhipu/ToolCallProcessor';
 
 @Injectable()
 export class ResponseTransformer {
+  private readonly toolCallProcessor = new ToolCallProcessor();
   transformResponse(openAIResponse: OpenAIResponse): unknown {
     const geminiResponse: Record<string, unknown> = {
       candidates: [],
@@ -66,13 +68,17 @@ export class ResponseTransformer {
     // Handle tool calls
     if (messageObj.tool_calls && messageObj.tool_calls.length > 0) {
       for (const toolCall of messageObj.tool_calls) {
+        // 使用 ToolCallProcessor 安全解析工具调用参数
+        const args = this.toolCallProcessor.parseToolCallArguments(
+          toolCall.function.arguments,
+          toolCall.function.name,
+          'qwen' // 默认使用 qwen 格式处理双重转义
+        );
+
         parts.push({
           functionCall: {
             name: toolCall.function.name,
-            args: JSON.parse(toolCall.function.arguments) as Record<
-              string,
-              unknown
-            >,
+            args: args as Record<string, unknown>,
           },
         });
       }

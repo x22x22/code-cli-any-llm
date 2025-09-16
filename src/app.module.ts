@@ -11,6 +11,12 @@ import { OpenAIProvider } from './providers/openai/openai.provider';
 import { RequestTransformer } from './transformers/request.transformer';
 import { ResponseTransformer } from './transformers/response.transformer';
 import { StreamTransformer } from './transformers/stream.transformer';
+import { EnhancedRequestTransformer } from './transformers/enhanced-request.transformer';
+import { EnhancedResponseTransformer } from './transformers/enhanced-response.transformer';
+import { ToolFormatterAdapter } from './transformers/enhanced/ToolFormatterAdapter';
+import { ZhipuOptimizer } from './utils/zhipu/ZhipuOptimizer';
+import { DoubleEscapeUtils } from './utils/zhipu/doubleEscapeUtils';
+import { ToolCallProcessor } from './utils/zhipu/ToolCallProcessor';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggingMiddleware } from './middleware/logging.middleware';
@@ -28,6 +34,13 @@ import { Logger } from '@nestjs/common';
     ResponseTransformer,
     StreamTransformer,
     TokenizerService,
+    // Enhanced transformers and utilities
+    EnhancedRequestTransformer,
+    EnhancedResponseTransformer,
+    ToolFormatterAdapter,
+    ZhipuOptimizer,
+    DoubleEscapeUtils,
+    ToolCallProcessor,
   ],
 })
 export class AppModule implements OnModuleDestroy {

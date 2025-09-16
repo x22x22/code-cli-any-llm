@@ -25,13 +25,15 @@ export class GlobalConfigService {
     try {
       // 配置优先级：项目配置 > 全局配置 > 环境变量
       let mergedConfig: any = {};
-      let configSources: string[] = [];
+      const configSources: string[] = [];
 
       // 1. 环境变量作为基础配置（最低优先级）
       const envConfig = {
         openai: {
           apiKey: process.env.OPENAI_API_KEY || '',
-          baseURL: process.env.OPENAI_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4',
+          baseURL:
+            process.env.OPENAI_BASE_URL ||
+            'https://open.bigmodel.cn/api/paas/v4',
           model: process.env.OPENAI_MODEL || 'glm-4.5',
           timeout: Number(process.env.OPENAI_TIMEOUT) || 30000,
         },
@@ -42,8 +44,14 @@ export class GlobalConfigService {
         },
       };
       mergedConfig = this.deepMerge(mergedConfig, envConfig);
-      if (process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL || process.env.OPENAI_MODEL ||
-          process.env.PORT || process.env.HOST || process.env.LOG_LEVEL) {
+      if (
+        process.env.OPENAI_API_KEY ||
+        process.env.OPENAI_BASE_URL ||
+        process.env.OPENAI_MODEL ||
+        process.env.PORT ||
+        process.env.HOST ||
+        process.env.LOG_LEVEL
+      ) {
         configSources.push('环境变量');
       }
 
@@ -83,7 +91,9 @@ export class GlobalConfigService {
         let primarySource = '默认配置';
         if (configSources.length > 0) {
           // 查找第一个文件配置来源
-          const fileSource = configSources.find(source => source.includes('.yaml'));
+          const fileSource = configSources.find((source) =>
+            source.includes('.yaml'),
+          );
           primarySource = fileSource || configSources[0];
         }
         result.config.configSource = primarySource;
@@ -112,7 +122,11 @@ export class GlobalConfigService {
 
     for (const key in source) {
       if (source.hasOwnProperty(key)) {
-        if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        if (
+          source[key] !== null &&
+          typeof source[key] === 'object' &&
+          !Array.isArray(source[key])
+        ) {
           // 如果是对象，递归合并
           result[key] = this.deepMerge(result[key] || {}, source[key]);
         } else {

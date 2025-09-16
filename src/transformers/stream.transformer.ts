@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenAIStreamChunk } from '../models/openai/openai-stream.model';
 import { GeminiResponseDto } from '../models/gemini/gemini-response.dto';
+import { ToolCallProcessor } from '../utils/zhipu/ToolCallProcessor';
 
 @Injectable()
 export class StreamTransformer {
   private readonly logger = new Logger(StreamTransformer.name);
+  private readonly toolCallProcessor = new ToolCallProcessor();
   private streamingToolCalls = new Map<
     number,
     {
@@ -259,6 +261,12 @@ export class StreamTransformer {
 
     if (toolCall.function?.arguments) {
       accumulated.arguments += toolCall.function.arguments;
+
+      // 检测流式工具调用中的双重转义模式
+      this.toolCallProcessor.detectDoubleEscapingInStreamChunk(
+        toolCall.function.arguments,
+        accumulated.name || 'unknown'
+      );
     }
   }
 
@@ -276,7 +284,12 @@ export class StreamTransformer {
         // Only parse arguments if they exist and are non-empty
         if (accumulated.arguments && accumulated.arguments.trim()) {
           try {
-            args = JSON.parse(accumulated.arguments) as Record<string, unknown>;
+            // 使用 ToolCallProcessor 安全解析工具调用参数
+            args = this.toolCallProcessor.parseToolCallArguments(
+              accumulated.arguments,
+              accumulated.name,
+              'qwen'
+            ) as Record<string, unknown>;
           } catch (e) {
             // Invalid JSON, use empty object and log warning
             this.logger?.warn?.('Invalid JSON in tool call arguments:', {

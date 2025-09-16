@@ -209,7 +209,9 @@ gateway:
         // Assert - 验证字段级合并
         expect(result.config!.openai.apiKey).toBe('sk-global123'); // 全局配置值（项目配置中未指定）
         expect(result.config!.openai.model).toBe('gpt-4'); // 项目配置值（覆盖全局配置）
-        expect(result.config!.openai.baseURL).toBe('https://global.example.com'); // 全局配置值（项目配置中未指定）
+        expect(result.config!.openai.baseURL).toBe(
+          'https://global.example.com',
+        ); // 全局配置值（项目配置中未指定）
         expect(result.config!.openai.timeout).toBe(60000); // 项目配置值（新增字段）
         expect(result.config!.gateway.port).toBe(3003); // 项目配置值（覆盖全局配置）
         expect(result.config!.gateway.host).toBe('0.0.0.0'); // 全局配置值（项目配置中未指定）

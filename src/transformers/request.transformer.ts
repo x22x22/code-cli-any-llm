@@ -45,6 +45,9 @@ export class RequestTransformer {
   }
 
   private transformMessages(contents: GeminiContentDto[]): OpenAIMessage[] {
+    if (!contents || !Array.isArray(contents)) {
+      return [];
+    }
     return contents
       .map((content) => {
         const message: OpenAIMessage = {

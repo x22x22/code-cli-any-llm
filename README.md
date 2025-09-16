@@ -63,7 +63,7 @@ gateway:
 npm install -g @google/gemini-cli
 
 # 设置 Gemini CLI 使用本地网关
-export GOOGLE_GEMINI_BASE_URL="http://localhost:3002/api/v1"
+export GOOGLE_GEMINI_BASE_URL="http://localhost:3002/api"
 
 # 开始使用
 gemini "你好，请介绍一下自己"
