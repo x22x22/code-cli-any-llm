@@ -4,7 +4,10 @@ import { encoding_for_model, TiktokenModel } from 'tiktoken';
 @Injectable()
 export class TokenizerService {
   private readonly logger = new Logger(TokenizerService.name);
-  private encoderCache = new Map<string, ReturnType<typeof encoding_for_model>>();
+  private encoderCache = new Map<
+    string,
+    ReturnType<typeof encoding_for_model>
+  >();
 
   /**
    * Count tokens for a given text using the specified model
@@ -21,7 +24,9 @@ export class TokenizerService {
           this.logger.debug(`Created encoder for model: ${model}`);
         } catch (_error) {
           // Fall back to cl100k_base encoding for newer/unknown models
-          this.logger.warn(`No specific encoding for model ${model}, using cl100k_base`);
+          this.logger.warn(
+            `No specific encoding for model ${model}, using cl100k_base`,
+          );
           encoder = encoding_for_model('gpt-4');
           this.encoderCache.set(model, encoder);
         }
@@ -48,7 +53,10 @@ export class TokenizerService {
         if (content.parts && Array.isArray(content.parts)) {
           for (const part of content.parts) {
             if (part.text) {
-              const tokens = await this.countTokens(part.text, model || 'gpt-3.5-turbo');
+              const tokens = await this.countTokens(
+                part.text,
+                model || 'gpt-3.5-turbo',
+              );
               totalTokens += tokens;
             }
           }

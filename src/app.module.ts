@@ -1,4 +1,9 @@
-import { Module, MiddlewareConsumer, RequestMethod, OnModuleDestroy } from '@nestjs/common';
+import {
+  Module,
+  MiddlewareConsumer,
+  RequestMethod,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { GeminiController } from './controllers/gemini.controller';
 import { HealthController } from './controllers/health.controller';
@@ -15,11 +20,7 @@ import { Logger } from '@nestjs/common';
 
 @Module({
   imports: [ConfigModule.forRoot()],
-  controllers: [
-    AppController,
-    GeminiController,
-    HealthController,
-  ],
+  controllers: [AppController, GeminiController, HealthController],
   providers: [
     AppService,
     OpenAIProvider,
@@ -44,9 +45,7 @@ export class AppModule implements OnModuleDestroy {
       .apply(LoggingMiddleware)
       .forRoutes('*')
       .apply(TimeoutMiddleware)
-      .exclude(
-        { path: 'health', method: RequestMethod.GET },
-      )
+      .exclude({ path: 'health', method: RequestMethod.GET })
       .forRoutes('*');
   }
 }
