@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsUrl, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUrl,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class OpenAIConfig {
@@ -7,11 +14,16 @@ export class OpenAIConfig {
   apiKey: string;
 
   @IsUrl()
-  @Transform(({ value }) => value || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1')
+  @Transform(
+    ({ value }) =>
+      value || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+  )
   baseURL: string;
 
   @IsString()
-  @Transform(({ value }) => value || process.env.OPENAI_MODEL || 'gpt-3.5-turbo')
+  @Transform(
+    ({ value }) => value || process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+  )
   model: string;
 
   @IsOptional()
@@ -22,7 +34,7 @@ export class OpenAIConfig {
   @IsNumber()
   @Min(1000)
   @Max(120000)
-  @Transform(({ value }) => value ? parseInt(value) : 30000)
+  @Transform(({ value }) => (value ? parseInt(value) : 30000))
   timeout?: number;
 }
 
@@ -30,7 +42,7 @@ export class GatewayConfig {
   @IsNumber()
   @Min(1)
   @Max(65535)
-  @Transform(({ value }) => value ? parseInt(value) : 3000)
+  @Transform(({ value }) => (value ? parseInt(value) : 3000))
   port: number;
 
   @IsString()

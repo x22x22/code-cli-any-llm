@@ -6,7 +6,9 @@ export const performanceConfig = {
   // Rate limiting configuration
   rateLimiting: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: process.env.RATE_LIMIT_MAX ? parseInt(process.env.RATE_LIMIT_MAX, 10) : 100, // limit each IP to 100 requests per windowMs
+    max: process.env.RATE_LIMIT_MAX
+      ? parseInt(process.env.RATE_LIMIT_MAX, 10)
+      : 100, // limit each IP to 100 requests per windowMs
     skip: (req) => {
       // Skip rate limiting for health checks
       return req.path === '/health';

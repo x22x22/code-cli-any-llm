@@ -18,22 +18,38 @@ export class ConfigModule {
               // Load YAML configuration
               const configPath = join(process.cwd(), 'config', 'config.yaml');
               const yamlConfig = fs.existsSync(configPath)
-                ? yaml.load(fs.readFileSync(configPath, 'utf8')) as any
+                ? (yaml.load(fs.readFileSync(configPath, 'utf8')) as any)
                 : {};
 
               // Use YAML config as primary source, only fallback to environment variables if not in YAML
               return {
                 openai: {
-                  apiKey: yamlConfig.openai?.apiKey || process.env.OPENAI_API_KEY,
-                  baseURL: yamlConfig.openai?.baseURL || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-                  model: yamlConfig.openai?.model || process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-                  organization: yamlConfig.openai?.organization || process.env.OPENAI_ORGANIZATION,
-                  timeout: yamlConfig.openai?.timeout || process.env.OPENAI_TIMEOUT || 30000,
+                  apiKey:
+                    yamlConfig.openai?.apiKey || process.env.OPENAI_API_KEY,
+                  baseURL:
+                    yamlConfig.openai?.baseURL ||
+                    process.env.OPENAI_BASE_URL ||
+                    'https://api.openai.com/v1',
+                  model:
+                    yamlConfig.openai?.model ||
+                    process.env.OPENAI_MODEL ||
+                    'gpt-3.5-turbo',
+                  organization:
+                    yamlConfig.openai?.organization ||
+                    process.env.OPENAI_ORGANIZATION,
+                  timeout:
+                    yamlConfig.openai?.timeout ||
+                    process.env.OPENAI_TIMEOUT ||
+                    30000,
                 },
                 gateway: {
                   port: yamlConfig.gateway?.port || process.env.PORT || 3002,
-                  host: yamlConfig.gateway?.host || process.env.HOST || '0.0.0.0',
-                  logLevel: yamlConfig.gateway?.logLevel || process.env.LOG_LEVEL || 'info',
+                  host:
+                    yamlConfig.gateway?.host || process.env.HOST || '0.0.0.0',
+                  logLevel:
+                    yamlConfig.gateway?.logLevel ||
+                    process.env.LOG_LEVEL ||
+                    'info',
                 },
               };
             },

@@ -8,10 +8,5 @@ export const requestLoggingConfig = {
     return false;
   },
   // Filter sensitive headers
-  filterHeaders: [
-    'authorization',
-    'cookie',
-    'x-api-key',
-    'x-gemini-api-key',
-  ],
+  filterHeaders: ['authorization', 'cookie', 'x-api-key', 'x-gemini-api-key'],
 };

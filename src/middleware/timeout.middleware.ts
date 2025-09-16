@@ -5,12 +5,17 @@ import { Logger } from '@nestjs/common';
 @Injectable()
 export class TimeoutMiddleware implements NestMiddleware {
   private readonly logger = new Logger(TimeoutMiddleware.name);
-  private readonly timeout = parseInt(process.env.REQUEST_TIMEOUT || '120000', 10); // 120 seconds default
+  private readonly timeout = parseInt(
+    process.env.REQUEST_TIMEOUT || '120000',
+    10,
+  ); // 120 seconds default
 
   use(req: Request, res: Response, next: NextFunction) {
     const timeoutId = setTimeout(() => {
       if (!res.headersSent) {
-        this.logger.warn(`Request timeout for ${req.method} ${req.originalUrl}`);
+        this.logger.warn(
+          `Request timeout for ${req.method} ${req.originalUrl}`,
+        );
         res.status(504).json({
           statusCode: 504,
           message: 'Gateway timeout',
@@ -23,7 +28,7 @@ export class TimeoutMiddleware implements NestMiddleware {
 
     // Override res.end to clear timeout when response is sent
     const originalEnd = res.end;
-    (res as any).end = function(chunk?: any, encoding?: any) {
+    (res as any).end = function (chunk?: any, encoding?: any) {
       clearTimeout(timeoutId);
       originalEnd.call(this, chunk, encoding);
     };
@@ -31,7 +36,9 @@ export class TimeoutMiddleware implements NestMiddleware {
     // Handle socket errors
     req.socket.on('error', (error) => {
       clearTimeout(timeoutId);
-      this.logger.error(`Socket error for ${req.method} ${req.originalUrl}: ${error.message}`);
+      this.logger.error(
+        `Socket error for ${req.method} ${req.originalUrl}: ${error.message}`,
+      );
     });
 
     next();

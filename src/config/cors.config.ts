@@ -1,6 +1,9 @@
 export const corsConfig = {
   // Configure CORS for development and production
-  origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+  origin: (
+    origin: string | undefined,
+    callback: (error: Error | null, allow?: boolean) => void,
+  ) => {
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
       'http://localhost:3000',
       'http://localhost:4200',
@@ -24,7 +27,7 @@ export const corsConfig = {
     }
 
     // Allow subdomains of allowed origins
-    const isSubdomainAllowed = allowedOrigins.some(allowedOrigin => {
+    const isSubdomainAllowed = allowedOrigins.some((allowedOrigin) => {
       if (allowedOrigin.startsWith('*.')) {
         const domain = allowedOrigin.slice(2);
         return origin.endsWith(domain);
