@@ -1,11 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { GeminiRequestDto } from '../models/gemini/gemini-request.dto';
 import { GeminiContentDto } from '../models/gemini/gemini-content.dto';
-import { OpenAIRequest, OpenAIMessage, OpenAITool } from '../models/openai/openai-request.model';
+import {
+  OpenAIRequest,
+  OpenAIMessage,
+  OpenAITool,
+} from '../models/openai/openai-request.model';
 
 @Injectable()
 export class RequestTransformer {
-  transformRequest(geminiRequest: GeminiRequestDto, model: string): OpenAIRequest {
+  transformRequest(
+    geminiRequest: GeminiRequestDto,
+    model: string,
+  ): OpenAIRequest {
     const openAIRequest: OpenAIRequest = {
       model,
       messages: this.transformMessages(geminiRequest.contents),
@@ -18,13 +25,17 @@ export class RequestTransformer {
 
     // Transform generation config
     if (geminiRequest.generationConfig) {
-      const config = this.transformGenerationConfig(geminiRequest.generationConfig);
+      const config = this.transformGenerationConfig(
+        geminiRequest.generationConfig,
+      );
       Object.assign(openAIRequest, config);
     }
 
     // Handle system instruction
     if (geminiRequest.systemInstruction) {
-      const systemMessage = this.transformSystemInstruction(geminiRequest.systemInstruction);
+      const systemMessage = this.transformSystemInstruction(
+        geminiRequest.systemInstruction,
+      );
       if (systemMessage) {
         openAIRequest.messages.unshift(systemMessage);
       }
@@ -34,42 +45,51 @@ export class RequestTransformer {
   }
 
   private transformMessages(contents: GeminiContentDto[]): OpenAIMessage[] {
-    return contents.map(content => {
-      const message: OpenAIMessage = {
-        role: content.role === 'model' ? 'assistant' : 'user',
-      };
+    return contents
+      .map((content) => {
+        const message: OpenAIMessage = {
+          role: content.role === 'model' ? 'assistant' : 'user',
+        };
 
-      // Handle different part types
-      const textParts = content.parts.filter(part => part.text);
-      const functionCallParts = content.parts.filter(part => part.functionCall);
-      const functionResponseParts = content.parts.filter(part => part.functionResponse);
+        // Handle different part types
+        const textParts = content.parts.filter((part) => part.text);
+        const functionCallParts = content.parts.filter(
+          (part) => part.functionCall,
+        );
+        const functionResponseParts = content.parts.filter(
+          (part) => part.functionResponse,
+        );
 
-      if (textParts.length > 0) {
-        message.content = textParts.map(part => part.text).join('');
-      }
+        if (textParts.length > 0) {
+          message.content = textParts.map((part) => part.text).join('');
+        }
 
-      if (functionCallParts.length > 0) {
-        message.tool_calls = functionCallParts.map(part => ({
-          id: `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          type: 'function' as const,
-          function: {
-            name: part.functionCall!.name,
-            arguments: JSON.stringify(part.functionCall!.args),
-          },
-        }));
-      }
+        if (functionCallParts.length > 0) {
+          message.tool_calls = functionCallParts.map((part) => ({
+            id: `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: 'function' as const,
+            function: {
+              name: part.functionCall!.name,
+              arguments: JSON.stringify(part.functionCall!.args),
+            },
+          }));
+        }
 
-      if (functionResponseParts.length > 0) {
-        message.role = 'tool';
-        message.content = JSON.stringify(functionResponseParts[0].functionResponse?.response);
-        message.tool_call_id = functionResponseParts[0].functionResponse?.name;
-      }
+        if (functionResponseParts.length > 0) {
+          message.role = 'tool';
+          message.content = JSON.stringify(
+            functionResponseParts[0].functionResponse?.response,
+          );
+          message.tool_call_id =
+            functionResponseParts[0].functionResponse?.name;
+        }
 
-      return message;
-    }).filter(message => {
-      // Filter out empty messages without tool calls
-      return message.content || message.tool_calls;
-    });
+        return message;
+      })
+      .filter((message) => {
+        // Filter out empty messages without tool calls
+        return message.content || message.tool_calls;
+      });
   }
 
   private transformTools(geminiTools: any[]): OpenAITool[] {
@@ -120,14 +140,16 @@ export class RequestTransformer {
     return result;
   }
 
-  private transformSystemInstruction(instruction: GeminiContentDto | string): OpenAIMessage | null {
+  private transformSystemInstruction(
+    instruction: GeminiContentDto | string,
+  ): OpenAIMessage | null {
     if (typeof instruction === 'string') {
       return {
         role: 'system',
         content: instruction,
       };
     } else if (instruction.parts && instruction.parts.length > 0) {
-      const textPart = instruction.parts.find(part => part.text);
+      const textPart = instruction.parts.find((part) => part.text);
       if (textPart) {
         return {
           role: 'system',
@@ -145,11 +167,13 @@ export class RequestTransformer {
     for (let i = 0; i < messages.length; i++) {
       const current = messages[i];
 
-      if (i > 0 &&
-          current.role === 'assistant' &&
-          messages[i - 1].role === 'assistant' &&
-          !current.tool_calls &&
-          messages[i - 1].tool_calls) {
+      if (
+        i > 0 &&
+        current.role === 'assistant' &&
+        messages[i - 1].role === 'assistant' &&
+        !current.tool_calls &&
+        messages[i - 1].tool_calls
+      ) {
         // Merge consecutive assistant messages without tool calls
         const prev = cleaned[cleaned.length - 1];
         prev.content = (prev.content || '') + (current.content || '');

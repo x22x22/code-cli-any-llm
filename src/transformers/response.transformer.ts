@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { OpenAIResponse, OpenAIChoice } from '../models/openai/openai-response.model';
+import {
+  OpenAIResponse,
+  OpenAIChoice,
+} from '../models/openai/openai-response.model';
 import { GeminiResponseDto } from '../models/gemini/gemini-response.dto';
 import { GeminiCandidateDto } from '../models/gemini/gemini-candidate.dto';
 import { GeminiContentDto } from '../models/gemini/gemini-content.dto';
@@ -49,7 +52,7 @@ export class ResponseTransformer {
     if (message.reasoning_content) {
       parts.push({
         text: message.reasoning_content,
-        thought: true
+        thought: true,
       });
     }
 
@@ -66,7 +69,10 @@ export class ResponseTransformer {
     }
 
     // If no parts were added but message exists, add empty text to ensure parts is not empty
-    if (parts.length === 0 && (message.content || message.reasoning_content || message.tool_calls)) {
+    if (
+      parts.length === 0 &&
+      (message.content || message.reasoning_content || message.tool_calls)
+    ) {
       parts.push({ text: '' });
     }
 
@@ -78,10 +84,10 @@ export class ResponseTransformer {
 
   private transformFinishReason(reason: string): string {
     const mapping: Record<string, string> = {
-      'stop': 'STOP',
-      'length': 'MAX_TOKENS',
-      'tool_calls': 'STOP',
-      'content_filter': 'SAFETY',
+      stop: 'STOP',
+      length: 'MAX_TOKENS',
+      tool_calls: 'STOP',
+      content_filter: 'SAFETY',
     };
 
     return mapping[reason] || 'OTHER';
