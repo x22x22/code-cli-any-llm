@@ -7,11 +7,38 @@ import { corsConfig } from './config/cors.config';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
+import { GlobalConfigService } from './config/global-config.service';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+
+  // 1. 全局配置加载和验证 - 在NestJS应用启动前
+  const globalConfigService = new GlobalConfigService();
+  const globalConfigResult = globalConfigService.loadGlobalConfig();
+
+  // 2. 配置验证失败 - 优雅退出
+  if (!globalConfigResult.isValid) {
+    logger.error('全局配置验证失败:');
+    globalConfigResult.errors.forEach((error) => {
+      logger.error(`  - ${error.field}: ${error.message}`);
+      logger.error(`    建议: ${error.suggestion}`);
+    });
+    logger.error(`\n配置文件位置: ~/.gemini-any-llm/config.yaml`);
+    logger.error('请修复配置问题后重新启动应用');
+    process.exit(1);
+  }
+
+  // 3. 配置有效 - 显示配置来源信息
+  logger.log(`全局配置加载成功: ${globalConfigResult.config!.configSource}`);
+  if (globalConfigResult.warnings.length > 0) {
+    globalConfigResult.warnings.forEach((warning) => {
+      logger.warn(`配置警告: ${warning}`);
+    });
+  }
+
+  // 4. 继续启动NestJS应用
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-  const logger = new Logger('Bootstrap');
 
   // Global validation pipe
   app.useGlobalPipes(new ValidationPipe());

@@ -1,42 +1,15 @@
-# OpenAI Configuration
+# Example configuration for gemini-any-llm
+# Copy this file to config.yaml and modify as needed for project-specific settings
+
+# API Configuration
 openai:
-  apiKey: ''
-  baseURL: ''
-  model: ''
+  apiKey: 'your-api-key-here'
+  baseURL: 'https://open.bigmodel.cn/api/paas/v4'  # 智谱AI endpoint
+  model: 'glm-4.5'  # Default model
   timeout: 30000
-  organization: ''
 
 # Gateway Configuration
 gateway:
   port: 3002
   host: '0.0.0.0'
   logLevel: 'info'
-
-# Rate Limiting Configuration
-rateLimit:
-  windowMs: 60000  # 1 minute
-  maxRequests: 100
-
-# Security Configuration
-security:
-  cors:
-    origin: []
-    credentials: false
-  allowedHeaders: []
-  allowedMethods: []
-
-# Request Configuration
-request:
-  timeout: 30000
-  maxRetries: 3
-  retryDelay: 1000
-
-# Logging Configuration
-logging:
-  level: 'info'
-  format: 'json'
-  file:
-    enabled: false
-    path: './logs/app.log'
-    maxSize: '20M'
-    maxFiles: 5

@@ -23,6 +23,7 @@ This is a NestJS TypeScript project called "gemini-any-llm" - a Gemini API Gatew
 - ✅ Comprehensive error handling and validation
 - ✅ Health check and monitoring endpoints
 - ✅ YAML-based configuration system
+- ✅ Global configuration management with home directory support
 - ✅ Graceful shutdown handling
 
 **API Endpoints**:
@@ -35,8 +36,17 @@ This is a NestJS TypeScript project called "gemini-any-llm" - a Gemini API Gatew
 ### Installation and Setup
 ```bash
 pnpm install  # Install dependencies
+
+# First run - global config will be auto-created
+pnpm run start:dev
+# This will create ~/.gemini-any-llm/config.yaml and show you what to configure
+
+# Edit the global config with your API key
+# ~/.gemini-any-llm/config.yaml - set your apiKey
+
+# Optional: Create project-specific overrides
 cp config/config.example.yaml config/config.yaml  # Copy configuration
-# Edit config/config.yaml with your API keys and settings
+# Edit config/config.yaml with any project-specific settings
 ```
 
 ### Development
@@ -100,6 +110,9 @@ The project follows a layered architecture with clear separation of concerns:
 
 5. **Configuration Layer** (`src/config/`) - Configuration management
    - YAML-based configuration with environment variable override
+   - Global configuration management (`GlobalConfigService`)
+   - Automatic configuration file creation and validation
+   - Configuration priority: Project config > Global config > Defaults
    - Schema validation using class-validator
    - Support for multiple provider configurations
 
@@ -112,28 +125,63 @@ The project follows a layered architecture with clear separation of concerns:
 
 ### Configuration System
 
-The project uses YAML configuration files instead of environment variables:
+The project uses a hierarchical YAML configuration system with multiple levels:
 
-- **Main Config**: `config/config.yaml`
+- **Global Config**: `~/.gemini-any-llm/config.yaml` (auto-created on first run)
+- **Project Config**: `config/config.yaml` (optional, overrides global config)
 - **Example Config**: `config/config.example.yaml`
 - **Environment Override**: Any config value can be overridden with environment variables
 
-Configuration priority: Environment Variables > YAML > Defaults
+**Configuration Priority**: Environment Variables > Project Config > Global Config > Defaults
 
-Example configuration:
+**Important Priority Behavior**:
+- If `./config/config.yaml` exists, **only** the project config is used (global config is ignored)
+- If `./config/config.yaml` doesn't exist, global config `~/.gemini-any-llm/config.yaml` is used
+- Missing fields in the active config file are filled with default values (no merging between files)
+
+**First Run Experience**:
+- When starting the application for the first time, a global configuration file is automatically created at `~/.gemini-any-llm/config.yaml`
+- The application will fail to start with a helpful error message if the `apiKey` is not configured
+- Clear guidance is provided for configuring the required API key and optional settings
+
+Example global configuration (`~/.gemini-any-llm/config.yaml`):
 ```yaml
-# OpenAI Configuration
+# Global configuration for gemini-any-llm
+# Edit this file to configure your default API settings
+
+# API Configuration (REQUIRED)
 openai:
-  apiKey: 'your-api-key'
-  baseURL: 'https://api.openai.com/v1'  # or compatible provider
-  model: 'gpt-3.5-turbo'
+  # Your API key - REQUIRED, get it from your provider
+  apiKey: "your-api-key-here"
+
+  # API endpoint - can customize for different providers
+  baseURL: "https://open.bigmodel.cn/api/paas/v4"
+
+  # Default model to use
+  model: "glm-4.5"
+
+  # Request timeout in milliseconds
   timeout: 30000
 
 # Gateway Configuration
 gateway:
   port: 3002
-  host: '0.0.0.0'
-  logLevel: 'info'
+  host: "0.0.0.0"
+  logLevel: "info"
+```
+
+Example project configuration (`config/config.yaml`) - completely replaces global config:
+```yaml
+# Project-specific configuration (must be complete)
+openai:
+  apiKey: "project-specific-api-key"
+  baseURL: "https://open.bigmodel.cn/api/paas/v4"  # Must specify or uses default
+  model: "gpt-4"
+  timeout: 30000
+gateway:
+  port: 3003
+  host: "0.0.0.0"
+  logLevel: "info"
 ```
 
 ## Testing Architecture
@@ -151,6 +199,21 @@ gateway:
 - Multi-turn conversation context
 - Error handling and validation
 - Request/response format compliance
+- **Global Configuration**: Auto-creation, validation, merging, error handling
+
+### Global Configuration Tests
+```bash
+# Run global config integration tests
+pnpm test -- test/integration/global-config.spec.ts
+
+# Test scenarios covered:
+# - Auto-creation of config file when not exists
+# - API key validation and startup failure
+# - Valid configuration loading
+# - Config priority (project exclusive vs global fallback)
+# - Project config completely replaces global config (no merging)
+# - YAML format error handling
+```
 
 ### Gemini CLI Integration Tests
 
@@ -269,6 +332,13 @@ pnpm test -- test/integration/gemini-cli-integration.spec.ts --coverage
 ## Common Issues and Solutions
 
 1. **Process not stopping on Ctrl+C**: Use `pnpm run kill` to force terminate
-2. **Port already in use**: Change `gateway.port` in config.yaml
+2. **Port already in use**: Change `gateway.port` in global or project config.yaml
 3. **CORS errors**: Update allowed origins in configuration
 4. **API timeouts**: Adjust timeout values in provider configuration
+5. **API Key not configured**:
+   - Check `~/.gemini-any-llm/config.yaml` and ensure `openai.apiKey` is set
+   - Application will show clear error message with config file location
+6. **Configuration not loading**:
+   - Verify file permissions on `~/.gemini-any-llm/` directory
+   - Check YAML syntax in config files
+   - Use project config to override global settings if needed
