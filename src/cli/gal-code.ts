@@ -13,8 +13,46 @@ const GEMINI_AUTH_TYPE = 'gemini-api-key';
 const GATEWAY_HEALTH_PATH = '/api/v1/health';
 const DEFAULT_TIMEOUT = 20000;
 const POLL_INTERVAL = 800;
+const GATEWAY_PID_FILE = 'gateway.pid.json';
+const STOP_TIMEOUT = 10000;
+const STOP_POLL_INTERVAL = 250;
 
-export async function runGalCode(args: string[]): Promise<void> {
+interface GatewayContext {
+  projectRoot: string;
+  configDir: string;
+  configFile: string;
+  gatewayHost: string;
+  gatewayPort: number;
+  geminiApiKey?: string;
+}
+
+interface GatewayContextOptions {
+  allowWizard?: boolean;
+  requireApiKey?: boolean;
+  ensureGeminiSettings?: boolean;
+}
+
+interface GatewayPidInfo {
+  pid: number;
+  startedAt?: number;
+  entry?: string;
+}
+
+interface StopGatewayResult {
+  outcome: 'stopped' | 'not_found' | 'already_stopped' | 'failed';
+  pid?: number;
+  error?: Error;
+}
+
+async function prepareGatewayContext(
+  options: GatewayContextOptions = {},
+): Promise<GatewayContext> {
+  const {
+    allowWizard = true,
+    requireApiKey = true,
+    ensureGeminiSettings: ensureGemini = true,
+  } = options;
+
   const projectRoot = locateProjectRoot(__dirname);
   const configDir = path.join(os.homedir(), '.gemini-any-llm');
   const configFile = path.join(configDir, 'config.yaml');
@@ -23,7 +61,7 @@ export async function runGalCode(args: string[]): Promise<void> {
   const configExists = fs.existsSync(configFile);
   let configResult = configService.loadGlobalConfig();
 
-  if (shouldRunWizard(configExists, configResult)) {
+  if (allowWizard && shouldRunWizard(configExists, configResult)) {
     await runConfigWizard(configFile);
     configResult = configService.loadGlobalConfig();
 
@@ -40,18 +78,37 @@ export async function runGalCode(args: string[]): Promise<void> {
 
   const gatewayHost = normalizeGatewayHost(configResult.config.gateway.host);
   const gatewayPort = configResult.config.gateway.port;
-  const geminiApiKey = readGlobalApiKey(configFile);
 
-  if (!geminiApiKey) {
-    console.error('未能在 ~/.gemini-any-llm/config.yaml 中找到有效的 apikey');
-    process.exit(1);
+  let geminiApiKey: string | undefined;
+  if (requireApiKey) {
+    geminiApiKey = readGlobalApiKey(configFile);
+    if (!geminiApiKey) {
+      console.error('未能在 ~/.gemini-any-llm/config.yaml 中找到有效的 apikey');
+      process.exit(1);
+    }
   }
 
-  ensureGeminiSettings();
+  if (ensureGemini) {
+    ensureGeminiSettings();
+  }
+
+  return {
+    projectRoot,
+    configDir,
+    configFile,
+    gatewayHost,
+    gatewayPort,
+    geminiApiKey,
+  };
+}
+
+export async function runGalCode(args: string[]): Promise<void> {
+  const context = await prepareGatewayContext();
+  const { gatewayHost, gatewayPort, geminiApiKey } = context;
 
   if (!(await isGatewayHealthy(gatewayHost, gatewayPort))) {
     console.log('检测到网关未运行，正在后台启动服务...');
-    ensureGatewayStarted(projectRoot);
+    startGatewayProcess(context);
 
     const { ready, lastStatus } = await waitForGatewayHealthy(
       gatewayHost,
@@ -64,7 +121,126 @@ export async function runGalCode(args: string[]): Promise<void> {
     }
   }
 
-  await launchGeminiCLI(args, gatewayHost, gatewayPort, geminiApiKey);
+  await launchGeminiCLI(args, gatewayHost, gatewayPort, geminiApiKey ?? '');
+}
+
+export async function runGalStart(): Promise<void> {
+  const context = await prepareGatewayContext();
+  const { gatewayHost, gatewayPort } = context;
+
+  const currentStatus = await fetchGatewayHealth(gatewayHost, gatewayPort);
+  if (currentStatus.healthy) {
+    console.log('网关已在运行。');
+    outputGatewayStatus('当前状态', context, currentStatus);
+    return;
+  }
+
+  const recordedPid = readGatewayPidInfo(context.configDir);
+  if (recordedPid && isPidRunning(recordedPid.pid)) {
+    console.log(
+      `检测到历史网关进程 (PID ${recordedPid.pid}) 状态异常，准备重启...`,
+    );
+    const stopResult = await stopGatewayProcess(context);
+    if (stopResult.outcome === 'failed') {
+      console.error(
+        `无法终止现有网关进程: ${stopResult.error?.message ?? '未知错误'}`,
+      );
+      process.exit(1);
+    }
+  }
+
+  console.log('正在启动网关组件...');
+  const pid = startGatewayProcess(context);
+  if (pid && pid > 0) {
+    console.log(`已启动网关进程 (PID ${pid})，等待健康检查...`);
+  }
+
+  const { ready, lastStatus } = await waitForGatewayHealthy(
+    gatewayHost,
+    gatewayPort,
+  );
+
+  if (!ready) {
+    logGatewayFailure(lastStatus);
+    console.error('网关未在预期时间内就绪，请检查部署状态后重试。');
+    process.exit(1);
+  }
+
+  console.log(`网关已就绪，监听地址 http://${gatewayHost}:${gatewayPort}`);
+  if (lastStatus) {
+    outputGatewayStatus('启动结果', context, lastStatus);
+  }
+}
+
+export async function runGalStop(): Promise<void> {
+  const context = await prepareGatewayContext({
+    allowWizard: false,
+    requireApiKey: false,
+    ensureGeminiSettings: false,
+  });
+
+  const result = await stopGatewayProcess(context);
+
+  switch (result.outcome) {
+    case 'stopped':
+      console.log(`已停止网关进程 (PID ${result.pid}).`);
+      break;
+    case 'already_stopped':
+      console.log(`记录的网关进程 (PID ${result.pid}) 已退出。`);
+      break;
+    case 'not_found':
+      console.log('未找到网关进程记录，无需执行停止操作。');
+      break;
+    case 'failed':
+    default:
+      console.error(`停止网关进程失败: ${result.error?.message ?? '未知错误'}`);
+      process.exit(1);
+  }
+}
+
+export async function runGalStatus(): Promise<void> {
+  const context = await prepareGatewayContext({
+    allowWizard: false,
+    requireApiKey: false,
+    ensureGeminiSettings: false,
+  });
+
+  const status = await fetchGatewayHealth(
+    context.gatewayHost,
+    context.gatewayPort,
+  );
+
+  outputGatewayStatus('网关状态', context, status);
+}
+
+export async function runGalKill(): Promise<void> {
+  const projectRoot = locateProjectRoot(__dirname);
+  const scriptPath = path.join(projectRoot, 'scripts', 'force-kill.js');
+
+  if (!fs.existsSync(scriptPath)) {
+    console.error('未找到 scripts/force-kill.js，请确认项目结构完整。');
+    process.exit(1);
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(process.execPath, [scriptPath], {
+      cwd: projectRoot,
+      stdio: 'inherit',
+      env: process.env,
+    });
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
+    child.on('exit', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`force-kill 脚本以状态码 ${code ?? 'unknown'} 退出`));
+      }
+    });
+  });
 }
 
 function shouldRunWizard(
@@ -196,8 +372,8 @@ function ensureDir(dirPath: string): void {
   }
 }
 
-function ensureGatewayStarted(projectRoot: string): void {
-  const entry = path.join(projectRoot, 'dist', 'main.js');
+function startGatewayProcess(context: GatewayContext): number | undefined {
+  const entry = path.join(context.projectRoot, 'dist', 'main.js');
 
   if (!fs.existsSync(entry)) {
     console.error(
@@ -206,8 +382,10 @@ function ensureGatewayStarted(projectRoot: string): void {
     process.exit(1);
   }
 
+  ensureDir(context.configDir);
+
   const child = spawn(process.execPath, [entry], {
-    cwd: projectRoot,
+    cwd: context.projectRoot,
     detached: true,
     stdio: 'ignore',
     env: {
@@ -216,7 +394,17 @@ function ensureGatewayStarted(projectRoot: string): void {
     },
   });
 
+  const pid = child.pid;
+  if (pid && pid > 0) {
+    writeGatewayPidInfo(context.configDir, {
+      pid,
+      startedAt: Date.now(),
+      entry,
+    });
+  }
+
   child.unref();
+  return pid;
 }
 
 function locateProjectRoot(startDir: string): string {
@@ -260,6 +448,175 @@ interface HealthPayload {
 interface WaitForGatewayResult {
   ready: boolean;
   lastStatus?: GatewayHealthStatus;
+}
+
+async function stopGatewayProcess(
+  context: GatewayContext,
+  signal: NodeJS.Signals | number = 'SIGTERM',
+): Promise<StopGatewayResult> {
+  const pidInfo = readGatewayPidInfo(context.configDir);
+  if (!pidInfo || !pidInfo.pid || pidInfo.pid <= 0) {
+    return { outcome: 'not_found' };
+  }
+
+  const { pid } = pidInfo;
+
+  if (!isPidRunning(pid)) {
+    removePidFile(context.configDir);
+    return { outcome: 'already_stopped', pid };
+  }
+
+  try {
+    process.kill(pid, signal);
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ESRCH') {
+      removePidFile(context.configDir);
+      return { outcome: 'already_stopped', pid };
+    }
+    return { outcome: 'failed', pid, error: err };
+  }
+
+  const exited = await waitForProcessExit(pid, STOP_TIMEOUT);
+  if (!exited) {
+    return {
+      outcome: 'failed',
+      pid,
+      error: new Error('网关进程在超时时间内未退出'),
+    };
+  }
+
+  removePidFile(context.configDir);
+  return { outcome: 'stopped', pid };
+}
+
+function outputGatewayStatus(
+  title: string,
+  context: GatewayContext,
+  status: GatewayHealthStatus,
+): void {
+  const healthUrl = `http://${context.gatewayHost}:${context.gatewayPort}${GATEWAY_HEALTH_PATH}`;
+  const pidInfo = readGatewayPidInfo(context.configDir);
+  const runningPid = pidInfo && isPidRunning(pidInfo.pid) ? pidInfo.pid : undefined;
+
+  console.log(`${title}: ${status.healthy ? '健康' : '异常'}`);
+  console.log(`健康检查: ${healthUrl}`);
+
+  if (runningPid) {
+    console.log(`进程 PID: ${runningPid} (运行中)`);
+  } else if (pidInfo?.pid) {
+    console.log(`进程 PID: ${pidInfo.pid} (已退出)`);
+  } else {
+    console.log('进程 PID: 未记录');
+  }
+
+  const details = formatStatusDetails(status);
+  for (const line of details) {
+    console.log(line);
+  }
+}
+
+function formatStatusDetails(status: GatewayHealthStatus): string[] {
+  const lines: string[] = [];
+
+  if (status.message) {
+    lines.push(`状态消息: ${status.message}`);
+  }
+
+  if (status.providerError) {
+    lines.push(`上游信息: ${status.providerError}`);
+  }
+
+  if (status.statusCode && status.statusCode !== 200) {
+    lines.push(`HTTP 状态码: ${status.statusCode}`);
+  }
+
+  const extraErrors = collectErrorMessages(status.payload?.errors);
+  if (extraErrors.length > 0) {
+    lines.push(`错误详情: ${extraErrors.join('; ')}`);
+  }
+
+  const provider = status.payload?.provider;
+  if (isRecord(provider)) {
+    lines.push(`提供方响应: ${JSON.stringify(provider)}`);
+  }
+
+  if (!status.healthy && status.rawBody) {
+    lines.push(`原始响应: ${status.rawBody}`);
+  }
+
+  return lines;
+}
+
+function getPidFilePath(configDir: string): string {
+  return path.join(configDir, GATEWAY_PID_FILE);
+}
+
+function readGatewayPidInfo(configDir: string): GatewayPidInfo | undefined {
+  const pidFile = getPidFilePath(configDir);
+  if (!fs.existsSync(pidFile)) {
+    return undefined;
+  }
+
+  try {
+    const raw = fs.readFileSync(pidFile, 'utf8');
+    const parsed = raw ? (JSON.parse(raw) as GatewayPidInfo) : undefined;
+    if (parsed && typeof parsed.pid === 'number' && parsed.pid > 0) {
+      return parsed;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function writeGatewayPidInfo(configDir: string, info: GatewayPidInfo): void {
+  const pidFile = getPidFilePath(configDir);
+  ensureDir(configDir);
+  const content = `${JSON.stringify(info, null, 2)}\n`;
+  fs.writeFileSync(pidFile, content, { mode: 0o600 });
+}
+
+function removePidFile(configDir: string): void {
+  const pidFile = getPidFilePath(configDir);
+  if (fs.existsSync(pidFile)) {
+    try {
+      fs.unlinkSync(pidFile);
+    } catch {
+      // ignore unlink errors
+    }
+  }
+}
+
+function isPidRunning(pid: number): boolean {
+  if (!pid || pid <= 0) {
+    return false;
+  }
+
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'EPERM') {
+      return true;
+    }
+    return false;
+  }
+}
+
+async function waitForProcessExit(pid: number, timeout: number): Promise<boolean> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    if (!isPidRunning(pid)) {
+      return true;
+    }
+    await delay(STOP_POLL_INTERVAL);
+  }
+
+  return !isPidRunning(pid);
 }
 
 async function waitForGatewayHealthy(
