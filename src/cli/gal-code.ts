@@ -195,10 +195,10 @@ function ensureDir(dirPath: string): void {
 function ensureGatewayStarted(projectRoot: string): void {
   ensureBuilt(projectRoot);
 
-  const entry = path.join(projectRoot, 'dist', 'src', 'main.js');
+  const entry = path.join(projectRoot, 'dist', 'main.js');
 
   if (!fs.existsSync(entry)) {
-    throw new Error('无法找到 dist/src/main.js，请检查是否构建成功。');
+    throw new Error('无法找到 dist/main.js，请检查是否构建成功。');
   }
 
   const child = spawn(process.execPath, [entry], {
@@ -215,7 +215,7 @@ function ensureGatewayStarted(projectRoot: string): void {
 }
 
 function ensureBuilt(projectRoot: string): void {
-  const entry = path.join(projectRoot, 'dist', 'src', 'main.js');
+  const entry = path.join(projectRoot, 'dist', 'main.js');
   if (fs.existsSync(entry)) {
     return;
   }

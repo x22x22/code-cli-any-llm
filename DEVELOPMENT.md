@@ -34,7 +34,7 @@ pnpm run build
 
 ```bash
 pnpm run build
-node dist/src/cli/gal.js code "你好，请介绍一下自己"
+node dist/cli/gal.js code "你好，请介绍一下自己"
 ```
 
 首次运行会引导填写 API Key / Base URL / 模型，并写入 `~/.gemini-any-llm/config.yaml`，同时自动确保 `~/.gemini/settings.json` 的 `selectedAuthType` 为 `gemini-api-key`。
