@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import {
   runGalCode,
@@ -10,8 +11,18 @@ import {
 } from './gal-code';
 import { runGalAuth } from './gal-auth';
 
-const requireJson = createRequire(__filename);
-const { version } = requireJson('../../package.json') as { version: string };
+function loadVersion(): string {
+  const packageJsonPath = resolve(__dirname, '../../package.json');
+  try {
+    const content = readFileSync(packageJsonPath, 'utf8');
+    const parsed = JSON.parse(content) as { version?: string };
+    return parsed.version ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+const version = loadVersion();
 
 const [, , command, ...restArgs] = process.argv;
 
