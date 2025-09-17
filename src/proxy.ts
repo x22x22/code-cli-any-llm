@@ -12,7 +12,8 @@ const app: express.Application = express();
 // ===== 日志与工具 =====
 const nowISO = () => new Date().toISOString();
 const genReqId = () =>
-  (globalThis as any).crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  (globalThis as any).crypto?.randomUUID?.() ??
+  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 const pad2 = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 function tsForFile() {
@@ -41,7 +42,7 @@ function writeRaw(text = '') {
 }
 function headersToPrintable(headers: IncomingHttpHeaders): string {
   return Object.entries(headers)
-    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v ?? ''}`)
+    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : (v ?? '')}`)
     .join('\n');
 }
 
@@ -73,7 +74,10 @@ function getContentEncoding(headers?: IncomingHttpHeaders): string | undefined {
   return Array.isArray(ce) ? ce[0] : ce;
 }
 
-function decompressBodyIfNeeded(encoding: string | undefined, body: Buffer): Buffer {
+function decompressBodyIfNeeded(
+  encoding: string | undefined,
+  body: Buffer,
+): Buffer {
   if (!encoding) return body;
   try {
     const enc = encoding.toLowerCase();
@@ -108,15 +112,19 @@ app.use((req: Request & { id?: string }, _res, next) => {
   req.id = reqId;
   const charset = parseCharset(req.headers['content-type']);
   const nodeEnc = normalizeToNodeEncoding(charset);
-  const bodyBufRaw = Buffer.isBuffer((req as any).body) ? (req as any).body : undefined;
+  const bodyBufRaw = Buffer.isBuffer((req as any).body)
+    ? (req as any).body
+    : undefined;
   const reqContentEncoding = getContentEncoding(req.headers as any);
-  const bodyBuf = bodyBufRaw ? decompressBodyIfNeeded(reqContentEncoding, bodyBufRaw) : undefined;
+  const bodyBuf = bodyBufRaw
+    ? decompressBodyIfNeeded(reqContentEncoding, bodyBufRaw)
+    : undefined;
   const bodyText = bodyBuf ? bodyBuf.toString(nodeEnc) : '';
 
   writeLine(``);
   writeLine(`===== REQUEST BEGIN [${reqId}] ${nowISO()} =====`);
   writeLine(`${req.method} ${req.originalUrl}`);
-  writeLine(headersToPrintable(req.headers as IncomingHttpHeaders));
+  writeLine(headersToPrintable(req.headers));
   if (bodyBuf && bodyBuf.length) {
     writeLine('');
     writeLine('-- 请求体开始 --');
@@ -142,9 +150,11 @@ const exampleProxy = createProxyMiddleware({
   },
   selfHandleResponse: true,
   on: {
-    proxyReq: (proxyReq: ClientRequest, req: Request & { id?: string }, _res: Response) => {
+    proxyReq: (proxyReq: ClientRequest, req: Request & { id?: string }) => {
       // 将已通过 express.raw 解析的请求体重新写入到代理请求中，并记录必要日志
-      const bodyBuf = Buffer.isBuffer((req as any).body) ? (req as any).body : undefined;
+      const bodyBuf = Buffer.isBuffer((req as any).body)
+        ? (req as any).body
+        : undefined;
       if (bodyBuf && bodyBuf.length) {
         proxyReq.setHeader('content-length', Buffer.byteLength(bodyBuf));
         try {
@@ -154,7 +164,11 @@ const exampleProxy = createProxyMiddleware({
         }
       }
     },
-    proxyRes: (proxyRes: IncomingMessage, req: Request & { id?: string }, res: Response) => {
+    proxyRes: (
+      proxyRes: IncomingMessage,
+      req: Request & { id?: string },
+      res: Response,
+    ) => {
       const reqId = req.id || 'unknown';
       const isSSE = isSSEResponse(proxyRes);
       const statusCode = proxyRes.statusCode ?? 502;
@@ -178,7 +192,9 @@ const exampleProxy = createProxyMiddleware({
         const decoder = new StringDecoder('utf8');
         if (contentEncoding && /gzip|br|deflate/i.test(contentEncoding)) {
           writeLine('');
-          writeLine(`[${nowISO()}] [SSE] 检测到压缩(${contentEncoding})，跳过内容解码，仅记录块到达与透传。`);
+          writeLine(
+            `[${nowISO()}] [SSE] 检测到压缩(${contentEncoding})，跳过内容解码，仅记录块到达与透传。`,
+          );
         }
         proxyRes.on('data', (chunk: Buffer) => {
           chunkIndex += 1;
@@ -205,7 +221,15 @@ const exampleProxy = createProxyMiddleware({
         });
         proxyRes.on('error', (err) => {
           writeLine(`[${nowISO()}] [SSE] ${reqId} 响应流错误: ${String(err)}`);
-          try { res.end(); } catch {}
+          try {
+            res.end();
+          } catch (streamError) {
+            writeLine(
+              `[${nowISO()}] [SSE] ${reqId} 终止响应时异常: ${String(
+                streamError,
+              )}`,
+            );
+          }
         });
       } else {
         // 普通响应：聚合打印完整体，同时按块透传
@@ -234,7 +258,13 @@ const exampleProxy = createProxyMiddleware({
         });
         proxyRes.on('error', (err) => {
           writeLine(`[${nowISO()}] ${reqId} 响应流错误: ${String(err)}`);
-          try { res.end(); } catch {}
+          try {
+            res.end();
+          } catch (streamError) {
+            writeLine(
+              `[${nowISO()}] ${reqId} 终止响应时异常: ${String(streamError)}`,
+            );
+          }
         });
       }
     },

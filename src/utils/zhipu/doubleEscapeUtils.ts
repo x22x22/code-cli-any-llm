@@ -56,7 +56,7 @@ export class DoubleEscapeUtils {
           result.isDoubleEscaped = true;
           result.correctedValue = doubleParsed;
           result.detectionDetails.secondParse = doubleParsed;
-        } catch (_secondParseError) {
+        } catch {
           // 不是双重字符串化，只是单重字符串化
           result.correctedValue = parsed;
         }
@@ -112,18 +112,28 @@ export class DoubleEscapeUtils {
   processToolParameters(
     parametersString: string,
     toolName: string = 'unknown',
-    format: string = 'qwen'
+    format: string = 'qwen',
   ): unknown {
     if (!parametersString.trim()) {
       return {};
     }
 
+    const normalizedToolName = toolName?.toLowerCase?.() ?? 'unknown';
+    const normalizedFormat = format?.toLowerCase?.() ?? 'qwen';
+    const effectiveFormat = this.shouldUseDoubleEscapeHandling(normalizedFormat)
+      ? normalizedFormat
+      : normalizedToolName.includes('glm') ||
+          normalizedToolName.includes('qwen') ||
+          normalizedToolName.includes('double_escape')
+        ? 'qwen'
+        : normalizedFormat;
+
     // 只对需要双重转义处理的格式应用
-    if (!this.shouldUseDoubleEscapeHandling(format)) {
+    if (!this.shouldUseDoubleEscapeHandling(effectiveFormat)) {
       // 对于不需要双重转义处理的格式，解析JSON字符串
       try {
         return JSON.parse(parametersString);
-      } catch (e) {
+      } catch {
         return parametersString; // 如果不是有效JSON则原样返回
       }
     }
@@ -167,7 +177,7 @@ export class DoubleEscapeUtils {
     }
 
     if (Array.isArray(obj)) {
-      return obj.map(item => this.convertStringNumbersToNumbers(item));
+      return obj.map((item) => this.convertStringNumbersToNumbers(item));
     }
 
     if (typeof obj === 'object') {

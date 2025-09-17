@@ -32,10 +32,13 @@ export class RequestTransformer {
         openAIRequest.tool_choice = toolChoice;
       }
     }
-    if (openAIRequest.tools && openAIRequest.tools.length > 0 && !openAIRequest.tool_choice) {
+    if (
+      openAIRequest.tools &&
+      openAIRequest.tools.length > 0 &&
+      !openAIRequest.tool_choice
+    ) {
       openAIRequest.tool_choice = 'auto';
     }
-
 
     // Transform generation config
     if (geminiRequest.generationConfig) {
@@ -102,12 +105,14 @@ export class RequestTransformer {
 
         if (functionResponseParts.length > 0) {
           const anyResp = functionResponseParts[0] as unknown as {
-            functionResponse?: { id?: string; name?: string; response?: unknown };
+            functionResponse?: {
+              id?: string;
+              name?: string;
+              response?: unknown;
+            };
           };
           message.role = 'tool';
-          message.content = JSON.stringify(
-            anyResp.functionResponse?.response,
-          );
+          message.content = JSON.stringify(anyResp.functionResponse?.response);
           // Prefer the tool call id if present; fall back to undefined
           // (OpenAI expects the id of the original tool_call.)
           if (anyResp.functionResponse?.id) {
@@ -126,7 +131,9 @@ export class RequestTransformer {
   /**
    * 将 Gemini 的 toolConfig 映射为 OpenAI 的 tool_choice
    */
-  private transformToolConfig(toolConfig: unknown):
+  private transformToolConfig(
+    toolConfig: unknown,
+  ):
     | 'auto'
     | 'none'
     | { type: 'function'; function: { name: string } }
@@ -145,7 +152,8 @@ export class RequestTransformer {
       }
 
       // 常见形式：{ functionCallingConfig: 'AUTO' | 'NONE' | { mode, allowedFunctionNames? } }
-      const fcc = (cfg as { functionCallingConfig?: unknown }).functionCallingConfig;
+      const fcc = (cfg as { functionCallingConfig?: unknown })
+        .functionCallingConfig;
       if (typeof fcc === 'string') {
         const mode = fcc.toUpperCase();
         if (mode === 'AUTO') return 'auto';
@@ -155,10 +163,13 @@ export class RequestTransformer {
         const mode = obj.mode?.toUpperCase();
         if (mode === 'NONE') return 'none';
         // OpenAI 无法指定多个函数，只能选择一个或使用 auto
-        if (Array.isArray(obj.allowedFunctionNames) && obj.allowedFunctionNames.length === 1) {
+        if (
+          Array.isArray(obj.allowedFunctionNames) &&
+          obj.allowedFunctionNames.length === 1
+        ) {
           return {
             type: 'function',
-            function: { name: obj.allowedFunctionNames[0]! },
+            function: { name: obj.allowedFunctionNames[0] },
           };
         }
         // 其他情况视为自动
@@ -185,15 +196,11 @@ export class RequestTransformer {
 
       if (toolObj.functionDeclarations) {
         for (const func of toolObj.functionDeclarations) {
-          const rawParams =
-            (func.parametersJsonSchema as Record<string, unknown> | undefined) ??
-            (func.parameters as Record<string, unknown> | undefined) ??
-            {};
-          const normalizedParams = this.toolFormatter
-            .convertGeminiSchemaToStandard(rawParams) as Record<
-            string,
-            unknown
-          >;
+          const rawParams = func.parametersJsonSchema ?? func.parameters ?? {};
+          const normalizedParams =
+            this.toolFormatter.convertGeminiSchemaToStandard(
+              rawParams,
+            ) as Record<string, unknown>;
           openAITools.push({
             type: 'function',
             function: {

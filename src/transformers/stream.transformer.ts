@@ -297,7 +297,7 @@ export class StreamTransformer {
       // 检测流式工具调用中的双重转义模式
       this.toolCallProcessor.detectDoubleEscapingInStreamChunk(
         toolCall.function.arguments,
-        accumulated.name || 'unknown'
+        accumulated.name || 'unknown',
       );
     }
   }
@@ -320,7 +320,7 @@ export class StreamTransformer {
             args = this.toolCallProcessor.parseToolCallArguments(
               accumulated.arguments,
               accumulated.name,
-              'qwen'
+              'qwen',
             ) as Record<string, unknown>;
           } catch (e) {
             // Invalid JSON, use empty object and log warning
@@ -374,7 +374,7 @@ export class StreamTransformer {
     );
     firstCandidate.content.parts = normalizedParts;
     const usageMetadata = this.buildUsageMetadata(normalizedParts);
-    (responseChunk as Record<string, unknown>).usageMetadata = usageMetadata;
+    responseChunk.usageMetadata = usageMetadata;
   }
 
   private buildUsageMetadata(

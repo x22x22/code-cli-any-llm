@@ -18,7 +18,7 @@ export class ToolCallProcessor {
   parseToolCallArguments(
     argumentsString: string,
     toolName: string,
-    format: string = 'qwen'
+    format: string = 'qwen',
   ): unknown {
     if (!argumentsString || !argumentsString.trim()) {
       return {};
@@ -33,7 +33,10 @@ export class ToolCallProcessor {
     try {
       return JSON.parse(argumentsString);
     } catch (error) {
-      this.logger.warn(`Failed to parse tool call arguments for ${toolName}:`, error);
+      this.logger.warn(
+        `Failed to parse tool call arguments for ${toolName}:`,
+        error,
+      );
       return {};
     }
   }
@@ -42,7 +45,10 @@ export class ToolCallProcessor {
    * 处理 Qwen/GLM 格式的工具调用参数
    * 移植自 llxprt-code ToolFormatter 中的 Qwen 处理逻辑
    */
-  private processQwenToolCallArguments(argumentsString: string, toolName: string): unknown {
+  private processQwenToolCallArguments(
+    argumentsString: string,
+    toolName: string,
+  ): unknown {
     try {
       // 第一次解析
       const parsed = JSON.parse(argumentsString);
@@ -57,15 +63,19 @@ export class ToolCallProcessor {
               firstParse: parsed,
               secondParse: doubleParsed,
               originalLength: argumentsString.length,
-            }
+            },
           );
 
           // 使用双重转义处理工具处理
-          return this.doubleEscapeUtils.processToolParameters(argumentsString, toolName, 'qwen');
+          return this.doubleEscapeUtils.processToolParameters(
+            argumentsString,
+            toolName,
+            'qwen',
+          );
         } catch {
           // 不是双重字符串化，只是单重字符串化
           this.logger.debug(
-            `[Qwen/GLM] Arguments are single-stringified for ${toolName}`
+            `[Qwen/GLM] Arguments are single-stringified for ${toolName}`,
           );
           return JSON.parse(parsed);
         }
@@ -76,16 +86,20 @@ export class ToolCallProcessor {
     } catch (error) {
       this.logger.error(
         `[Qwen/GLM] Failed to parse arguments for ${toolName}:`,
-        error
+        error,
       );
 
       // 回退到双重转义处理工具
       try {
-        return this.doubleEscapeUtils.processToolParameters(argumentsString, toolName, 'qwen');
+        return this.doubleEscapeUtils.processToolParameters(
+          argumentsString,
+          toolName,
+          'qwen',
+        );
       } catch (fallbackError) {
         this.logger.error(
           `[Qwen/GLM] Fallback parsing also failed for ${toolName}:`,
-          fallbackError
+          fallbackError,
         );
         return {};
       }
@@ -108,15 +122,18 @@ export class ToolCallProcessor {
         `[Qwen/GLM] Detected potential double-stringification in streaming chunk for ${toolName}`,
         {
           chunk,
-          pattern: 'Contains escaped quotes that suggest double-stringification',
-        }
+          pattern:
+            'Contains escaped quotes that suggest double-stringification',
+        },
       );
     }
 
     return hasDoubleEscaping;
   }
 
-  normalizeTextToolCalls(parts: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  normalizeTextToolCalls(
+    parts: Array<Record<string, unknown>>,
+  ): Array<Record<string, unknown>> {
     const normalized: Array<Record<string, unknown>> = [];
 
     for (const part of parts) {
@@ -159,11 +176,10 @@ export class ToolCallProcessor {
 
   private splitTextWithToolCalls(
     text: string,
-  ):
-    Array<
-      | { type: 'text'; text: string }
-      | { type: 'functionCall'; name: string; args: Record<string, unknown> }
-    > {
+  ): Array<
+    | { type: 'text'; text: string }
+    | { type: 'functionCall'; name: string; args: Record<string, unknown> }
+  > {
     const segments: Array<
       | { type: 'text'; text: string }
       | { type: 'functionCall'; name: string; args: Record<string, unknown> }
@@ -180,7 +196,11 @@ export class ToolCallProcessor {
 
       const parsed = this.parseToolCallMarkup(match[1]);
       if (parsed) {
-        segments.push({ type: 'functionCall', name: parsed.name, args: parsed.args });
+        segments.push({
+          type: 'functionCall',
+          name: parsed.name,
+          args: parsed.args,
+        });
       } else {
         segments.push({ type: 'text', text: match[0] });
       }
@@ -210,7 +230,8 @@ export class ToolCallProcessor {
     }
 
     const args: Record<string, unknown> = {};
-    const argPattern = /<arg_key>([\s\S]*?)<\/arg_key>\s*<arg_value>([\s\S]*?)<\/arg_value>/g;
+    const argPattern =
+      /<arg_key>([\s\S]*?)<\/arg_key>\s*<arg_value>([\s\S]*?)<\/arg_value>/g;
     let argMatch: RegExpExecArray | null;
     while ((argMatch = argPattern.exec(inner)) !== null) {
       const key = argMatch[1]?.trim();
@@ -249,7 +270,7 @@ export class ToolCallProcessor {
 
     try {
       return JSON.parse(trimmed);
-    } catch (error) {
+    } catch {
       // Fall through to basic conversions
     }
 
@@ -275,8 +296,8 @@ export class ToolCallProcessor {
   shouldUseEnhancedProcessing(model: string): boolean {
     // 智谱/GLM 模型需要特殊处理
     const zhipuPatterns = ['glm-', 'GLM-', 'zhipu-', 'chatglm-'];
-    return zhipuPatterns.some(pattern =>
-      model.toLowerCase().includes(pattern.toLowerCase())
+    return zhipuPatterns.some((pattern) =>
+      model.toLowerCase().includes(pattern.toLowerCase()),
     );
   }
 }
@@ -285,7 +306,7 @@ export class ToolCallProcessor {
 export function parseToolCallArguments(
   argumentsString: string,
   toolName: string = 'unknown',
-  format: string = 'qwen'
+  format: string = 'qwen',
 ): unknown {
   const processor = new ToolCallProcessor();
   return processor.parseToolCallArguments(argumentsString, toolName, format);

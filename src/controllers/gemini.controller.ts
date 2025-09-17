@@ -45,11 +45,14 @@ export class GeminiController {
 
     // 检查配置的模型是否为智谱模型
     const configuredModel = config?.model || 'glm-4.5';
-    this.isUsingZhipuModel = this.enhancedRequestTransformer.isZhipuModel(configuredModel);
+    this.isUsingZhipuModel =
+      this.enhancedRequestTransformer.isZhipuModel(configuredModel);
     this.logger.log(`=== Zhipu Optimization ===`);
     this.logger.log(`Configured Model: ${configuredModel}`);
     this.logger.log(`Is Zhipu Model: ${this.isUsingZhipuModel}`);
-    this.logger.log(`Using Enhanced Transformers: ${this.isUsingZhipuModel ? 'YES' : 'NO'}`);
+    this.logger.log(
+      `Using Enhanced Transformers: ${this.isUsingZhipuModel ? 'YES' : 'NO'}`,
+    );
     this.logger.log('===========================');
   }
 
@@ -88,7 +91,10 @@ export class GeminiController {
 
     const systemInstruction = request.systemInstruction;
     if (typeof systemInstruction === 'string') {
-      totalTokens += this.tokenizerService.countTokens(systemInstruction, model);
+      totalTokens += this.tokenizerService.countTokens(
+        systemInstruction,
+        model,
+      );
     } else if (systemInstruction?.parts) {
       totalTokens += this.tokenizerService.countTokensInRequest(
         [systemInstruction],
@@ -164,7 +170,10 @@ export class GeminiController {
 
         // Initialize stream transformer for the specific model
         const promptTokenCount = this.computePromptTokens(request, targetModel);
-        this.streamTransformer.initializeForModel(targetModel, promptTokenCount);
+        this.streamTransformer.initializeForModel(
+          targetModel,
+          promptTokenCount,
+        );
 
         // Handle client disconnect
         response.on('close', () => {
@@ -245,9 +254,7 @@ export class GeminiController {
                 finalChunk.thoughtSignature = thoughtSignature;
               }
 
-              this.streamTransformer.applyUsageMetadata(
-                finalChunk as Record<string, unknown>,
-              );
+              this.streamTransformer.applyUsageMetadata(finalChunk);
 
               const finalSSEData = this.streamTransformer.toSSEFormat(
                 finalChunk as unknown as any,

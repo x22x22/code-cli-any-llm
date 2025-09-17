@@ -18,7 +18,7 @@ export class EnhancedRequestTransformer extends RequestTransformer {
     typeCoercions: 0,
     failedParsings: 0,
     averageProcessingTime: 0,
-    totalRequestsProcessed: 0
+    totalRequestsProcessed: 0,
   };
 
   private optimizationReports: any[] = [];
@@ -41,7 +41,10 @@ export class EnhancedRequestTransformer extends RequestTransformer {
   /**
    * 转换请求，如果是智谱模型则应用优化
    */
-  transformRequest(geminiRequest: GeminiRequestDto, model: string): OpenAIRequest {
+  transformRequest(
+    geminiRequest: GeminiRequestDto,
+    model: string,
+  ): OpenAIRequest {
     const startTime = Date.now();
 
     try {
@@ -52,14 +55,15 @@ export class EnhancedRequestTransformer extends RequestTransformer {
       if (this.isZhipuModel(model)) {
         const optimized = this.zhipuOptimizer.optimizeRequest(
           baseRequest as unknown as Record<string, unknown>,
-          model
+          model,
         );
 
         // 应用工具格式优化
         if (optimized.tools && Array.isArray(optimized.tools)) {
-          const toolFormat = this.zhipuOptimizer.getRecommendedToolFormat(model);
-          optimized.tools = optimized.tools.map(tool =>
-            this.toolFormatterAdapter.formatTool(tool, toolFormat as any)
+          const toolFormat =
+            this.zhipuOptimizer.getRecommendedToolFormat(model);
+          optimized.tools = optimized.tools.map((tool) =>
+            this.toolFormatterAdapter.formatTool(tool, toolFormat as any),
           );
         }
 
@@ -99,8 +103,10 @@ export class EnhancedRequestTransformer extends RequestTransformer {
     this.processingStats.totalRequestsProcessed++;
 
     // 计算平均处理时间
-    const totalTime = this.processingStats.averageProcessingTime *
-      (this.processingStats.totalRequestsProcessed - 1) + processingTime;
+    const totalTime =
+      this.processingStats.averageProcessingTime *
+        (this.processingStats.totalRequestsProcessed - 1) +
+      processingTime;
     this.processingStats.averageProcessingTime =
       totalTime / this.processingStats.totalRequestsProcessed;
   }
