@@ -376,9 +376,7 @@ function startGatewayProcess(context: GatewayContext): number | undefined {
   const entry = path.join(context.projectRoot, 'dist', 'main.js');
 
   if (!fs.existsSync(entry)) {
-    console.error(
-      '未找到 dist/main.js，请确认服务端已完成部署构建后再试。',
-    );
+    console.error('未找到 dist/main.js，请确认服务端已完成部署构建后再试。');
     process.exit(1);
   }
 
@@ -497,7 +495,8 @@ function outputGatewayStatus(
 ): void {
   const healthUrl = `http://${context.gatewayHost}:${context.gatewayPort}${GATEWAY_HEALTH_PATH}`;
   const pidInfo = readGatewayPidInfo(context.configDir);
-  const runningPid = pidInfo && isPidRunning(pidInfo.pid) ? pidInfo.pid : undefined;
+  const runningPid =
+    pidInfo && isPidRunning(pidInfo.pid) ? pidInfo.pid : undefined;
 
   console.log(`${title}: ${status.healthy ? '健康' : '异常'}`);
   console.log(`健康检查: ${healthUrl}`);
@@ -606,7 +605,10 @@ function isPidRunning(pid: number): boolean {
   }
 }
 
-async function waitForProcessExit(pid: number, timeout: number): Promise<boolean> {
+async function waitForProcessExit(
+  pid: number,
+  timeout: number,
+): Promise<boolean> {
   const start = Date.now();
 
   while (Date.now() - start < timeout) {
@@ -751,7 +753,7 @@ function extractProviderError(payload?: HealthPayload): string | undefined {
 
   const provider = payload.provider;
   if (isRecord(provider)) {
-    const providerRecord = provider as Record<string, unknown>;
+    const providerRecord = provider;
     const providerNameValue = providerRecord['provider'];
     const providerErrorValue = providerRecord['error'];
     if (isNonEmptyString(providerErrorValue)) {
