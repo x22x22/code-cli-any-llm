@@ -27,6 +27,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "gal:code": "pnpm run build && node dist/cli/gal.js code",
     "gal:code:dev": "node --require ts-node/register/transpile-only src/cli/gal.ts code",
+    "gal:auth:dev": "node --require ts-node/register/transpile-only src/cli/gal.ts auth",
     "prepublishOnly": "pnpm run build",
     "ps": "pnpm publish --registry https://registry.npmjs.org"
   },

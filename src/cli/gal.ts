@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { runGalCode } from './gal-code';
+import { runGalAuth } from './gal-auth';
 
 const [, , command, ...restArgs] = process.argv;
 
-const HELP_TEXT = `\nUsage: gal [command]\n\nCommands:\n  code          启动/连接网关并调用 gemini CLI\n  -h, --help    查看帮助\n\n示例:\n  gal code "请用TypeScript写一个HTTP服务"\n`;
+const HELP_TEXT = `\nUsage: gal [command]\n\nCommands:\n  code          启动/连接网关并调用 gemini CLI\n  auth          配置 Gemini CLI 身份认证\n  -h, --help    查看帮助\n\n示例:\n  gal code "请用TypeScript写一个HTTP服务"\n`;
 
 function showHelp() {
   console.log(HELP_TEXT);
@@ -18,6 +19,9 @@ async function main() {
   switch (command) {
     case 'code':
       await runGalCode(restArgs);
+      break;
+    case 'auth':
+      await runGalAuth();
       break;
     default:
       console.log(`未知命令: ${command}`);

@@ -31,6 +31,7 @@ gal code
 
 - **首次运行** 会触发向导，要求填写 baseURL、model 与 apiKey，并写入 `~/.gemini-any-llm/config.yaml`。
 - 程序会自动生成或更新 `~/.gemini/settings.json`，确保 `selectedAuthType` 固定为 `gemini-api-key`。
+- 需要重新配置或切换鉴权时，执行 `gal auth` 可重新运行向导并刷新认证设置。
 - 完成配置后，每次执行 `gal code` 即可自动连接网关并调用 Gemini CLI。
 
 ## 📖 使用指南
