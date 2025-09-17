@@ -65,7 +65,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // Get port from configuration
-  const port = (configService.get('gateway.port') as number) || 3002;
+  const port = (configService.get('gateway.port') as number) || 23062;
 
   const server = (await app.listen(port)) as {
     close: (callback: () => void) => void;

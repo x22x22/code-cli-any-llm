@@ -45,7 +45,7 @@ export class ConfigModule {
                   timeout: Number(process.env.OPENAI_TIMEOUT) || 30000,
                 },
                 gateway: {
-                  port: Number(process.env.PORT) || 3002,
+                  port: Number(process.env.PORT) || 23062,
                   host: process.env.HOST || '0.0.0.0',
                   logLevel: process.env.LOG_LEVEL || 'info',
                 },

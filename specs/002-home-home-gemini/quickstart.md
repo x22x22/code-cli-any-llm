@@ -54,7 +54,7 @@ openai:
   model: "glm-4.5"
   timeout: 30000
 gateway:
-  port: 3002
+  port: 23062
   host: "0.0.0.0"
   logLevel: "info"
 EOF
@@ -90,7 +90,7 @@ openai:
   model: "glm-4.5"
   timeout: 30000
 gateway:
-  port: 3002
+  port: 23062
   host: "0.0.0.0"
   logLevel: "info"
 EOF
@@ -109,7 +109,7 @@ pnpm run start:dev
 **验证命令**:
 ```bash
 # 检查服务是否启动
-curl http://localhost:3002/api/v1/health
+curl http://localhost:23062/api/v1/health
 ```
 
 **成功标准**:
@@ -129,7 +129,7 @@ openai:
   apiKey: "sk-global123"
   model: "glm-4.5"
 gateway:
-  port: 3002
+  port: 23062
 EOF
 
 # 项目配置(部分覆盖)
@@ -282,7 +282,7 @@ git checkout -- config/config.yaml
 4. **进程检查**:
    ```bash
    ps aux | grep node
-   netstat -tlnp | grep 3002
+   netstat -tlnp | grep 23062
    ```
 
 ### 日志位置

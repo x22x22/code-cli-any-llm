@@ -94,7 +94,7 @@ gemini --stream "写一篇关于人工智能发展的文章"
 
 ### 网关配置
 
-- `gateway.port` - 服务端口（默认 3002）
+- `gateway.port` - 服务端口（默认 23062）
 - `gateway.host` - 绑定地址（默认 0.0.0.0）
 - `gateway.logLevel` - 日志级别（debug/info/warn/error）
 
@@ -107,14 +107,14 @@ gemini --stream "写一篇关于人工智能发展的文章"
 
 ### 端口冲突
 
-**问题**：端口 3002 已被占用
+**问题**：端口 23062 已被占用
 **解决**：修改配置文件中的 `gateway.port` 为其他端口
 
 ### Gemini CLI 连接失败
 
 **问题**：Gemini CLI 无法连接到网关
 **解决**：
-1. 确认服务正在运行：`curl http://localhost:3002/api/v1/health`
+1. 确认服务正在运行：`curl http://localhost:23062/api/v1/health`
 2. 检查 `GOOGLE_GEMINI_BASE_URL` 环境变量设置是否正确
 3. 确认防火墙未阻止端口访问
 

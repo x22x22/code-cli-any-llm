@@ -4,7 +4,7 @@
 echo "Testing reasoning_content to thought field conversion..."
 
 # 使用 GLM 模型（它会返回 reasoning_content）
-curl -X POST http://localhost:3002/v1beta/models/glm-4-flash:generateContent \
+curl -X POST http://localhost:23062/v1beta/models/glm-4-flash:generateContent \
   -H "Content-Type: application/json" \
   -H "x-goog-api-key: test-key" \
   -H "x-goog-user-project: test-project" \

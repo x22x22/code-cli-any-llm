@@ -38,7 +38,7 @@ export class GlobalConfigService {
           timeout: Number(process.env.OPENAI_TIMEOUT) || 30000,
         },
         gateway: {
-          port: Number(process.env.PORT) || 3002,
+          port: Number(process.env.PORT) || 23062,
           host: process.env.HOST || '0.0.0.0',
           logLevel: process.env.LOG_LEVEL || 'info',
         },
@@ -172,7 +172,7 @@ openai:
 
 # Gateway Configuration
 gateway:
-  port: 3002
+  port: 23062
   host: "0.0.0.0"
   logLevel: "info"
 `;
@@ -229,7 +229,7 @@ gateway:
     if (!config.gateway) {
       warnings.push('gateway配置缺失，将使用默认值');
       config.gateway = {
-        port: 3002,
+        port: 23062,
         host: '0.0.0.0',
         logLevel: 'info',
       };

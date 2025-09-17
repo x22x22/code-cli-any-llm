@@ -99,7 +99,7 @@ describe('GlobalConfig Integration Tests', () => {
   model: "glm-4.5"
   timeout: 30000
 gateway:
-  port: 3002
+  port: 23062
   host: "0.0.0.0"
   logLevel: "info"
 `;
@@ -132,7 +132,7 @@ gateway:
   model: "glm-4.5"
   timeout: 30000
 gateway:
-  port: 3002
+  port: 23062
   host: "0.0.0.0"
   logLevel: "info"
 `;
@@ -168,7 +168,7 @@ gateway:
   model: "glm-4.5"
   baseURL: "https://global.example.com"
 gateway:
-  port: 3002
+  port: 23062
   logLevel: "info"
   host: "0.0.0.0"
 `;
@@ -251,7 +251,7 @@ gateway:
   apiKey: "sk-global123"
   model: "glm-4.5"
 gateway:
-  port: 3002
+  port: 23062
 `;
       fs.writeFileSync(testConfigFile, globalConfig);
 
@@ -262,7 +262,7 @@ gateway:
       // Assert - 验证使用全局配置
       expect(result.config!.openai.apiKey).toBe('sk-global123');
       expect(result.config!.openai.model).toBe('glm-4.5');
-      expect(result.config!.gateway.port).toBe(3002);
+      expect(result.config!.gateway.port).toBe(23062);
       expect(result.config!.configSource).toContain(
         '.gemini-any-llm/config.yaml',
       );
@@ -285,7 +285,7 @@ gateway:
   apiKey: "sk-global123"  # 覆盖环境变量
   model: "glm-4.5"        # 覆盖环境变量
 gateway:
-  port: 3002  # 覆盖环境变量
+  port: 23062  # 覆盖环境变量
   # logLevel 未指定，应该使用环境变量的 'debug'
 `;
       fs.writeFileSync(testConfigFile, globalConfig);
@@ -298,7 +298,7 @@ gateway:
         // Assert - 验证环境变量作为fallback
         expect(result.config!.openai.apiKey).toBe('sk-global123'); // 全局配置覆盖环境变量
         expect(result.config!.openai.model).toBe('glm-4.5'); // 全局配置覆盖环境变量
-        expect(result.config!.gateway.port).toBe(3002); // 全局配置覆盖环境变量
+        expect(result.config!.gateway.port).toBe(23062); // 全局配置覆盖环境变量
         expect(result.config!.gateway.logLevel).toBe('debug'); // 环境变量值（全局配置中未指定）
         expect(result.config!.configSource).toContain(
           '.gemini-any-llm/config.yaml',

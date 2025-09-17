@@ -34,7 +34,7 @@ openai:
 
 # Gateway Configuration
 gateway:
-  port: 3002  # 网关服务端口
+  port: 23062  # 网关服务端口
   host: '0.0.0.0'
   logLevel: 'info'
 ```
@@ -49,19 +49,19 @@ pnpm run build
 pnpm run start:prod
 ```
 
-服务将在 `http://localhost:3002` 启动。
+服务将在 `http://localhost:23062` 启动。
 
 ## 测试连通性
 
 ### 健康检查
 ```bash
-curl http://localhost:3002/api/v1/health
+curl http://localhost:23062/api/v1/health
 ```
 
 ### Gemini API兼容测试
 ```bash
 # 普通请求
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [{
@@ -71,7 +71,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent 
   }'
 
 # 流式请求
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:streamGenerateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:streamGenerateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [{
@@ -86,7 +86,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:streamGenerateCo
 设置环境变量：
 ```bash
 export GEMINI_API_KEY=dummy
-export GEMINI_BASE_URL=http://localhost:3002/api/v1
+export GEMINI_BASE_URL=http://localhost:23062/api/v1
 ```
 
 然后正常使用Gemini CLI，它会自动通过网关转发请求到OpenAI。
@@ -101,7 +101,7 @@ export GEMINI_BASE_URL=http://localhost:3002/api/v1
 
 2. **端口占用**
    - 修改 `config/config.yaml` 文件中的 `gateway.port` 值
-   - 或停止占用3002端口的进程
+   - 或停止占用23062端口的进程
 
 3. **CORS错误**
    - 在 `ALLOWED_ORIGINS` 中添加你的前端域名

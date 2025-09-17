@@ -19,7 +19,7 @@ cd /home/kdump/llm/project/gemini-any-llm
 pnpm run start:dev
 
 # 2. 验证健康检查
-curl http://localhost:3002/api/v1/health
+curl http://localhost:23062/api/v1/health
 # 期望: {"status":"ok"}
 
 # 3. 验证llxprt-code项目核心文件存在
@@ -212,7 +212,7 @@ DEV_PID=$!
 sleep 10
 
 echo "3️⃣ 检查健康状态..."
-curl -f http://localhost:3002/api/v1/health || { echo "❌ 服务未正常启动"; kill $DEV_PID; exit 1; }
+curl -f http://localhost:23062/api/v1/health || { echo "❌ 服务未正常启动"; kill $DEV_PID; exit 1; }
 
 echo "4️⃣ 复制核心文件..."
 mkdir -p src/transformers/enhanced src/utils/zhipu

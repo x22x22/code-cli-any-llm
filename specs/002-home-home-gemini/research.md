@@ -149,7 +149,7 @@ openai:
 
 # Gateway Configuration
 gateway:
-  port: 3002
+  port: 23062
   host: "0.0.0.0"
   logLevel: "info"
 ```

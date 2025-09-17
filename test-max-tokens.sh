@@ -3,7 +3,7 @@
 # 简单的测试脚本，验证max_tokens是否生效
 echo "测试maxTokens=10的限制..."
 
-curl -X POST "http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent" \
+curl -X POST "http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent" \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [

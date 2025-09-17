@@ -29,7 +29,7 @@ openai:
 
 ```yaml
 gateway:
-  port: 3002              # 服务端口
+  port: 23062              # 服务端口
   host: '0.0.0.0'        # 监听地址
   logLevel: 'info'        # 日志级别
 ```
@@ -131,7 +131,7 @@ openai:
 
 # Gateway Configuration
 gateway:
-  port: 3002
+  port: 23062
   host: '0.0.0.0'
   logLevel: 'info'
 
