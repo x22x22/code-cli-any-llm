@@ -1,10 +1,14 @@
 {
-  "name": "gemini-any-llm",
+  "name": "@kdump/gemini-any-llm",
   "version": "0.0.1",
   "description": "",
-  "author": "",
+  "author": "x22x22",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "Apache License 2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/x22x22/gemini-any-llm.git"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
