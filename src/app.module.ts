@@ -14,6 +14,7 @@ import { StreamTransformer } from './transformers/stream.transformer';
 import { EnhancedRequestTransformer } from './transformers/enhanced-request.transformer';
 import { EnhancedResponseTransformer } from './transformers/enhanced-response.transformer';
 import { ToolFormatterAdapter } from './transformers/enhanced/ToolFormatterAdapter';
+import { ToolFormatter } from './transformers/enhanced/ToolFormatter';
 import { ZhipuOptimizer } from './utils/zhipu/ZhipuOptimizer';
 import { DoubleEscapeUtils } from './utils/zhipu/doubleEscapeUtils';
 import { ToolCallProcessor } from './utils/zhipu/ToolCallProcessor';
@@ -38,6 +39,7 @@ import { Logger } from '@nestjs/common';
     EnhancedRequestTransformer,
     EnhancedResponseTransformer,
     ToolFormatterAdapter,
+    ToolFormatter,
     ZhipuOptimizer,
     DoubleEscapeUtils,
     ToolCallProcessor,

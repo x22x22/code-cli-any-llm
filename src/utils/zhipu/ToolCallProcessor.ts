@@ -116,6 +116,159 @@ export class ToolCallProcessor {
     return hasDoubleEscaping;
   }
 
+  normalizeTextToolCalls(parts: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+    const normalized: Array<Record<string, unknown>> = [];
+
+    for (const part of parts) {
+      const textValue = (part as { text?: unknown }).text;
+      if (typeof textValue === 'string') {
+        const segments = this.splitTextWithToolCalls(textValue);
+        let handled = false;
+
+        for (const segment of segments) {
+          if (segment.type === 'text') {
+            if (segment.text.trim().length === 0) {
+              continue;
+            }
+            const cloned = { ...part };
+            delete (cloned as { functionCall?: unknown }).functionCall;
+            cloned.text = segment.text;
+            normalized.push(cloned);
+            handled = true;
+          } else if (segment.type === 'functionCall') {
+            normalized.push({
+              functionCall: {
+                name: segment.name,
+                args: segment.args,
+              },
+            });
+            handled = true;
+          }
+        }
+
+        if (handled) {
+          continue;
+        }
+      }
+
+      normalized.push(part);
+    }
+
+    return normalized;
+  }
+
+  private splitTextWithToolCalls(
+    text: string,
+  ):
+    Array<
+      | { type: 'text'; text: string }
+      | { type: 'functionCall'; name: string; args: Record<string, unknown> }
+    > {
+    const segments: Array<
+      | { type: 'text'; text: string }
+      | { type: 'functionCall'; name: string; args: Record<string, unknown> }
+    > = [];
+    const pattern = /<tool_call>([\s\S]*?)<\/tool_call>/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(text)) !== null) {
+      const preceding = text.slice(lastIndex, match.index);
+      if (preceding) {
+        segments.push({ type: 'text', text: preceding });
+      }
+
+      const parsed = this.parseToolCallMarkup(match[1]);
+      if (parsed) {
+        segments.push({ type: 'functionCall', name: parsed.name, args: parsed.args });
+      } else {
+        segments.push({ type: 'text', text: match[0] });
+      }
+
+      lastIndex = pattern.lastIndex;
+    }
+
+    const tail = text.slice(lastIndex);
+    if (tail) {
+      segments.push({ type: 'text', text: tail });
+    }
+
+    if (segments.length === 0) {
+      segments.push({ type: 'text', text });
+    }
+
+    return segments;
+  }
+
+  private parseToolCallMarkup(block: string): {
+    name: string;
+    args: Record<string, unknown>;
+  } | null {
+    const inner = block.trim();
+    if (!inner) {
+      return null;
+    }
+
+    const args: Record<string, unknown> = {};
+    const argPattern = /<arg_key>([\s\S]*?)<\/arg_key>\s*<arg_value>([\s\S]*?)<\/arg_value>/g;
+    let argMatch: RegExpExecArray | null;
+    while ((argMatch = argPattern.exec(inner)) !== null) {
+      const key = argMatch[1]?.trim();
+      if (!key) {
+        continue;
+      }
+      const valueRaw = argMatch[2]?.trim() ?? '';
+      args[key] = this.parseMarkupArgValue(valueRaw);
+    }
+
+    let nameSection = inner;
+    const firstArgIndex = inner.indexOf('<arg_key>');
+    if (firstArgIndex !== -1) {
+      nameSection = inner.slice(0, firstArgIndex).trim();
+    }
+
+    if (!nameSection) {
+      const nameMatch = inner.match(/<name>([\s\S]*?)<\/name>/);
+      if (nameMatch?.[1]) {
+        nameSection = nameMatch[1].trim();
+      }
+    }
+
+    if (!nameSection) {
+      return null;
+    }
+
+    return { name: nameSection, args };
+  }
+
+  private parseMarkupArgValue(rawValue: string): unknown {
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    try {
+      return JSON.parse(trimmed);
+    } catch (error) {
+      // Fall through to basic conversions
+    }
+
+    const lower = trimmed.toLowerCase();
+    if (lower === 'true') {
+      return true;
+    }
+    if (lower === 'false') {
+      return false;
+    }
+
+    const numericValue = Number(trimmed);
+    if (!Number.isNaN(numericValue) && trimmed === String(numericValue)) {
+      return numericValue;
+    }
+
+    return trimmed;
+  }
+
   /**
    * 判断是否应该使用增强的工具调用处理
    */

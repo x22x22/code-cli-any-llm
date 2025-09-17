@@ -15,6 +15,7 @@ import { ResponseTransformer } from '../transformers/response.transformer';
 import { StreamTransformer } from '../transformers/stream.transformer';
 import { EnhancedRequestTransformer } from '../transformers/enhanced-request.transformer';
 import { EnhancedResponseTransformer } from '../transformers/enhanced-response.transformer';
+import { TokenizerService } from '../services/tokenizer.service';
 
 @Controller('')
 export class GeminiController {
@@ -28,6 +29,7 @@ export class GeminiController {
     private readonly streamTransformer: StreamTransformer,
     private readonly enhancedRequestTransformer: EnhancedRequestTransformer,
     private readonly enhancedResponseTransformer: EnhancedResponseTransformer,
+    private readonly tokenizerService: TokenizerService,
   ) {
     // 打印 OpenAI 配置信息
     const config = this.openaiProvider.getConfig();
@@ -73,6 +75,28 @@ export class GeminiController {
     }
     this.logger.debug(`Using standard response transformer`);
     return this.responseTransformer;
+  }
+
+  private computePromptTokens(
+    request: GeminiRequestDto,
+    model: string,
+  ): number {
+    let totalTokens = this.tokenizerService.countTokensInRequest(
+      request.contents || [],
+      model,
+    );
+
+    const systemInstruction = request.systemInstruction;
+    if (typeof systemInstruction === 'string') {
+      totalTokens += this.tokenizerService.countTokens(systemInstruction, model);
+    } else if (systemInstruction?.parts) {
+      totalTokens += this.tokenizerService.countTokensInRequest(
+        [systemInstruction],
+        model,
+      );
+    }
+
+    return totalTokens;
   }
 
   @Post('models/:model')
@@ -139,7 +163,8 @@ export class GeminiController {
         openAIRequest.stream = true;
 
         // Initialize stream transformer for the specific model
-        this.streamTransformer.initializeForModel(targetModel);
+        const promptTokenCount = this.computePromptTokens(request, targetModel);
+        this.streamTransformer.initializeForModel(targetModel, promptTokenCount);
 
         // Handle client disconnect
         response.on('close', () => {
@@ -219,6 +244,10 @@ export class GeminiController {
               if (thoughtSignature) {
                 finalChunk.thoughtSignature = thoughtSignature;
               }
+
+              this.streamTransformer.applyUsageMetadata(
+                finalChunk as Record<string, unknown>,
+              );
 
               const finalSSEData = this.streamTransformer.toSSEFormat(
                 finalChunk as unknown as any,

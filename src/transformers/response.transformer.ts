@@ -40,11 +40,12 @@ export class ResponseTransformer {
   }
 
   private transformOpenAIMessageToGeminiContent(message: unknown): unknown {
-    const parts: unknown[] = [];
+    const parts: Array<Record<string, unknown>> = [];
     const messageObj = message as {
       content?: string;
       reasoning_content?: string;
       tool_calls?: Array<{
+        id?: string;
         function: {
           name: string;
           arguments: string;
@@ -77,12 +78,16 @@ export class ResponseTransformer {
 
         parts.push({
           functionCall: {
+            id: toolCall.id,
             name: toolCall.function.name,
             args: args as Record<string, unknown>,
           },
         });
       }
     }
+
+    const normalizedParts = this.toolCallProcessor.normalizeTextToolCalls(parts);
+    parts.splice(0, parts.length, ...normalizedParts);
 
     // If no parts were added but message exists, add empty text to ensure parts is not empty
     if (
@@ -165,6 +170,7 @@ export class ResponseTransformer {
           if (toolCall.function && toolCall.function.name) {
             (content.parts as unknown[]).push({
               functionCall: {
+                id: (toolCall as any).id,
                 name: toolCall.function.name,
                 args: toolCall.function.arguments
                   ? (JSON.parse(toolCall.function.arguments) as Record<
@@ -177,6 +183,16 @@ export class ResponseTransformer {
           }
         }
       }
+
+      const normalizedStreamParts = this.toolCallProcessor.normalizeTextToolCalls(
+        content.parts as Array<Record<string, unknown>>
+      );
+      const targetStreamParts = content.parts as Array<unknown>;
+      targetStreamParts.splice(
+        0,
+        targetStreamParts.length,
+        ...normalizedStreamParts,
+      );
 
       (geminiResponse.candidates as unknown[]).push({
         content,

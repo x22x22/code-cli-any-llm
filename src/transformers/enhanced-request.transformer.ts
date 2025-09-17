@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { RequestTransformer } from './request.transformer';
+import { ToolFormatter } from './enhanced/ToolFormatter';
 import { ZhipuOptimizer } from '../utils/zhipu/ZhipuOptimizer';
 import { ToolFormatterAdapter } from './enhanced/ToolFormatterAdapter';
 import { GeminiRequestDto } from '../models/gemini/gemini-request.dto';
@@ -25,8 +26,9 @@ export class EnhancedRequestTransformer extends RequestTransformer {
   constructor(
     private readonly zhipuOptimizer: ZhipuOptimizer,
     private readonly toolFormatterAdapter: ToolFormatterAdapter,
+    toolFormatter: ToolFormatter,
   ) {
-    super();
+    super(toolFormatter);
   }
 
   /**
