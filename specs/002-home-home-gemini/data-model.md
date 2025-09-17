@@ -50,7 +50,7 @@ OpenAI API相关配置。
 网关服务配置，继承现有结构。
 
 **Fields:**
-- `port: number` - 服务端口 (默认3002)
+- `port: number` - 服务端口 (默认23062)
 - `host: string` - 绑定地址 (默认"0.0.0.0")
 - `logLevel: string` - 日志级别 (默认"info")
 
@@ -104,7 +104,7 @@ openai:
   timeout: 30000
 
 gateway:
-  port: 3002
+  port: 23062
   host: "0.0.0.0"
   logLevel: "info"
 ```

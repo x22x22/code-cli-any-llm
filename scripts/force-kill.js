@@ -28,10 +28,10 @@ try {
 // If no PID file, try to find process by port
 if (!pid) {
   try {
-    const lsofOutput = execSync('lsof -ti:3002', { encoding: 'utf8' }).trim();
+    const lsofOutput = execSync('lsof -ti:23062', { encoding: 'utf8' }).trim();
     if (lsofOutput) {
       pid = parseInt(lsofOutput.split('\n')[0]);
-      console.log(`Found process on port 3002: ${pid}`);
+      console.log(`Found process on port 23062: ${pid}`);
     }
   } catch (error) {
     // Ignore error if no process found

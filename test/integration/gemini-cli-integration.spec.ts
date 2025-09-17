@@ -7,18 +7,18 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 describe('Gemini CLI Integration Tests', () => {
-  const testServerUrl = 'http://127.0.0.1:3002/api'; // Use the existing dev server
+  const testServerUrl = 'http://127.0.0.1:23062/api'; // Use the existing dev server
 
   beforeAll(async () => {
     // Check if the development server is running
     try {
-      const response = await fetch('http://127.0.0.1:3002/api/v1/health');
+      const response = await fetch('http://127.0.0.1:23062/api/v1/health');
       if (!response.ok) {
         throw new Error('Dev server health check failed');
       }
     } catch (error) {
       throw new Error(
-        'Development server is not running on port 3002. Please start it with: pnpm run start:dev',
+        'Development server is not running on port 23062. Please start it with: pnpm run start:dev',
       );
     }
   });
@@ -173,10 +173,10 @@ describe('Gemini CLI Manual Verification Tests (Optional)', () => {
       'Run the following commands to manually test complex scenarios:',
     );
     console.log(
-      'GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:3002/api gemini -p "请写一个Python函数"',
+      'GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:23062/api gemini -p "请写一个Python函数"',
     );
     console.log(
-      'GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:3002/api gemini -p "Tell me about machine learning"',
+      'GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:23062/api gemini -p "Tell me about machine learning"',
     );
   });
 });

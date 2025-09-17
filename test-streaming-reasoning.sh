@@ -4,7 +4,7 @@
 echo "Testing streaming reasoning_content conversion..."
 
 # 发送流式请求
-curl -N -X POST http://localhost:3002/v1beta/models/glm-4-flash:streamGenerateContent \
+curl -N -X POST http://localhost:23062/v1beta/models/glm-4-flash:streamGenerateContent \
   -H "Content-Type: application/json" \
   -H "x-goog-api-key: test-key" \
   -H "x-goog-user-project: test-project" \

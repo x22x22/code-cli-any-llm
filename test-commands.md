@@ -8,12 +8,12 @@ pnpm run start:dev
 
 ## 1. 健康检查
 ```bash
-curl http://localhost:3002/api/v1/health
+curl http://localhost:23062/api/v1/health
 ```
 
 ## 2. 普通对话
 ```bash
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [
@@ -27,7 +27,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent 
 
 ## 3. 流式对话
 ```bash
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:streamGenerateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:streamGenerateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [
@@ -41,7 +41,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:streamGenerateCo
 
 ## 4. 带系统指令
 ```bash
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "systemInstruction": "你是一个专业的翻译，请只输出翻译结果，不要解释。",
@@ -57,7 +57,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent 
 ## 5. 多轮对话（带上下文）
 ```bash
 # 第一轮
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [
@@ -69,7 +69,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent 
   }'
 
 # 第二轮（记住名字）
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [
@@ -87,7 +87,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent 
 
 ## 6. 代码生成
 ```bash
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [
@@ -102,7 +102,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent 
 ## 7. 使用不同的模型
 将 `glm-4.5` 替换为你的模型名称，例如：
 ```bash
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-flash:generateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-flash:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [
@@ -116,7 +116,7 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-flash:generateConten
 
 ## 8. 错误测试（无效模型）
 ```bash
-curl -X POST http://localhost:3002/api/v1/v1/models/invalid-model:generateContent \
+curl -X POST http://localhost:23062/api/v1/v1/models/invalid-model:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [
@@ -130,7 +130,7 @@ curl -X POST http://localhost:3002/api/v1/v1/models/invalid-model:generateConten
 
 ## 9. 错误测试（缺少必需字段）
 ```bash
-curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent \
+curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "invalid": "data"
@@ -140,5 +140,5 @@ curl -X POST http://localhost:3002/api/v1/models/gemini-2.5-pro:generateContent 
 ## 美化输出（安装了jq的话）
 在命令后添加 `| jq .` 来格式化JSON输出：
 ```bash
-curl -s http://localhost:3002/api/v1/health | jq .
+curl -s http://localhost:23062/api/v1/health | jq .
 ```
