@@ -1,6 +1,6 @@
 {
   "name": "@kdump/gemini-any-llm",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "author": "x22x22",
   "private": false,
   "bin": {
