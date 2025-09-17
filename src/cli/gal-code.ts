@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'child_process';
+import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as http from 'http';
 import * as os from 'os';
@@ -53,9 +53,13 @@ export async function runGalCode(args: string[]): Promise<void> {
     console.log('检测到网关未运行，正在后台启动服务...');
     ensureGatewayStarted(projectRoot);
 
-    const ready = await waitForGatewayHealthy(gatewayHost, gatewayPort);
+    const { ready, lastStatus } = await waitForGatewayHealthy(
+      gatewayHost,
+      gatewayPort,
+    );
     if (!ready) {
-      console.error('网关启动超时，请手动执行 pnpm run start:prod 后重试。');
+      logGatewayFailure(lastStatus);
+      console.error('网关未在预期时间内就绪，请检查部署状态后重试。');
       process.exit(1);
     }
   }
@@ -193,12 +197,13 @@ function ensureDir(dirPath: string): void {
 }
 
 function ensureGatewayStarted(projectRoot: string): void {
-  ensureBuilt(projectRoot);
-
   const entry = path.join(projectRoot, 'dist', 'main.js');
 
   if (!fs.existsSync(entry)) {
-    throw new Error('无法找到 dist/main.js，请检查是否构建成功。');
+    console.error(
+      '未找到 dist/main.js，请确认服务端已完成部署构建后再试。',
+    );
+    process.exit(1);
   }
 
   const child = spawn(process.execPath, [entry], {
@@ -212,97 +217,6 @@ function ensureGatewayStarted(projectRoot: string): void {
   });
 
   child.unref();
-}
-
-function ensureBuilt(projectRoot: string): void {
-  const entry = path.join(projectRoot, 'dist', 'main.js');
-  if (fs.existsSync(entry)) {
-    return;
-  }
-
-  console.log('检测到 dist 目录缺失，正在执行 pnpm run build ...');
-  const runners = buildCommandRunners(projectRoot);
-  let lastError: Error | undefined;
-
-  for (const runner of runners) {
-    const result = spawnSync(runner.command, runner.args, {
-      cwd: projectRoot,
-      stdio: 'inherit',
-      env: runner.env,
-    });
-
-    if (result.error) {
-      const error = result.error as NodeJS.ErrnoException;
-      if (error.code === 'ENOENT') {
-        lastError = error;
-        continue;
-      }
-      lastError = error;
-      continue;
-    }
-
-    if (result.status === 0) {
-      return;
-    }
-
-    lastError = new Error(
-      `${runner.displayName} 以状态码 ${result.status ?? 'unknown'} 退出`,
-    );
-  }
-
-  if (lastError) {
-    throw new Error(
-      `构建失败，已尝试: ${
-        runners.map((runner) => runner.displayName).join(', ') || '无'
-      }。详见上方输出。`,
-    );
-  }
-
-  throw new Error('构建失败，未知原因。');
-}
-
-interface BuildRunner {
-  command: string;
-  args: string[];
-  displayName: string;
-  env?: NodeJS.ProcessEnv;
-}
-
-function buildCommandRunners(projectRoot: string): BuildRunner[] {
-  const runners: BuildRunner[] = [];
-
-  const npmExecPath = process.env.npm_execpath;
-  if (npmExecPath) {
-    runners.push({
-      command: process.execPath,
-      args: [npmExecPath, 'run', 'build'],
-      displayName: 'npm_execpath run build',
-      env: {
-        ...process.env,
-        PNPM_SCRIPT_SRC_DIR: projectRoot,
-      },
-    });
-  }
-
-  runners.push(
-    {
-      command: 'pnpm',
-      args: ['run', 'build'],
-      displayName: 'pnpm run build',
-    },
-    {
-      command: 'npm',
-      args: ['run', 'build'],
-      displayName: 'npm run build',
-    },
-    {
-      command: 'yarn',
-      args: ['build'],
-      displayName: 'yarn build',
-    },
-  );
-
-  return runners;
 }
 
 function locateProjectRoot(startDir: string): string {
@@ -325,22 +239,58 @@ function locateProjectRoot(startDir: string): string {
   return startDir;
 }
 
+interface GatewayHealthStatus {
+  healthy: boolean;
+  statusCode?: number;
+  message?: string;
+  providerError?: string;
+  rawBody?: string;
+  payload?: HealthPayload;
+}
+
+interface HealthPayload {
+  status?: unknown;
+  message?: unknown;
+  provider?: Record<string, unknown>;
+  error?: unknown;
+  errors?: unknown;
+  [key: string]: unknown;
+}
+
+interface WaitForGatewayResult {
+  ready: boolean;
+  lastStatus?: GatewayHealthStatus;
+}
+
 async function waitForGatewayHealthy(
   host: string,
   port: number,
   timeout = DEFAULT_TIMEOUT,
-): Promise<boolean> {
+): Promise<WaitForGatewayResult> {
   const start = Date.now();
+  let lastStatus: GatewayHealthStatus | undefined;
+
   while (Date.now() - start < timeout) {
-    if (await isGatewayHealthy(host, port)) {
-      return true;
+    const status = await fetchGatewayHealth(host, port);
+    lastStatus = status;
+    if (status.healthy) {
+      return { ready: true, lastStatus: status };
     }
     await delay(POLL_INTERVAL);
   }
-  return false;
+
+  return { ready: false, lastStatus };
 }
 
-function isGatewayHealthy(host: string, port: number): Promise<boolean> {
+async function isGatewayHealthy(host: string, port: number): Promise<boolean> {
+  const status = await fetchGatewayHealth(host, port);
+  return status.healthy;
+}
+
+function fetchGatewayHealth(
+  host: string,
+  port: number,
+): Promise<GatewayHealthStatus> {
   return new Promise((resolve) => {
     const request = http.get(
       {
@@ -350,34 +300,190 @@ function isGatewayHealthy(host: string, port: number): Promise<boolean> {
         timeout: 1500,
       },
       (response) => {
-        if (response.statusCode !== 200) {
-          response.resume();
-          resolve(false);
-          return;
-        }
-
+        const { statusCode } = response;
         let rawData = '';
         response.setEncoding('utf8');
         response.on('data', (chunk) => {
           rawData += chunk;
         });
         response.on('end', () => {
-          try {
-            const payload = JSON.parse(rawData);
-            resolve(payload.status === 'healthy');
-          } catch {
-            resolve(false);
+          const parsed = parseHealthPayload(rawData);
+          const message = extractHealthMessage(parsed);
+          const providerError = extractProviderError(parsed);
+          const isHealthyPayload =
+            statusCode === 200 &&
+            parsed !== undefined &&
+            isNonEmptyString(parsed.status) &&
+            parsed.status.trim() === 'healthy';
+
+          if (isHealthyPayload) {
+            resolve({
+              healthy: true,
+              statusCode,
+              message: message,
+              providerError,
+              payload: parsed,
+            });
+            return;
           }
+
+          const trimmed = rawData.trim();
+
+          resolve({
+            healthy: false,
+            statusCode,
+            message,
+            providerError,
+            rawBody: trimmed || undefined,
+            payload: parsed,
+          });
         });
       },
     );
 
-    request.on('error', () => resolve(false));
+    request.on('error', (error: Error) => {
+      resolve({ healthy: false, message: error.message });
+    });
     request.on('timeout', () => {
       request.destroy();
-      resolve(false);
+      resolve({ healthy: false, message: '健康检查请求超时' });
     });
   });
+}
+
+function parseHealthPayload(raw: string): HealthPayload | undefined {
+  if (!raw) {
+    return undefined;
+  }
+
+  try {
+    const value = JSON.parse(raw);
+    if (isRecord(value)) {
+      return value as HealthPayload;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function extractHealthMessage(payload?: HealthPayload): string | undefined {
+  if (!payload) {
+    return undefined;
+  }
+
+  if (isNonEmptyString(payload.message)) {
+    return payload.message.trim();
+  }
+
+  if (isNonEmptyString(payload.status)) {
+    const status = payload.status.trim();
+    if (status && status !== 'healthy') {
+      return status;
+    }
+  }
+
+  return undefined;
+}
+
+function extractProviderError(payload?: HealthPayload): string | undefined {
+  if (!payload) {
+    return undefined;
+  }
+
+  const provider = payload.provider;
+  if (isRecord(provider)) {
+    const providerRecord = provider as Record<string, unknown>;
+    const providerNameValue = providerRecord['provider'];
+    const providerErrorValue = providerRecord['error'];
+    if (isNonEmptyString(providerErrorValue)) {
+      const providerName = isNonEmptyString(providerNameValue)
+        ? providerNameValue.trim()
+        : undefined;
+      return providerName
+        ? `${providerName}: ${providerErrorValue.trim()}`
+        : providerErrorValue.trim();
+    }
+  }
+
+  const errorCandidates = [payload.error, payload.errors];
+  for (const candidate of errorCandidates) {
+    const text = extractErrorText(candidate);
+    if (text) {
+      return text;
+    }
+  }
+
+  return undefined;
+}
+
+function collectErrorMessages(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (isNonEmptyString(item) ? item.trim() : undefined))
+      .filter((item): item is string => Boolean(item));
+  }
+
+  if (isNonEmptyString(value)) {
+    return [value.trim()];
+  }
+
+  return [];
+}
+
+function extractErrorText(value: unknown): string | undefined {
+  if (isNonEmptyString(value)) {
+    return value.trim();
+  }
+
+  if (Array.isArray(value)) {
+    const messages = value
+      .map((item) => (isNonEmptyString(item) ? item.trim() : undefined))
+      .filter((item): item is string => Boolean(item));
+    if (messages.length > 0) {
+      return messages.join('; ');
+    }
+  }
+
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function logGatewayFailure(status?: GatewayHealthStatus): void {
+  if (!status) {
+    console.error('网关健康检查失败，未获取到返回信息。');
+    return;
+  }
+
+  if (status.message) {
+    console.error(`网关返回信息: ${status.message}`);
+  } else if (status.statusCode) {
+    console.error(`网关健康检查失败，HTTP 状态码 ${status.statusCode}`);
+  } else {
+    console.error('网关健康检查失败，但未收到额外信息。');
+  }
+
+  const providerError = status.providerError;
+  if (providerError && providerError !== status.message) {
+    console.error(`上游错误信息: ${providerError}`);
+  }
+
+  const extraErrors = collectErrorMessages(status.payload?.errors);
+  if (extraErrors.length > 0) {
+    console.error(`网关错误列表: ${extraErrors.join('; ')}`);
+  }
+
+  if (status.rawBody && !status.message && !providerError) {
+    console.error(`网关响应内容: ${status.rawBody}`);
+  }
 }
 
 async function launchGeminiCLI(
