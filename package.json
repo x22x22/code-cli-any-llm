@@ -29,7 +29,7 @@
     "gal:code": "pnpm run build && node dist/src/cli/gal.js code",
     "gal:code:dev": "node --require ts-node/register/transpile-only src/cli/gal.ts code",
     "prepublishOnly": "pnpm run build",
-    "publish": "pnpm publish --registry https://registry.npmjs.org"
+    "ps": "pnpm publish --registry https://registry.npmjs.org"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
