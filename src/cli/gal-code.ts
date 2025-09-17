@@ -86,7 +86,7 @@ function shouldRunWizard(
   return !result.isValid && Boolean(hasCriticalError);
 }
 
-async function runConfigWizard(configFile: string): Promise<void> {
+export async function runConfigWizard(configFile: string): Promise<void> {
   ensureDir(path.dirname(configFile));
 
   let existingConfig: any = {};
@@ -522,7 +522,7 @@ async function launchGeminiCLI(
   });
 }
 
-function ensureGeminiSettings(): void {
+export function ensureGeminiSettings(): void {
   const settingsDir = path.join(os.homedir(), '.gemini');
   const settingsFile = path.join(settingsDir, 'settings.json');
 
