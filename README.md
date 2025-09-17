@@ -138,4 +138,4 @@ gemini --stream "写一篇关于人工智能发展的文章"
 
 ## 📄 许可证
 
-MIT License
+Apache License 2.0
