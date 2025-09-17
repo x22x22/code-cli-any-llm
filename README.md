@@ -15,59 +15,23 @@ Gemini Any LLM Gateway 是一个 API 网关服务，让您可以通过 Gemini CL
 
 ## 🚀 快速开始
 
-### 1. 安装和启动
+请按照下列顺序全局安装所需工具（已配置 npmmirror 镜像源）：
 
 ```bash
-# 克隆项目
-git clone https://github.com/your-repo/gemini-any-llm.git
-cd gemini-any-llm
-
-# 安装依赖
-pnpm install
-
-# 首次启动（会自动创建配置文件）
-pnpm run start:dev
+npm install -g @google/gemini-cli --registry https://registry.npmmirror.com
+npm install -g @google/gemini-cli-core --registry https://registry.npmmirror.com
+npm install -g @kdump/gemini-any-llm --registry https://registry.npmmirror.com
 ```
 
-### 2. 配置 API Key
-
-首次启动后，系统会在您的用户目录下创建全局配置文件 `~/.gemini-any-llm/config.yaml`：
-
-```yaml
-# Global configuration for gemini-any-llm
-openai:
-  # 必须配置：从您的 AI 提供商获取 API Key
-  apiKey: "your-api-key-here"
-
-  # API 端点（默认智谱AI）
-  baseURL: "https://open.bigmodel.cn/api/paas/v4"
-
-  # 默认模型
-  model: "glm-4.5"
-
-  # 请求超时时间
-  timeout: 30000
-
-gateway:
-  port: 3002
-  host: "0.0.0.0"
-  logLevel: "info"
-```
-
-**编辑配置文件，设置您的 API Key 后重新启动服务。**
-
-### 3. 配置 Gemini CLI
+随后直接运行：
 
 ```bash
-# 安装 Gemini CLI（如果未安装）
-npm install -g @google/gemini-cli
-
-# 设置 Gemini CLI 使用本地网关
-export GOOGLE_GEMINI_BASE_URL="http://localhost:3002/api"
-
-# 开始使用
-gemini "你好，请介绍一下自己"
+gal code
 ```
+
+- **首次运行** 会触发向导，要求填写 baseURL、model 与 apiKey，并写入 `~/.gemini-any-llm/config.yaml`。
+- 程序会自动生成或更新 `~/.gemini/settings.json`，确保 `selectedAuthType` 固定为 `gemini-api-key`。
+- 完成配置后，每次执行 `gal code` 即可自动连接网关并调用 Gemini CLI。
 
 ## 📖 使用指南
 
@@ -87,7 +51,7 @@ gemini "你好，请介绍一下自己"
 |--------|---------|----------|
 | 智谱AI | `https://open.bigmodel.cn/api/paas/v4` | `glm-4.5` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4` |
-| 千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-max` |
+| 千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen3-next-80b-a3b-thinking` |
 
 ### 项目特定配置
 

@@ -8,6 +8,8 @@ import * as yaml from 'js-yaml';
 import { GlobalConfigService } from '../config/global-config.service';
 import type { ConfigValidationResult } from '../config/global-config.interface';
 
+const GEMINI_AUTH_TYPE = 'gemini-api-key';
+
 const GATEWAY_HEALTH_PATH = '/api/v1/health';
 const DEFAULT_TIMEOUT = 20000;
 const POLL_INTERVAL = 800;
@@ -26,35 +28,39 @@ export async function runGalCode(args: string[]): Promise<void> {
     configResult = configService.loadGlobalConfig();
 
     if (!configResult.isValid) {
-      // eslint-disable-next-line no-console
       console.error('配置仍然无效，请检查 ~/.gemini-any-llm/config.yaml');
       process.exit(1);
     }
   }
 
   if (!configResult.config) {
-    // eslint-disable-next-line no-console
     console.error('无法加载全局配置，请检查是否具有读写权限。');
     process.exit(1);
   }
 
   const gatewayHost = normalizeGatewayHost(configResult.config.gateway.host);
   const gatewayPort = configResult.config.gateway.port;
+  const geminiApiKey = readGlobalApiKey(configFile);
+
+  if (!geminiApiKey) {
+    console.error('未能在 ~/.gemini-any-llm/config.yaml 中找到有效的 apikey');
+    process.exit(1);
+  }
+
+  ensureGeminiSettings();
 
   if (!(await isGatewayHealthy(gatewayHost, gatewayPort))) {
-    // eslint-disable-next-line no-console
     console.log('检测到网关未运行，正在后台启动服务...');
-    await ensureGatewayStarted(projectRoot);
+    ensureGatewayStarted(projectRoot);
 
     const ready = await waitForGatewayHealthy(gatewayHost, gatewayPort);
     if (!ready) {
-      // eslint-disable-next-line no-console
       console.error('网关启动超时，请手动执行 pnpm run start:prod 后重试。');
       process.exit(1);
     }
   }
 
-  await launchGeminiCLI(args, gatewayHost, gatewayPort);
+  await launchGeminiCLI(args, gatewayHost, gatewayPort, geminiApiKey);
 }
 
 function shouldRunWizard(
@@ -84,8 +90,7 @@ async function runConfigWizard(configFile: string): Promise<void> {
     try {
       const content = fs.readFileSync(configFile, 'utf8');
       existingConfig = yaml.load(content) ?? {};
-    } catch (error) {
-      // eslint-disable-next-line no-console
+    } catch {
       console.warn('读取现有配置失败，将写入新配置。');
       existingConfig = {};
     }
@@ -100,14 +105,7 @@ async function runConfigWizard(configFile: string): Promise<void> {
     output: process.stdout,
   });
 
-  // eslint-disable-next-line no-console
   console.log('首次使用，请填写必要的 OpenAI 配置：');
-
-  const apiKey = await askRequired(
-    rl,
-    'OpenAI API Key',
-    existingConfig.openai.apiKey,
-  );
 
   let baseURL = await ask(
     rl,
@@ -127,6 +125,12 @@ async function runConfigWizard(configFile: string): Promise<void> {
     model = 'glm-4.5';
   }
 
+  const apiKey = await askRequired(
+    rl,
+    'OpenAI API Key',
+    existingConfig.openai.apiKey,
+  );
+
   rl.close();
 
   existingConfig.openai.apiKey = apiKey;
@@ -139,10 +143,9 @@ async function runConfigWizard(configFile: string): Promise<void> {
       lineWidth: 120,
     });
     fs.writeFileSync(configFile, yamlContent, { mode: 0o600 });
-    // eslint-disable-next-line no-console
+
     console.log(`配置已写入 ${configFile}`);
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('写入配置失败:', error);
     throw error;
   }
@@ -178,7 +181,7 @@ async function askRequired(
     if (value) {
       return value;
     }
-    // eslint-disable-next-line no-console
+
     console.log('该字段不能为空，请重新输入。');
   }
 }
@@ -189,8 +192,8 @@ function ensureDir(dirPath: string): void {
   }
 }
 
-async function ensureGatewayStarted(projectRoot: string): Promise<void> {
-  await ensureBuilt(projectRoot);
+function ensureGatewayStarted(projectRoot: string): void {
+  ensureBuilt(projectRoot);
 
   const entry = path.join(projectRoot, 'dist', 'src', 'main.js');
 
@@ -211,13 +214,12 @@ async function ensureGatewayStarted(projectRoot: string): Promise<void> {
   child.unref();
 }
 
-async function ensureBuilt(projectRoot: string): Promise<void> {
+function ensureBuilt(projectRoot: string): void {
   const entry = path.join(projectRoot, 'dist', 'src', 'main.js');
   if (fs.existsSync(entry)) {
     return;
   }
 
-  // eslint-disable-next-line no-console
   console.log('检测到 dist 目录缺失，正在执行 pnpm run build ...');
   const runners = buildCommandRunners(projectRoot);
   let lastError: Error | undefined;
@@ -249,9 +251,11 @@ async function ensureBuilt(projectRoot: string): Promise<void> {
   }
 
   if (lastError) {
-    throw new Error(`构建失败，已尝试: ${
-      runners.map((runner) => runner.displayName).join(', ') || '无'
-    }。详见上方输出。`);
+    throw new Error(
+      `构建失败，已尝试: ${
+        runners.map((runner) => runner.displayName).join(', ') || '无'
+      }。详见上方输出。`,
+    );
   }
 
   throw new Error('构建失败，未知原因。');
@@ -361,7 +365,7 @@ function isGatewayHealthy(host: string, port: number): Promise<boolean> {
           try {
             const payload = JSON.parse(rawData);
             resolve(payload.status === 'healthy');
-          } catch (error) {
+          } catch {
             resolve(false);
           }
         });
@@ -380,6 +384,7 @@ async function launchGeminiCLI(
   args: string[],
   host: string,
   port: number,
+  geminiApiKey: string,
 ): Promise<void> {
   const origin = `http://${host}:${port}`;
   const baseURL = new URL('/api', origin).toString();
@@ -388,6 +393,7 @@ async function launchGeminiCLI(
     env: {
       ...process.env,
       GOOGLE_GEMINI_BASE_URL: baseURL,
+      GEMINI_API_KEY: geminiApiKey,
     },
   });
 
@@ -408,6 +414,50 @@ async function launchGeminiCLI(
       }
     });
   });
+}
+
+function ensureGeminiSettings(): void {
+  const settingsDir = path.join(os.homedir(), '.gemini');
+  const settingsFile = path.join(settingsDir, 'settings.json');
+
+  ensureDir(settingsDir);
+
+  if (!fs.existsSync(settingsFile)) {
+    const content = `${JSON.stringify({ selectedAuthType: GEMINI_AUTH_TYPE }, null, 2)}\n`;
+    fs.writeFileSync(settingsFile, content, { mode: 0o600 });
+    return;
+  }
+
+  try {
+    const raw = fs.readFileSync(settingsFile, 'utf8');
+    const data = raw ? JSON.parse(raw) : {};
+
+    if (data.selectedAuthType === GEMINI_AUTH_TYPE) {
+      return;
+    }
+
+    data.selectedAuthType = GEMINI_AUTH_TYPE;
+    const content = `${JSON.stringify(data, null, 2)}\n`;
+    fs.writeFileSync(settingsFile, content);
+  } catch {
+    const content = `${JSON.stringify({ selectedAuthType: GEMINI_AUTH_TYPE }, null, 2)}\n`;
+    fs.writeFileSync(settingsFile, content, { mode: 0o600 });
+  }
+}
+
+function readGlobalApiKey(configFile: string): string {
+  try {
+    if (!fs.existsSync(configFile)) {
+      return '';
+    }
+
+    const raw = fs.readFileSync(configFile, 'utf8');
+    const data = yaml.load(raw) as { openai?: { apiKey?: string } } | undefined;
+    const value = data?.openai?.apiKey;
+    return typeof value === 'string' ? value.trim() : '';
+  } catch {
+    return '';
+  }
 }
 
 function normalizeGatewayHost(host: string): string {
