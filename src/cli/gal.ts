@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
+
 import {
   runGalCode,
   runGalKill,
@@ -8,21 +10,35 @@ import {
 } from './gal-code';
 import { runGalAuth } from './gal-auth';
 
+const requireJson = createRequire(__dirname);
+const { version } = requireJson('../../package.json') as { version: string };
+
 const [, , command, ...restArgs] = process.argv;
 
-const HELP_TEXT = `\nUsage: gal [command]\n\nCommands:\n  code          启动/连接网关并调用 gemini CLI\n  start         以守护进程方式启动网关组件\n  stop          停止网关组件\n  status        查看网关组件的运行状态\n  kill          强制终止本地网关进程\n  auth          配置 Gemini CLI 身份认证\n  -h, --help    查看帮助\n\n示例:\n  gal code "请用TypeScript写一个HTTP服务"\n  gal start\n  gal status\n  gal kill\n`;
+const HELP_TEXT = `\nUsage: gal [command]\n\nCommands:\n  code          启动/连接网关并调用 gemini CLI\n  start         以守护进程方式启动网关组件\n  stop          停止网关组件\n  status        查看网关组件的运行状态\n  kill          强制终止本地网关进程\n  auth          配置 Gemini CLI 身份认证\n  version       查看当前 gal 版本\n  -h, --help    查看帮助\n  -v, --version 查看当前 gal 版本\n\n示例:\n  gal code "请用TypeScript写一个HTTP服务"\n  gal start\n  gal status\n  gal kill\n`;
 
 function showHelp() {
   console.log(HELP_TEXT);
 }
 
-async function main() {
-  if (!command || command === '-h' || command === '--help') {
-    showHelp();
-    return;
-  }
+function showVersion() {
+  console.log(version);
+}
 
+async function main() {
   switch (command) {
+    case undefined:
+      showHelp();
+      break;
+    case '-h':
+    case '--help':
+      showHelp();
+      break;
+    case '-v':
+    case '--version':
+    case 'version':
+      showVersion();
+      break;
     case 'code':
       await runGalCode(restArgs);
       break;
