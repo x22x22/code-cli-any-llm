@@ -1,10 +1,16 @@
 #!/usr/bin/env node
-import { runGalCode } from './gal-code';
+import {
+  runGalCode,
+  runGalKill,
+  runGalStart,
+  runGalStatus,
+  runGalStop,
+} from './gal-code';
 import { runGalAuth } from './gal-auth';
 
 const [, , command, ...restArgs] = process.argv;
 
-const HELP_TEXT = `\nUsage: gal [command]\n\nCommands:\n  code          启动/连接网关并调用 gemini CLI\n  auth          配置 Gemini CLI 身份认证\n  -h, --help    查看帮助\n\n示例:\n  gal code "请用TypeScript写一个HTTP服务"\n`;
+const HELP_TEXT = `\nUsage: gal [command]\n\nCommands:\n  code          启动/连接网关并调用 gemini CLI\n  start         以守护进程方式启动网关组件\n  stop          停止网关组件\n  status        查看网关组件的运行状态\n  kill          强制终止本地网关进程\n  auth          配置 Gemini CLI 身份认证\n  -h, --help    查看帮助\n\n示例:\n  gal code "请用TypeScript写一个HTTP服务"\n  gal start\n  gal status\n  gal kill\n`;
 
 function showHelp() {
   console.log(HELP_TEXT);
@@ -19,6 +25,18 @@ async function main() {
   switch (command) {
     case 'code':
       await runGalCode(restArgs);
+      break;
+    case 'start':
+      await runGalStart();
+      break;
+    case 'stop':
+      await runGalStop();
+      break;
+    case 'status':
+      await runGalStatus();
+      break;
+    case 'kill':
+      await runGalKill();
       break;
     case 'auth':
       await runGalAuth();
