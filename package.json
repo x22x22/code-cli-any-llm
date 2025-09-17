@@ -1,9 +1,12 @@
 {
   "name": "@kdump/gemini-any-llm",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "",
   "author": "x22x22",
-  "private": true,
+  "private": false,
+  "bin": {
+    "gal": "./dist/src/cli/gal.js"
+  },
   "license": "Apache License 2.0",
   "repository": {
     "type": "git",
@@ -22,7 +25,11 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "gal:code": "pnpm run build && node dist/src/cli/gal.js code",
+    "gal:code:dev": "node --require ts-node/register/transpile-only src/cli/gal.ts code",
+    "prepublishOnly": "pnpm run build",
+    "publish": "pnpm publish --registry https://registry.npmjs.org"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
@@ -90,5 +97,11 @@
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1"
     }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }
