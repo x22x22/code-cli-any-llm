@@ -10,7 +10,7 @@ import {
 } from './gal-code';
 import { runGalAuth } from './gal-auth';
 
-const requireJson = createRequire(__dirname);
+const requireJson = createRequire(__filename);
 const { version } = requireJson('../../package.json') as { version: string };
 
 const [, , command, ...restArgs] = process.argv;
