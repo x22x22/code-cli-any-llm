@@ -11,6 +11,12 @@ import {
   GatewayConfig,
 } from './global-config.interface';
 
+const DEFAULT_GATEWAY_LOG_DIR = path.join(
+  os.homedir(),
+  '.gemini-any-llm',
+  'logs',
+);
+
 @Injectable()
 export class GlobalConfigService {
   private readonly configDir: string;
@@ -41,6 +47,7 @@ export class GlobalConfigService {
           port: Number(process.env.PORT) || 23062,
           host: process.env.HOST || '0.0.0.0',
           logLevel: process.env.LOG_LEVEL || 'info',
+          logDir: process.env.GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
         },
       };
       mergedConfig = this.deepMerge(mergedConfig, envConfig);
@@ -50,7 +57,8 @@ export class GlobalConfigService {
         process.env.OPENAI_MODEL ||
         process.env.PORT ||
         process.env.HOST ||
-        process.env.LOG_LEVEL
+        process.env.LOG_LEVEL ||
+        process.env.GATEWAY_LOG_DIR
       ) {
         configSources.push('环境变量');
       }
@@ -175,6 +183,7 @@ gateway:
   port: 23062
   host: "0.0.0.0"
   logLevel: "info"
+  logDir: "~/.gemini-any-llm/logs"
 `;
 
     return {
@@ -232,8 +241,16 @@ gateway:
         port: 23062,
         host: '0.0.0.0',
         logLevel: 'info',
+        logDir: DEFAULT_GATEWAY_LOG_DIR,
       };
     }
+
+    if (!config.gateway.logDir) {
+      warnings.push('gateway.logDir未设置，将使用默认值');
+      config.gateway.logDir = DEFAULT_GATEWAY_LOG_DIR;
+    }
+
+    config.gateway.logDir = this.normalizeLogDir(config.gateway.logDir);
 
     const isValid = errors.length === 0;
     const result: ConfigValidationResult = {
@@ -252,5 +269,27 @@ gateway:
     }
 
     return result;
+  }
+
+  private normalizeLogDir(logDir: string): string {
+    if (!logDir || typeof logDir !== 'string') {
+      return DEFAULT_GATEWAY_LOG_DIR;
+    }
+    const trimmed = logDir.trim();
+    if (!trimmed) {
+      return DEFAULT_GATEWAY_LOG_DIR;
+    }
+    if (trimmed === '~') {
+      return os.homedir();
+    }
+    if (trimmed.startsWith('~/') || trimmed.startsWith('~\\')) {
+      const relative = trimmed.slice(2);
+      return path.join(os.homedir(), relative);
+    }
+    if (trimmed.startsWith('~')) {
+      const relative = trimmed.slice(1).replace(/^[\\/]/, '');
+      return path.join(os.homedir(), relative);
+    }
+    return path.isAbsolute(trimmed) ? trimmed : path.resolve(trimmed);
   }
 }

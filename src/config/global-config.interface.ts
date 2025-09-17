@@ -9,6 +9,7 @@ export interface GatewayConfig {
   port: number;
   host: string;
   logLevel: string;
+  logDir: string;
 }
 
 export interface GlobalConfig {

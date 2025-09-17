@@ -1,6 +1,33 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import os from 'os';
+import path from 'path';
 import { GlobalConfigService } from './global-config.service';
+
+const DEFAULT_GATEWAY_LOG_DIR = path.join(
+  os.homedir(),
+  '.gemini-any-llm',
+  'logs',
+);
+
+const resolveLogDir = (value?: string): string => {
+  if (!value || !value.trim()) {
+    return DEFAULT_GATEWAY_LOG_DIR;
+  }
+  const trimmed = value.trim();
+  if (trimmed === '~') {
+    return os.homedir();
+  }
+  if (trimmed.startsWith('~/') || trimmed.startsWith('~\\')) {
+    const relative = trimmed.slice(2);
+    return path.join(os.homedir(), relative);
+  }
+  if (trimmed.startsWith('~')) {
+    const relative = trimmed.slice(1).replace(/^[\\/]/, '');
+    return path.join(os.homedir(), relative);
+  }
+  return path.isAbsolute(trimmed) ? trimmed : path.resolve(trimmed);
+};
 
 @Module({})
 export class ConfigModule {
@@ -30,6 +57,7 @@ export class ConfigModule {
                     port: config.gateway.port,
                     host: config.gateway.host,
                     logLevel: config.gateway.logLevel,
+                    logDir: resolveLogDir(config.gateway.logDir),
                   },
                 };
               }
@@ -48,6 +76,7 @@ export class ConfigModule {
                   port: Number(process.env.PORT) || 23062,
                   host: process.env.HOST || '0.0.0.0',
                   logLevel: process.env.LOG_LEVEL || 'info',
+                  logDir: resolveLogDir(process.env.GATEWAY_LOG_DIR),
                 },
               };
             },
