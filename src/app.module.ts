@@ -58,9 +58,9 @@ export class AppModule implements OnModuleDestroy {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(LoggingMiddleware)
-      .forRoutes('*')
+      .forRoutes({ path: '*path', method: RequestMethod.ALL })
       .apply(TimeoutMiddleware)
       .exclude({ path: 'health', method: RequestMethod.GET })
-      .forRoutes('*');
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
   }
 }
