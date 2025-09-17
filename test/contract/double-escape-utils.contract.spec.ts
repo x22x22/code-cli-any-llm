@@ -74,8 +74,9 @@ describe('DoubleEscapeUtils Contract Tests', () => {
     });
 
     it('应该检测双重转义的JSON字符串', () => {
-      const doubleEscapedJson =
-        '"{\\\"name\\\": \\\"test\\\", \\\"value\\\": 123}"';
+      const doubleEscapedJson = JSON.stringify(
+        JSON.stringify({ name: 'test', value: 123 }),
+      );
       const result = doubleEscapeUtils.detectDoubleEscaping(doubleEscapedJson);
 
       expect(result.isDoubleEscaped).toBe(true);
@@ -84,8 +85,12 @@ describe('DoubleEscapeUtils Contract Tests', () => {
     });
 
     it('应该检测嵌套的双重转义', () => {
-      const nestedDoubleEscaping =
-        '"{\\\"data\\\": \\\"{\\\\\\\\"nested\\\\\\\": \\\\\\\\"value\\\\\\\"}\\\", \\\"count\\\": \\\"5\\\"}"';
+      const nestedDoubleEscaping = JSON.stringify(
+        JSON.stringify({
+          data: JSON.stringify({ nested: 'value' }),
+          count: '5',
+        }),
+      );
       const result =
         doubleEscapeUtils.detectDoubleEscaping(nestedDoubleEscaping);
 
@@ -104,9 +109,9 @@ describe('DoubleEscapeUtils Contract Tests', () => {
 
     it('应该检测特定的转义模式', () => {
       const patterns = [
-        '\\\"[', // 数组开始的转义
-        '\\\\\\\\', // 四重反斜杠
-        '\\\\"', // 转义的引号
+        String.raw`\"[`, // 数组开始的转义
+        String.raw`\\\\`, // 四重反斜杠
+        String.raw`\\"`, // 转义的引号
       ];
 
       patterns.forEach((pattern) => {
@@ -133,8 +138,9 @@ describe('DoubleEscapeUtils Contract Tests', () => {
     });
 
     it('应该修复双重转义的工具参数', () => {
-      const doubleEscapedParams =
-        '"{\\\"location\\\": \\\"Beijing\\\", \\\"unit\\\": \\\"celsius\\\"}"';
+      const doubleEscapedParams = JSON.stringify(
+        JSON.stringify({ location: 'Beijing', unit: 'celsius' }),
+      );
       const result = doubleEscapeUtils.processToolParameters(
         doubleEscapedParams,
         'get_weather',
@@ -162,8 +168,12 @@ describe('DoubleEscapeUtils Contract Tests', () => {
     });
 
     it('应该处理复杂嵌套对象的双重转义', () => {
-      const complexDoubleEscaped =
-        '"{\\\"user\\\": {\\\"name\\\": \\\"张三\\\", \\\"age\\\": \\\"30\\\"}, \\\"settings\\\": [\\\"option1\\\", \\\"option2\\\"]}"';
+      const complexDoubleEscaped = JSON.stringify(
+        JSON.stringify({
+          user: { name: '张三', age: '30' },
+          settings: ['option1', 'option2'],
+        }),
+      );
       const result = doubleEscapeUtils.processToolParameters(
         complexDoubleEscaped,
         'update_user',
@@ -190,7 +200,9 @@ describe('DoubleEscapeUtils Contract Tests', () => {
 
   describe('流式响应检测合约', () => {
     it('应该在流式响应块中检测双重转义', () => {
-      const streamChunk = 'data: {"arguments": "{\\"param\\": \\"value\\"}"}';
+      const streamChunk = `data: ${JSON.stringify({
+        arguments: JSON.stringify({ param: 'value' }),
+      })}`;
       const hasDoubleEscaping =
         doubleEscapeUtils.detectDoubleEscapingInChunk(streamChunk);
 
@@ -198,7 +210,9 @@ describe('DoubleEscapeUtils Contract Tests', () => {
     });
 
     it('应该检测正常的流式响应块', () => {
-      const normalChunk = 'data: {"arguments": "{\\"param\\": \\"value\\"}"}';
+      const normalChunk = `data: ${JSON.stringify({
+        arguments: JSON.stringify({ param: 'value' }),
+      })}`;
       const hasDoubleEscaping =
         doubleEscapeUtils.detectDoubleEscapingInChunk(normalChunk);
 

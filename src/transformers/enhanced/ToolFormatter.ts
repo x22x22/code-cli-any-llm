@@ -24,7 +24,9 @@ export class ToolFormatter {
     // 递归处理 properties
     if (dst.properties && typeof dst.properties === 'object') {
       const newProps: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(dst.properties as Record<string, unknown>)) {
+      for (const [k, v] of Object.entries(
+        dst.properties as Record<string, unknown>,
+      )) {
         newProps[k] = this.convertGeminiSchemaToStandard(v);
       }
       dst.properties = newProps;
@@ -42,7 +44,21 @@ export class ToolFormatter {
 
     // type: 大写 -> 小写 字符串
     if (dst.type !== undefined) {
-      dst.type = String(dst.type).toLowerCase();
+      const typeValue = dst.type;
+      if (typeof typeValue === 'string') {
+        dst.type = typeValue.toLowerCase();
+      } else if (Array.isArray(typeValue)) {
+        dst.type = typeValue.map((v) =>
+          typeof v === 'string' ? v.toLowerCase() : v,
+        );
+      } else if (
+        typeof typeValue === 'number' ||
+        typeof typeValue === 'boolean'
+      ) {
+        dst.type = String(typeValue).toLowerCase();
+      } else {
+        delete dst.type;
+      }
     }
 
     // enum: 统一为字符串数组（保持值语义不变）
@@ -65,4 +81,3 @@ export class ToolFormatter {
     return dst;
   }
 }
-

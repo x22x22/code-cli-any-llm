@@ -28,8 +28,12 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       ],
     }).compile();
 
-    enhancedRequestTransformer = module.get<EnhancedRequestTransformer>(EnhancedRequestTransformer);
-    enhancedResponseTransformer = module.get<EnhancedResponseTransformer>(EnhancedResponseTransformer);
+    enhancedRequestTransformer = module.get<EnhancedRequestTransformer>(
+      EnhancedRequestTransformer,
+    );
+    enhancedResponseTransformer = module.get<EnhancedResponseTransformer>(
+      EnhancedResponseTransformer,
+    );
     zhipuOptimizer = module.get<ZhipuOptimizer>(ZhipuOptimizer);
   });
 
@@ -37,7 +41,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
     it('应该正确识别GLM模型', () => {
       const models = ['glm-4', 'glm-4.5', 'GLM-4-Plus', 'zhipu-api'];
 
-      models.forEach(model => {
+      models.forEach((model) => {
         expect(zhipuOptimizer.isZhipuModel(model)).toBe(true);
       });
     });
@@ -45,7 +49,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
     it('应该正确识别非智谱模型', () => {
       const models = ['gpt-4', 'claude-3', 'llama-2', 'gemini-pro'];
 
-      models.forEach(model => {
+      models.forEach((model) => {
         expect(zhipuOptimizer.isZhipuModel(model)).toBe(false);
       });
     });
@@ -57,8 +61,8 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
         contents: [
           {
             role: 'user',
-            parts: [{ text: '你好，请帮我查询天气' }]
-          }
+            parts: [{ text: '你好，请帮我查询天气' }],
+          },
         ],
         tools: [
           {
@@ -69,19 +73,22 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
                 parameters: {
                   type: 'object',
                   properties: {
-                    location: { type: 'string' }
-                  }
-                }
-              }
-            ]
-          }
+                    location: { type: 'string' },
+                  },
+                },
+              },
+            ],
+          },
         ],
         generationConfig: {
-          temperature: 0.8 // 将会被智谱优化覆盖
-        }
+          temperature: 0.8, // 将会被智谱优化覆盖
+        },
       };
 
-      const result = enhancedRequestTransformer.transformRequest(geminiRequest, 'glm-4');
+      const result = enhancedRequestTransformer.transformRequest(
+        geminiRequest,
+        'glm-4',
+      );
 
       // 验证基本转换功能正常
       expect(result).toBeDefined();
@@ -103,8 +110,8 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
         contents: [
           {
             role: 'user',
-            parts: [{ text: 'Hello, please help me check the weather' }]
-          }
+            parts: [{ text: 'Hello, please help me check the weather' }],
+          },
         ],
         tools: [
           {
@@ -115,16 +122,19 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
                 parameters: {
                   type: 'object',
                   properties: {
-                    location: { type: 'string' }
-                  }
-                }
-              }
-            ]
-          }
-        ]
+                    location: { type: 'string' },
+                  },
+                },
+              },
+            ],
+          },
+        ],
       };
 
-      const result = enhancedRequestTransformer.transformRequest(geminiRequest, 'gpt-4');
+      const result = enhancedRequestTransformer.transformRequest(
+        geminiRequest,
+        'gpt-4',
+      );
 
       // 非智谱模型不应该被强制禁用流式响应
       expect(result.stream).toBeUndefined();
@@ -151,22 +161,27 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
                   function: {
                     name: 'get_weather',
                     // 模拟双重转义的参数
-                    arguments: '"{\\\"location\\\":\\\"北京\\\"}"'
-                  }
-                }
-              ]
+                    arguments: JSON.stringify(
+                      JSON.stringify({ location: '北京' }),
+                    ),
+                  },
+                },
+              ],
             },
-            finish_reason: 'tool_calls'
-          }
+            finish_reason: 'tool_calls',
+          },
         ],
         usage: {
           prompt_tokens: 50,
           completion_tokens: 20,
-          total_tokens: 70
-        }
+          total_tokens: 70,
+        },
       };
 
-      const result = enhancedResponseTransformer.transformResponse(openAIResponse, 'glm-4');
+      const result = enhancedResponseTransformer.transformResponse(
+        openAIResponse,
+        'glm-4',
+      );
 
       // 应该返回Gemini格式的响应
       expect(result).toHaveProperty('candidates');
@@ -177,7 +192,9 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       expect(candidate.content).toHaveProperty('parts');
 
       // 检查工具调用是否被正确处理
-      const functionCallPart = candidate.content.parts.find(part => part.functionCall);
+      const functionCallPart = candidate.content.parts.find(
+        (part) => part.functionCall,
+      );
       expect(functionCallPart).toBeDefined();
       expect(functionCallPart.functionCall.name).toBe('get_weather');
       expect(functionCallPart.functionCall.args).toEqual({ location: '北京' });
@@ -193,10 +210,10 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
           {
             index: 0,
             delta: {
-              content: '今天北京天气'
-            }
-          }
-        ]
+              content: '今天北京天气',
+            },
+          },
+        ],
       };
 
       const textBuffer = enhancedResponseTransformer.createTextBuffer();
@@ -205,7 +222,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       const result1 = enhancedResponseTransformer.transformStreamChunk(
         chunkWithChinese,
         'glm-4',
-        textBuffer
+        textBuffer,
       );
 
       // 由于没有断点，应该返回null（被缓冲）
@@ -216,12 +233,14 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
 
   describe('工具格式转换集成', () => {
     it('应该为智谱模型使用QWEN格式', () => {
-      const recommendedFormat = zhipuOptimizer.getRecommendedToolFormat('glm-4');
+      const recommendedFormat =
+        zhipuOptimizer.getRecommendedToolFormat('glm-4');
       expect(recommendedFormat).toBe('qwen');
     });
 
     it('应该为标准模型使用OpenAI格式', () => {
-      const recommendedFormat = zhipuOptimizer.getRecommendedToolFormat('gpt-4');
+      const recommendedFormat =
+        zhipuOptimizer.getRecommendedToolFormat('gpt-4');
       expect(recommendedFormat).toBe('openai');
     });
   });
@@ -275,9 +294,9 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
         contents: [
           {
             role: 'user',
-            parts: [{ text: '测试性能' }]
-          }
-        ]
+            parts: [{ text: '测试性能' }],
+          },
+        ],
       };
 
       const startTime = Date.now();
@@ -299,11 +318,11 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
             index: 0,
             message: {
               role: 'assistant',
-              content: '测试响应'
+              content: '测试响应',
             },
-            finish_reason: 'stop'
-          }
-        ]
+            finish_reason: 'stop',
+          },
+        ],
       };
 
       const startTime = Date.now();

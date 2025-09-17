@@ -14,12 +14,10 @@ export class ZhipuOptimizer {
       return false;
     }
 
-    const zhipuPatterns = [
-      'glm-', 'GLM-', 'zhipu-', 'chatglm-'
-    ];
+    const zhipuPatterns = ['glm-', 'GLM-', 'zhipu-', 'chatglm-'];
 
-    return zhipuPatterns.some(pattern =>
-      model.toLowerCase().includes(pattern.toLowerCase())
+    return zhipuPatterns.some((pattern) =>
+      model.toLowerCase().includes(pattern.toLowerCase()),
     );
   }
 
@@ -33,7 +31,10 @@ export class ZhipuOptimizer {
   /**
    * 优化请求参数
    */
-  optimizeRequest(request: Record<string, unknown>, model: string): Record<string, unknown> {
+  optimizeRequest(
+    request: Record<string, unknown>,
+    model: string,
+  ): Record<string, unknown> {
     if (!this.isZhipuModel(model)) {
       return request;
     }

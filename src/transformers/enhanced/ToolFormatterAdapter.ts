@@ -32,8 +32,8 @@ export class ToolFormatterAdapter {
         function: {
           name: func.name,
           description: func.description,
-          parameters: func.parameters
-        }
+          parameters: func.parameters,
+        },
       }));
     }
 
@@ -51,8 +51,8 @@ export class ToolFormatterAdapter {
         function: {
           name: func.name,
           description: func.description,
-          parameters: func.parameters
-        }
+          parameters: func.parameters,
+        },
       }));
     }
 
@@ -65,15 +65,28 @@ export class ToolFormatterAdapter {
   formatToolCall(toolCall: any, format: 'openai' | 'qwen' = 'openai'): any {
     if (!toolCall) return toolCall;
 
+    const functionName = toolCall.function?.name || toolCall.name;
+    const serializedArguments =
+      typeof toolCall.function?.arguments === 'string'
+        ? toolCall.function.arguments
+        : JSON.stringify(
+            toolCall.function?.arguments || toolCall.arguments || {},
+          );
+
+    if (format === 'qwen') {
+      return {
+        name: functionName,
+        arguments: serializedArguments,
+      };
+    }
+
     return {
-      id: toolCall.id || 'call_' + Math.random().toString(36).substr(2, 9),
+      id: toolCall.id || 'call_' + Math.random().toString(36).substring(2, 11),
       type: 'function',
       function: {
-        name: toolCall.function?.name || toolCall.name,
-        arguments: typeof toolCall.function?.arguments === 'string'
-          ? toolCall.function.arguments
-          : JSON.stringify(toolCall.function?.arguments || toolCall.arguments || {})
-      }
+        name: functionName,
+        arguments: serializedArguments,
+      },
     };
   }
 }

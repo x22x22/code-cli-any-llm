@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ResponseTransformer } from './response.transformer';
 import { ZhipuOptimizer } from '../utils/zhipu/ZhipuOptimizer';
 import { DoubleEscapeUtils } from '../utils/zhipu/doubleEscapeUtils';
-import { OpenAIResponse, OpenAIStreamChunk } from '../models/openai/openai-response.model';
+import {
+  OpenAIResponse,
+  OpenAIStreamChunk,
+} from '../models/openai/openai-response.model';
 
 /**
  * 文本缓冲器接口
@@ -44,7 +47,7 @@ export class EnhancedResponseTransformer extends ResponseTransformer {
       }
 
       return super.transformResponse(openAIResponse);
-    } catch (error) {
+    } catch {
       // 回退到基础转换
       return super.transformResponse(openAIResponse);
     }
@@ -56,7 +59,7 @@ export class EnhancedResponseTransformer extends ResponseTransformer {
   createTextBuffer(): TextBuffer {
     return {
       content: '',
-      shouldFlush: false
+      shouldFlush: false,
     };
   }
 
@@ -66,7 +69,7 @@ export class EnhancedResponseTransformer extends ResponseTransformer {
   transformStreamChunk(
     chunk: OpenAIStreamChunk,
     model?: string,
-    textBuffer?: TextBuffer
+    textBuffer?: TextBuffer,
   ): any {
     // 如果是智谱模型且提供了文本缓冲器
     if (model && this.shouldUseTextBuffering(model) && textBuffer) {
@@ -84,29 +87,34 @@ export class EnhancedResponseTransformer extends ResponseTransformer {
     const processed = { ...response };
 
     if (processed.choices) {
-      processed.choices = processed.choices.map(choice => {
+      processed.choices = processed.choices.map((choice) => {
         if (choice.message?.tool_calls) {
-          choice.message.tool_calls = choice.message.tool_calls.map(toolCall => {
-            if (toolCall.function?.arguments) {
-              // 处理可能的双重转义，直接解析为对象
-              const parsedArgs = this.doubleEscapeUtils.safeParse(
-                toolCall.function.arguments
-              );
+          choice.message.tool_calls = choice.message.tool_calls.map(
+            (toolCall) => {
+              if (toolCall.function?.arguments) {
+                // 处理可能的双重转义，直接解析为对象
+                const parsedArgs = this.doubleEscapeUtils.safeParse(
+                  toolCall.function.arguments,
+                );
 
-              // 如果解析成功且不为null，将对象重新序列化为正确的JSON字符串
-              // 这样基础转换器的JSON.parse就能正确处理
-              const normalizedArgs = parsedArgs !== null ? JSON.stringify(parsedArgs) : toolCall.function.arguments;
+                // 如果解析成功且不为null，将对象重新序列化为正确的JSON字符串
+                // 这样基础转换器的JSON.parse就能正确处理
+                const normalizedArgs =
+                  parsedArgs !== null
+                    ? JSON.stringify(parsedArgs)
+                    : toolCall.function.arguments;
 
-              return {
-                ...toolCall,
-                function: {
-                  ...toolCall.function,
-                  arguments: normalizedArgs
-                }
-              };
-            }
-            return toolCall;
-          });
+                return {
+                  ...toolCall,
+                  function: {
+                    ...toolCall.function,
+                    arguments: normalizedArgs,
+                  },
+                };
+              }
+              return toolCall;
+            },
+          );
         }
         return choice;
       });
@@ -118,7 +126,10 @@ export class EnhancedResponseTransformer extends ResponseTransformer {
   /**
    * 处理智谱流式响应块
    */
-  private processZhipuStreamChunk(chunk: OpenAIStreamChunk, textBuffer: TextBuffer): any {
+  private processZhipuStreamChunk(
+    chunk: OpenAIStreamChunk,
+    textBuffer: TextBuffer,
+  ): any {
     const delta = chunk.choices?.[0]?.delta;
 
     if (delta?.content) {
@@ -157,11 +168,18 @@ export class EnhancedResponseTransformer extends ResponseTransformer {
   private shouldFlushBuffer(content: string): boolean {
     // 智谱模型的中文输出可能需要等待完整的句子
     const flushTriggers = [
-      '。', '！', '？', '\n',  // 中文标点
-      '.', '!', '?',          // 英文标点
+      '。',
+      '！',
+      '？',
+      '\n', // 中文标点
+      '.',
+      '!',
+      '?', // 英文标点
     ];
 
-    return flushTriggers.some(trigger => content.endsWith(trigger)) ||
-           content.length > 50; // 或者内容过长时强制输出
+    return (
+      flushTriggers.some((trigger) => content.endsWith(trigger)) ||
+      content.length > 50
+    ); // 或者内容过长时强制输出
   }
 }

@@ -1,8 +1,5 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
-import * as yaml from 'js-yaml';
-import * as fs from 'fs';
-import { join } from 'path';
 import { GlobalConfigService } from './global-config.service';
 
 @Module({})

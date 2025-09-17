@@ -121,7 +121,7 @@ export class GlobalConfigService {
     const result = { ...target };
 
     for (const key in source) {
-      if (source.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
         if (
           source[key] !== null &&
           typeof source[key] === 'object' &&

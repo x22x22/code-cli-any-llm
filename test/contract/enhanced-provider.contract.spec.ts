@@ -262,7 +262,9 @@ describe('EnhancedProvider Contract Tests', () => {
                   id: 'call_123',
                   function: {
                     name: 'test_function',
-                    arguments: '"{\\\"param\\\": \\\"value\\\"}"', // 双重转义的参数
+                    arguments: JSON.stringify(
+                      JSON.stringify({ param: 'value' }),
+                    ), // 双重转义的参数
                   },
                 },
               ],

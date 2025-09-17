@@ -73,7 +73,7 @@ export class ResponseTransformer {
         const args = this.toolCallProcessor.parseToolCallArguments(
           toolCall.function.arguments,
           toolCall.function.name,
-          'qwen' // 默认使用 qwen 格式处理双重转义
+          'qwen', // 默认使用 qwen 格式处理双重转义
         );
 
         parts.push({
@@ -86,7 +86,8 @@ export class ResponseTransformer {
       }
     }
 
-    const normalizedParts = this.toolCallProcessor.normalizeTextToolCalls(parts);
+    const normalizedParts =
+      this.toolCallProcessor.normalizeTextToolCalls(parts);
     parts.splice(0, parts.length, ...normalizedParts);
 
     // If no parts were added but message exists, add empty text to ensure parts is not empty
@@ -184,9 +185,10 @@ export class ResponseTransformer {
         }
       }
 
-      const normalizedStreamParts = this.toolCallProcessor.normalizeTextToolCalls(
-        content.parts as Array<Record<string, unknown>>
-      );
+      const normalizedStreamParts =
+        this.toolCallProcessor.normalizeTextToolCalls(
+          content.parts as Array<Record<string, unknown>>,
+        );
       const targetStreamParts = content.parts as Array<unknown>;
       targetStreamParts.splice(
         0,
