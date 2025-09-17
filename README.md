@@ -132,6 +132,10 @@ gemini --stream "写一篇关于人工智能发展的文章"
 - 🧠 [架构文档](./CLAUDE.md) - 详细的技术架构和开发指南
 - 🧪 [测试说明](./CLAUDE.md#testing-architecture) - 测试架构和运行方式
 
+## 🙏 致谢
+
+本项目复刻、借鉴了 [claude-code-router](https://github.com/musistudio/claude-code-router)、[llxprt-code](https://github.com/acoliver/llxprt-code) 与 [aio-cli](https://github.com/adobe/aio-cli) 的实现方式与代码，在此向这些优秀的开源项目与贡献者表示诚挚感谢。
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
