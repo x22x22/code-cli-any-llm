@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ToolFormatter } from './enhanced/ToolFormatter';
 import { GeminiRequestDto } from '../models/gemini/gemini-request.dto';
 import { GeminiContentDto } from '../models/gemini/gemini-content.dto';
 import {
@@ -9,6 +10,7 @@ import {
 
 @Injectable()
 export class RequestTransformer {
+  constructor(private readonly toolFormatter: ToolFormatter) {}
   transformRequest(
     geminiRequest: GeminiRequestDto,
     model: string,
@@ -22,6 +24,18 @@ export class RequestTransformer {
     if (geminiRequest.tools && geminiRequest.tools.length > 0) {
       openAIRequest.tools = this.transformTools(geminiRequest.tools);
     }
+
+    // Map toolConfig -> tool_choice when present
+    if (geminiRequest.toolConfig) {
+      const toolChoice = this.transformToolConfig(geminiRequest.toolConfig);
+      if (toolChoice) {
+        openAIRequest.tool_choice = toolChoice;
+      }
+    }
+    if (openAIRequest.tools && openAIRequest.tools.length > 0 && !openAIRequest.tool_choice) {
+      openAIRequest.tool_choice = 'auto';
+    }
+
 
     // Transform generation config
     if (geminiRequest.generationConfig) {
@@ -45,6 +59,9 @@ export class RequestTransformer {
   }
 
   private transformMessages(contents: GeminiContentDto[]): OpenAIMessage[] {
+    if (!contents || !Array.isArray(contents)) {
+      return [];
+    }
     return contents
       .map((content) => {
         const message: OpenAIMessage = {
@@ -65,23 +82,37 @@ export class RequestTransformer {
         }
 
         if (functionCallParts.length > 0) {
-          message.tool_calls = functionCallParts.map((part) => ({
-            id: `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            type: 'function' as const,
-            function: {
-              name: part.functionCall!.name,
-              arguments: JSON.stringify(part.functionCall!.args),
-            },
-          }));
+          message.tool_calls = functionCallParts.map((part) => {
+            const anyPart = part as unknown as {
+              functionCall?: { id?: string; name: string; args: unknown };
+            };
+            const id =
+              anyPart.functionCall?.id ||
+              `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            return {
+              id,
+              type: 'function' as const,
+              function: {
+                name: part.functionCall!.name,
+                arguments: JSON.stringify(part.functionCall!.args),
+              },
+            };
+          });
         }
 
         if (functionResponseParts.length > 0) {
+          const anyResp = functionResponseParts[0] as unknown as {
+            functionResponse?: { id?: string; name?: string; response?: unknown };
+          };
           message.role = 'tool';
           message.content = JSON.stringify(
-            functionResponseParts[0].functionResponse?.response,
+            anyResp.functionResponse?.response,
           );
-          message.tool_call_id =
-            functionResponseParts[0].functionResponse?.name;
+          // Prefer the tool call id if present; fall back to undefined
+          // (OpenAI expects the id of the original tool_call.)
+          if (anyResp.functionResponse?.id) {
+            message.tool_call_id = anyResp.functionResponse.id;
+          }
         }
 
         return message;
@@ -90,6 +121,53 @@ export class RequestTransformer {
         // Filter out empty messages without tool calls
         return message.content || message.tool_calls;
       });
+  }
+
+  /**
+   * 将 Gemini 的 toolConfig 映射为 OpenAI 的 tool_choice
+   */
+  private transformToolConfig(toolConfig: unknown):
+    | 'auto'
+    | 'none'
+    | { type: 'function'; function: { name: string } }
+    | undefined {
+    try {
+      const cfg = toolConfig as
+        | { functionCallingConfig?: unknown }
+        | string
+        | Record<string, unknown>;
+
+      // 直接字符串形式：'AUTO' | 'NONE'
+      if (typeof cfg === 'string') {
+        const mode = cfg.toUpperCase();
+        if (mode === 'AUTO') return 'auto';
+        if (mode === 'NONE') return 'none';
+      }
+
+      // 常见形式：{ functionCallingConfig: 'AUTO' | 'NONE' | { mode, allowedFunctionNames? } }
+      const fcc = (cfg as { functionCallingConfig?: unknown }).functionCallingConfig;
+      if (typeof fcc === 'string') {
+        const mode = fcc.toUpperCase();
+        if (mode === 'AUTO') return 'auto';
+        if (mode === 'NONE') return 'none';
+      } else if (fcc && typeof fcc === 'object') {
+        const obj = fcc as { mode?: string; allowedFunctionNames?: string[] };
+        const mode = obj.mode?.toUpperCase();
+        if (mode === 'NONE') return 'none';
+        // OpenAI 无法指定多个函数，只能选择一个或使用 auto
+        if (Array.isArray(obj.allowedFunctionNames) && obj.allowedFunctionNames.length === 1) {
+          return {
+            type: 'function',
+            function: { name: obj.allowedFunctionNames[0]! },
+          };
+        }
+        // 其他情况视为自动
+        return 'auto';
+      }
+    } catch {
+      // 忽略解析失败，保持默认
+    }
+    return undefined;
   }
 
   private transformTools(geminiTools: unknown[]): OpenAITool[] {
@@ -101,17 +179,27 @@ export class RequestTransformer {
           name: string;
           description?: string;
           parameters?: Record<string, unknown>;
+          parametersJsonSchema?: Record<string, unknown>;
         }>;
       };
 
       if (toolObj.functionDeclarations) {
         for (const func of toolObj.functionDeclarations) {
+          const rawParams =
+            (func.parametersJsonSchema as Record<string, unknown> | undefined) ??
+            (func.parameters as Record<string, unknown> | undefined) ??
+            {};
+          const normalizedParams = this.toolFormatter
+            .convertGeminiSchemaToStandard(rawParams) as Record<
+            string,
+            unknown
+          >;
           openAITools.push({
             type: 'function',
             function: {
               name: func.name,
               description: func.description || '',
-              parameters: func.parameters || {},
+              parameters: normalizedParams,
             },
           });
         }

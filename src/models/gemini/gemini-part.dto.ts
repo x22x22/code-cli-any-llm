@@ -12,6 +12,7 @@ export class GeminiPartDto {
   @IsOptional()
   @IsObject()
   functionCall?: {
+    id?: string;
     name: string;
     args: Record<string, any>;
   };
@@ -19,6 +20,7 @@ export class GeminiPartDto {
   @IsOptional()
   @IsObject()
   functionResponse?: {
+    id?: string;
     name: string;
     response: any;
   };

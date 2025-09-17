@@ -41,7 +41,8 @@ export class ConfigModule {
               return {
                 openai: {
                   apiKey: process.env.OPENAI_API_KEY,
-                  baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+                  baseURL:
+                    process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
                   model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
                   organization: process.env.OPENAI_ORGANIZATION,
                   timeout: Number(process.env.OPENAI_TIMEOUT) || 30000,

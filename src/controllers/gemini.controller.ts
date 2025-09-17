@@ -13,16 +13,23 @@ import { OpenAIProvider } from '../providers/openai/openai.provider';
 import { RequestTransformer } from '../transformers/request.transformer';
 import { ResponseTransformer } from '../transformers/response.transformer';
 import { StreamTransformer } from '../transformers/stream.transformer';
+import { EnhancedRequestTransformer } from '../transformers/enhanced-request.transformer';
+import { EnhancedResponseTransformer } from '../transformers/enhanced-response.transformer';
+import { TokenizerService } from '../services/tokenizer.service';
 
 @Controller('')
 export class GeminiController {
   private readonly logger = new Logger(GeminiController.name);
+  private readonly isUsingZhipuModel: boolean;
 
   constructor(
     private readonly openaiProvider: OpenAIProvider,
     private readonly requestTransformer: RequestTransformer,
     private readonly responseTransformer: ResponseTransformer,
     private readonly streamTransformer: StreamTransformer,
+    private readonly enhancedRequestTransformer: EnhancedRequestTransformer,
+    private readonly enhancedResponseTransformer: EnhancedResponseTransformer,
+    private readonly tokenizerService: TokenizerService,
   ) {
     // 打印 OpenAI 配置信息
     const config = this.openaiProvider.getConfig();
@@ -35,6 +42,61 @@ export class GeminiController {
       this.logger.log(`Model: ${config.model}`);
       this.logger.log('==========================');
     }
+
+    // 检查配置的模型是否为智谱模型
+    const configuredModel = config?.model || 'glm-4.5';
+    this.isUsingZhipuModel = this.enhancedRequestTransformer.isZhipuModel(configuredModel);
+    this.logger.log(`=== Zhipu Optimization ===`);
+    this.logger.log(`Configured Model: ${configuredModel}`);
+    this.logger.log(`Is Zhipu Model: ${this.isUsingZhipuModel}`);
+    this.logger.log(`Using Enhanced Transformers: ${this.isUsingZhipuModel ? 'YES' : 'NO'}`);
+    this.logger.log('===========================');
+  }
+
+  /**
+   * 获取适合模型的请求转换器
+   */
+  private getRequestTransformer() {
+    if (this.isUsingZhipuModel) {
+      this.logger.debug(`Using enhanced request transformer for Zhipu model`);
+      return this.enhancedRequestTransformer;
+    }
+    this.logger.debug(`Using standard request transformer`);
+    return this.requestTransformer;
+  }
+
+  /**
+   * 获取适合模型的响应转换器
+   */
+  private getResponseTransformer() {
+    if (this.isUsingZhipuModel) {
+      this.logger.debug(`Using enhanced response transformer for Zhipu model`);
+      return this.enhancedResponseTransformer;
+    }
+    this.logger.debug(`Using standard response transformer`);
+    return this.responseTransformer;
+  }
+
+  private computePromptTokens(
+    request: GeminiRequestDto,
+    model: string,
+  ): number {
+    let totalTokens = this.tokenizerService.countTokensInRequest(
+      request.contents || [],
+      model,
+    );
+
+    const systemInstruction = request.systemInstruction;
+    if (typeof systemInstruction === 'string') {
+      totalTokens += this.tokenizerService.countTokens(systemInstruction, model);
+    } else if (systemInstruction?.parts) {
+      totalTokens += this.tokenizerService.countTokensInRequest(
+        [systemInstruction],
+        model,
+      );
+    }
+
+    return totalTokens;
   }
 
   @Post('models/:model')
@@ -93,14 +155,16 @@ export class GeminiController {
         }
 
         // Transform Gemini request to OpenAI format
-        const openAIRequest = this.requestTransformer.transformRequest(
+        const requestTransformer = this.getRequestTransformer();
+        const openAIRequest = requestTransformer.transformRequest(
           request,
           targetModel,
         );
         openAIRequest.stream = true;
 
         // Initialize stream transformer for the specific model
-        this.streamTransformer.initializeForModel(targetModel);
+        const promptTokenCount = this.computePromptTokens(request, targetModel);
+        this.streamTransformer.initializeForModel(targetModel, promptTokenCount);
 
         // Handle client disconnect
         response.on('close', () => {
@@ -181,6 +245,10 @@ export class GeminiController {
                 finalChunk.thoughtSignature = thoughtSignature;
               }
 
+              this.streamTransformer.applyUsageMetadata(
+                finalChunk as Record<string, unknown>,
+              );
+
               const finalSSEData = this.streamTransformer.toSSEFormat(
                 finalChunk as unknown as any,
               );
@@ -231,7 +299,7 @@ export class GeminiController {
         const tokenCount = this.openaiProvider.countTokens(request);
 
         // Return token count response
-        response.json({
+        response.status(200).json({
           totalTokens: tokenCount,
         });
       } else {
@@ -242,7 +310,8 @@ export class GeminiController {
         this.logger.debug(`Request path: /api/v1/models/${model}`);
 
         // Transform Gemini request to OpenAI format
-        const openAIRequest = this.requestTransformer.transformRequest(
+        const requestTransformer = this.getRequestTransformer();
+        const openAIRequest = requestTransformer.transformRequest(
           request,
           targetModel,
         );
@@ -252,8 +321,10 @@ export class GeminiController {
           await this.openaiProvider.generateContent(openAIRequest);
 
         // Transform response back to Gemini format
-        const geminiResponse = this.responseTransformer.transformResponse(
+        const responseTransformer = this.getResponseTransformer();
+        const geminiResponse = responseTransformer.transformResponse(
           openAIResponse,
+          targetModel,
         ) as Record<string, unknown>;
 
         // Add thought signature if provided
@@ -273,7 +344,7 @@ export class GeminiController {
         this.logger.debug('=====================================');
 
         // 手动发送响应
-        response.json(geminiResponse);
+        response.status(200).json(geminiResponse);
         return;
       }
     } catch (error) {

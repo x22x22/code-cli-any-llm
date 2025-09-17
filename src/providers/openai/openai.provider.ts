@@ -146,21 +146,8 @@ export class OpenAIProvider implements OnModuleInit {
         hasTools: !!request.tools,
       });
 
-      // 检测是否是GLM或智谱AI模型
-      const isZhipuAI = this.config.baseURL?.includes('bigmodel.cn');
-      // Remove unused variable
-      // const isGLMModel = request.model?.toLowerCase().includes('glm');
-
-      // 检查是否是智谱AI，如果是且有工具，则简化工具定义
-      let processedTools = request.tools;
-
-      if (isZhipuAI && request.tools && request.tools.length > 0) {
-        this.logger.warn(
-          'Detected Zhipu AI with complex tools, simplifying tool definitions',
-        );
-        // 对于智谱AI，移除过于复杂的工具定义
-        processedTools = undefined;
-      }
+      // 保持调用方提供的工具定义，不做“简化”处理
+      const processedTools = request.tools;
 
       let stream;
       try {

@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenAIStreamChunk } from '../models/openai/openai-stream.model';
 import { GeminiResponseDto } from '../models/gemini/gemini-response.dto';
+import { ToolCallProcessor } from '../utils/zhipu/ToolCallProcessor';
+import { TokenizerService } from '../services/tokenizer.service';
+import { GeminiUsageMetadataDto } from '../models/gemini/gemini-usage-metadata.dto';
 
 @Injectable()
 export class StreamTransformer {
@@ -17,12 +20,27 @@ export class StreamTransformer {
   // Buffer for GLM models to avoid formatting issues
   private textBuffer = '';
   private isGLMModel = false;
+  private promptTokenCount = 0;
+  private cumulativeCandidateText = '';
+  private cumulativeThoughtText = '';
+  private lastUsageMetadata: GeminiUsageMetadataDto | null = null;
+  private tokenizerModel: string | null = null;
 
   // Initialize for specific model type
-  initializeForModel(model: string): void {
+  constructor(
+    private readonly tokenizerService: TokenizerService,
+    private readonly toolCallProcessor: ToolCallProcessor,
+  ) {}
+
+  initializeForModel(model: string, promptTokens = 0): void {
     this.isGLMModel = model?.toLowerCase().includes('glm') || false;
     this.textBuffer = '';
     this.streamingToolCalls.clear();
+    this.promptTokenCount = promptTokens;
+    this.cumulativeCandidateText = '';
+    this.cumulativeThoughtText = '';
+    this.lastUsageMetadata = null;
+    this.tokenizerModel = model;
   }
 
   // Helper function to remove control characters
@@ -194,7 +212,21 @@ export class StreamTransformer {
           }
         }
 
+        const normalizedParts = this.toolCallProcessor.normalizeTextToolCalls(
+          content.parts as Array<Record<string, unknown>>,
+        );
+        (content.parts as Array<unknown>).splice(
+          0,
+          content.parts.length,
+          ...normalizedParts,
+        );
+
         // Only add candidate if there are meaningful parts to include
+        const usageMetadata = this.buildUsageMetadata(
+          content.parts as Array<Record<string, unknown>>,
+        );
+        geminiResponse.usageMetadata = usageMetadata;
+
         if (content.parts.length > 0) {
           geminiResponse.candidates.push({
             content,
@@ -211,6 +243,8 @@ export class StreamTransformer {
             index: choiceWithDelta.index || 0,
             finishReason: this.mapFinishReason(choiceWithDelta.finish_reason),
           });
+        } else if (geminiResponse.usageMetadata) {
+          // Preserve usage metadata even if we skip empty chunks
         }
       }
 
@@ -259,14 +293,20 @@ export class StreamTransformer {
 
     if (toolCall.function?.arguments) {
       accumulated.arguments += toolCall.function.arguments;
+
+      // 检测流式工具调用中的双重转义模式
+      this.toolCallProcessor.detectDoubleEscapingInStreamChunk(
+        toolCall.function.arguments,
+        accumulated.name || 'unknown'
+      );
     }
   }
 
   private handleStreamFinish(): Array<{
-    functionCall?: { name: string; args: Record<string, any> };
+    functionCall?: { id?: string; name: string; args: Record<string, any> };
   }> {
     const toolCallParts: Array<{
-      functionCall?: { name: string; args: Record<string, any> };
+      functionCall?: { id?: string; name: string; args: Record<string, any> };
     }> = [];
 
     for (const [, accumulated] of this.streamingToolCalls) {
@@ -276,7 +316,12 @@ export class StreamTransformer {
         // Only parse arguments if they exist and are non-empty
         if (accumulated.arguments && accumulated.arguments.trim()) {
           try {
-            args = JSON.parse(accumulated.arguments) as Record<string, unknown>;
+            // 使用 ToolCallProcessor 安全解析工具调用参数
+            args = this.toolCallProcessor.parseToolCallArguments(
+              accumulated.arguments,
+              accumulated.name,
+              'qwen'
+            ) as Record<string, unknown>;
           } catch (e) {
             // Invalid JSON, use empty object and log warning
             this.logger?.warn?.('Invalid JSON in tool call arguments:', {
@@ -293,6 +338,7 @@ export class StreamTransformer {
 
         toolCallParts.push({
           functionCall: {
+            id: accumulated.id,
             name: accumulated.name,
             args: args as Record<string, any>,
           },
@@ -308,6 +354,79 @@ export class StreamTransformer {
 
   reset(): void {
     this.streamingToolCalls.clear();
+  }
+
+  applyUsageMetadata(responseChunk: Record<string, unknown>): void {
+    const candidates = responseChunk?.candidates;
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      return;
+    }
+
+    const firstCandidate = candidates[0] as {
+      content?: { parts?: Array<Record<string, unknown>> };
+    };
+    if (!firstCandidate?.content?.parts) {
+      return;
+    }
+
+    const normalizedParts = this.toolCallProcessor.normalizeTextToolCalls(
+      firstCandidate.content.parts,
+    );
+    firstCandidate.content.parts = normalizedParts;
+    const usageMetadata = this.buildUsageMetadata(normalizedParts);
+    (responseChunk as Record<string, unknown>).usageMetadata = usageMetadata;
+  }
+
+  private buildUsageMetadata(
+    parts: Array<Record<string, unknown>>,
+  ): GeminiUsageMetadataDto {
+    if (!Array.isArray(parts)) {
+      return (
+        this.lastUsageMetadata || {
+          promptTokenCount: this.promptTokenCount,
+          candidatesTokenCount: 0,
+          totalTokenCount: this.promptTokenCount,
+        }
+      );
+    }
+
+    for (const part of parts) {
+      const text = typeof part?.text === 'string' ? part.text : undefined;
+      if (!text) {
+        continue;
+      }
+
+      if ((part as { thought?: boolean }).thought) {
+        this.cumulativeThoughtText += text;
+      } else {
+        this.cumulativeCandidateText += text;
+      }
+    }
+
+    const model = this.tokenizerModel || 'gpt-3.5-turbo';
+
+    const candidatesTokenCount = this.cumulativeCandidateText
+      ? this.tokenizerService.countTokens(this.cumulativeCandidateText, model)
+      : 0;
+    const thoughtsTokenCount = this.cumulativeThoughtText
+      ? this.tokenizerService.countTokens(this.cumulativeThoughtText, model)
+      : 0;
+    const totalTokenCount =
+      this.promptTokenCount + candidatesTokenCount + thoughtsTokenCount;
+
+    const usage: GeminiUsageMetadataDto = {
+      promptTokenCount: this.promptTokenCount,
+      candidatesTokenCount,
+      totalTokenCount,
+    };
+
+    if (thoughtsTokenCount > 0) {
+      usage.thoughtsTokenCount = thoughtsTokenCount;
+    }
+
+    this.lastUsageMetadata = usage;
+
+    return usage;
   }
 
   // Convert Gemini stream chunk to SSE format

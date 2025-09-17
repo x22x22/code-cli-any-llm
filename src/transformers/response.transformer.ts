@@ -4,9 +4,11 @@ import {
   OpenAIChoice,
 } from '../models/openai/openai-response.model';
 import { GeminiUsageMetadataDto } from '../models/gemini/gemini-usage-metadata.dto';
+import { ToolCallProcessor } from '../utils/zhipu/ToolCallProcessor';
 
 @Injectable()
 export class ResponseTransformer {
+  private readonly toolCallProcessor = new ToolCallProcessor();
   transformResponse(openAIResponse: OpenAIResponse): unknown {
     const geminiResponse: Record<string, unknown> = {
       candidates: [],
@@ -38,11 +40,12 @@ export class ResponseTransformer {
   }
 
   private transformOpenAIMessageToGeminiContent(message: unknown): unknown {
-    const parts: unknown[] = [];
+    const parts: Array<Record<string, unknown>> = [];
     const messageObj = message as {
       content?: string;
       reasoning_content?: string;
       tool_calls?: Array<{
+        id?: string;
         function: {
           name: string;
           arguments: string;
@@ -66,17 +69,25 @@ export class ResponseTransformer {
     // Handle tool calls
     if (messageObj.tool_calls && messageObj.tool_calls.length > 0) {
       for (const toolCall of messageObj.tool_calls) {
+        // 使用 ToolCallProcessor 安全解析工具调用参数
+        const args = this.toolCallProcessor.parseToolCallArguments(
+          toolCall.function.arguments,
+          toolCall.function.name,
+          'qwen' // 默认使用 qwen 格式处理双重转义
+        );
+
         parts.push({
           functionCall: {
+            id: toolCall.id,
             name: toolCall.function.name,
-            args: JSON.parse(toolCall.function.arguments) as Record<
-              string,
-              unknown
-            >,
+            args: args as Record<string, unknown>,
           },
         });
       }
     }
+
+    const normalizedParts = this.toolCallProcessor.normalizeTextToolCalls(parts);
+    parts.splice(0, parts.length, ...normalizedParts);
 
     // If no parts were added but message exists, add empty text to ensure parts is not empty
     if (
@@ -159,6 +170,7 @@ export class ResponseTransformer {
           if (toolCall.function && toolCall.function.name) {
             (content.parts as unknown[]).push({
               functionCall: {
+                id: (toolCall as any).id,
                 name: toolCall.function.name,
                 args: toolCall.function.arguments
                   ? (JSON.parse(toolCall.function.arguments) as Record<
@@ -171,6 +183,16 @@ export class ResponseTransformer {
           }
         }
       }
+
+      const normalizedStreamParts = this.toolCallProcessor.normalizeTextToolCalls(
+        content.parts as Array<Record<string, unknown>>
+      );
+      const targetStreamParts = content.parts as Array<unknown>;
+      targetStreamParts.splice(
+        0,
+        targetStreamParts.length,
+        ...normalizedStreamParts,
+      );
 
       (geminiResponse.candidates as unknown[]).push({
         content,

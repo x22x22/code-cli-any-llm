@@ -30,6 +30,8 @@
     "@types/js-yaml": "^4.0.9",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
     "js-yaml": "^4.1.0",
     "nestjs-rate-limiter": "^3.1.0",
     "openai": "^5.20.2",
