@@ -7,6 +7,33 @@ import {
   Max,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+import os from 'os';
+import path from 'path';
+
+const DEFAULT_GATEWAY_LOG_DIR = path.join(
+  os.homedir(),
+  '.gemini-any-llm',
+  'logs',
+);
+
+function normalizeLogDir(value?: string): string {
+  if (!value || !value.trim()) {
+    return DEFAULT_GATEWAY_LOG_DIR;
+  }
+  const trimmed = value.trim();
+  if (trimmed === '~') {
+    return os.homedir();
+  }
+  if (trimmed.startsWith('~/') || trimmed.startsWith('~\\')) {
+    const relative = trimmed.slice(2);
+    return path.join(os.homedir(), relative);
+  }
+  if (trimmed.startsWith('~')) {
+    const relative = trimmed.slice(1).replace(/^[\\/]/, '');
+    return path.join(os.homedir(), relative);
+  }
+  return path.isAbsolute(trimmed) ? trimmed : path.resolve(trimmed);
+}
 
 export class OpenAIConfig {
   @IsString()
@@ -59,6 +86,15 @@ export class GatewayConfig {
   @IsOptional()
   @IsString()
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }: { value: string }) =>
+    normalizeLogDir(
+      value || process.env.GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
+    ),
+  )
+  logDir?: string;
 }
 
 export class AppConfig {

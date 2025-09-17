@@ -13,3 +13,4 @@ gateway:
   port: 23062
   host: '0.0.0.0'
   logLevel: 'info'
+  logDir: '~/.gemini-any-llm/logs'

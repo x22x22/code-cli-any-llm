@@ -10,13 +10,19 @@ import { Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { GlobalConfigService } from './config/global-config.service';
 import { performanceConfig } from './config/performance.config';
+import { GatewayLoggerService } from './common/logger/gateway-logger.service';
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
-
-  // 1. 全局配置加载和验证 - 在NestJS应用启动前
   const globalConfigService = new GlobalConfigService();
   const globalConfigResult = globalConfigService.loadGlobalConfig();
+
+  const gatewayLogger = GatewayLoggerService.create({
+    logDir:
+      globalConfigResult.config?.gateway?.logDir ||
+      process.env.GATEWAY_LOG_DIR,
+  });
+  Logger.overrideLogger(gatewayLogger);
+  const logger = new Logger('Bootstrap');
 
   // 2. 配置验证失败 - 优雅退出
   if (!globalConfigResult.isValid) {
@@ -27,11 +33,14 @@ async function bootstrap() {
     });
     logger.error(`\n配置文件位置: ~/.gemini-any-llm/config.yaml`);
     logger.error('请修复配置问题后重新启动应用');
+    logger.error(`网关日志文件: ${GatewayLoggerService.getLogFilePath()}`);
+    GatewayLoggerService.close();
     process.exit(1);
   }
 
   // 3. 配置有效 - 显示配置来源信息
   logger.log(`全局配置加载成功: ${globalConfigResult.config!.configSource}`);
+  logger.log(`网关日志文件: ${GatewayLoggerService.getLogFilePath()}`);
   if (globalConfigResult.warnings.length > 0) {
     globalConfigResult.warnings.forEach((warning) => {
       logger.warn(`配置警告: ${warning}`);
@@ -39,7 +48,7 @@ async function bootstrap() {
   }
 
   // 4. 继续启动NestJS应用
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { logger: gatewayLogger });
   const bodySizeLimit = performanceConfig.maxRequestBodySize;
 
   // 应用扩展的全局请求体大小限制
@@ -84,6 +93,7 @@ async function bootstrap() {
 
     server.close(() => {
       logger.log('HTTP server closed');
+      GatewayLoggerService.close();
       process.exit(0);
     });
 
@@ -92,6 +102,7 @@ async function bootstrap() {
       logger.error(
         'Could not close connections in time, forcefully shutting down',
       );
+      GatewayLoggerService.close();
       process.exit(1);
     }, 10000);
   };
