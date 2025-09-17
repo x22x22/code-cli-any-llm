@@ -9,9 +9,9 @@ interface NetworkError {
 }
 
 export const performanceConfig = {
-  // Request/response size limits
-  maxRequestBodySize: '10mb' as const,
-  maxResponseBodySize: '50mb' as const,
+  // Request/response size limits (提升至 4GB 以支持超长对话)
+  maxRequestBodySize: '4gb' as const,
+  maxResponseBodySize: '4gb' as const,
 
   // Rate limiting configuration
   rateLimiting: {

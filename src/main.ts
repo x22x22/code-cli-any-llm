@@ -1,3 +1,4 @@
+import express from 'express';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from './common/validation.pipe';
@@ -8,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { GlobalConfigService } from './config/global-config.service';
+import { performanceConfig } from './config/performance.config';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -38,6 +40,11 @@ async function bootstrap() {
 
   // 4. 继续启动NestJS应用
   const app = await NestFactory.create(AppModule);
+  const bodySizeLimit = performanceConfig.maxRequestBodySize;
+
+  // 应用扩展的全局请求体大小限制
+  app.use(express.json({ limit: bodySizeLimit }));
+  app.use(express.urlencoded({ limit: bodySizeLimit, extended: true }));
   const configService = app.get(ConfigService);
 
   // Global validation pipe

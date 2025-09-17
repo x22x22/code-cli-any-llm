@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import { StringDecoder } from 'string_decoder';
+import { performanceConfig } from './config/performance.config';
 
 const app: express.Application = express();
 
@@ -106,7 +107,12 @@ function normalizeToNodeEncoding(charset?: string): BufferEncoding {
 }
 
 // 记录进入代理的请求：方法、URL、头、体
-app.use(express.raw({ type: () => true }));
+app.use(
+  express.raw({
+    type: () => true,
+    limit: performanceConfig.maxRequestBodySize,
+  }),
+);
 app.use((req: Request & { id?: string }, _res, next) => {
   const reqId = genReqId();
   req.id = reqId;
