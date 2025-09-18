@@ -8,6 +8,7 @@ import { ConfigModule } from './config/config.module';
 import { GeminiController } from './controllers/gemini.controller';
 import { HealthController } from './controllers/health.controller';
 import { OpenAIProvider } from './providers/openai/openai.provider';
+import { CodexProvider } from './providers/codex/codex.provider';
 import { RequestTransformer } from './transformers/request.transformer';
 import { ResponseTransformer } from './transformers/response.transformer';
 import { StreamTransformer } from './transformers/stream.transformer';
@@ -31,6 +32,7 @@ import { Logger } from '@nestjs/common';
   providers: [
     AppService,
     OpenAIProvider,
+    CodexProvider,
     RequestTransformer,
     ResponseTransformer,
     StreamTransformer,
