@@ -6,7 +6,10 @@ import * as path from 'path';
 import * as readline from 'readline';
 import * as yaml from 'js-yaml';
 import { GlobalConfigService } from '../config/global-config.service';
-import type { ConfigValidationResult } from '../config/global-config.interface';
+import type {
+  ConfigValidationResult,
+  GlobalConfig,
+} from '../config/global-config.interface';
 
 const GEMINI_AUTH_TYPE = 'gemini-api-key';
 
@@ -1095,8 +1098,10 @@ function readGlobalApiKey(configFile: string): string {
     }
 
     const raw = fs.readFileSync(configFile, 'utf8');
-    const data = yaml.load(raw) as { openai?: { apiKey?: string } } | undefined;
-    const value = data?.openai?.apiKey;
+    const data = yaml.load(raw) as Partial<GlobalConfig> | undefined;
+    const provider = data?.aiProvider ?? 'openai';
+    const value =
+      provider === 'codex' ? data?.codex?.apiKey : data?.openai?.apiKey;
     return typeof value === 'string' ? value.trim() : '';
   } catch {
     return '';

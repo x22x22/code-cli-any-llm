@@ -6,7 +6,13 @@ import * as path from 'path';
 import * as readline from 'readline';
 import * as yaml from 'js-yaml';
 import { GlobalConfigService } from '../config/global-config.service';
-import type { ConfigValidationResult } from '../config/global-config.interface';
+import type {
+  ConfigValidationResult,
+  GlobalConfig,
+  OpenAIConfig,
+  CodexConfig,
+  CodexReasoningConfig,
+} from '../config/global-config.interface';
 
 const GEMINI_AUTH_TYPE = 'gemini-api-key';
 
@@ -124,33 +130,36 @@ function shouldRunWizard(
     return true;
   }
 
-  const hasCriticalError = result.errors?.some((error) => {
-    if (!error.required) {
-      return false;
-    }
+  if (!result.isValid || !result.config) {
+    return true;
+  }
 
-    return error.field === 'openai.apiKey' || error.field === 'openai';
-  });
+  const provider = result.config.aiProvider ?? 'openai';
+  const providerConfig =
+    provider === 'codex' ? result.config.codex : result.config.openai;
 
-  return !result.isValid && Boolean(hasCriticalError);
+  if (!providerConfig || !(providerConfig as { apiKey?: string }).apiKey) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function runConfigWizard(configFile: string): Promise<void> {
   ensureDir(path.dirname(configFile));
 
-  let existingConfig: any = {};
+  let existingConfig: Partial<GlobalConfig> = {};
   if (fs.existsSync(configFile)) {
     try {
       const content = fs.readFileSync(configFile, 'utf8');
-      existingConfig = yaml.load(content) ?? {};
+      const parsed = yaml.load(content);
+      if (parsed && typeof parsed === 'object') {
+        existingConfig = parsed as Partial<GlobalConfig>;
+      }
     } catch {
       console.warn('读取现有配置失败，将写入新配置。');
       existingConfig = {};
     }
-  }
-
-  if (!existingConfig.openai) {
-    existingConfig.openai = {};
   }
 
   const rl = readline.createInterface({
@@ -158,37 +167,29 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     output: process.stdout,
   });
 
-  console.log('首次使用，请填写必要的 OpenAI 配置：');
-
-  let baseURL = await ask(
+  const aiProviderDefault = existingConfig.aiProvider || 'openai';
+  console.log('请选择要配置的 AI Provider：');
+  const aiProvider = await askChoice(
     rl,
-    'OpenAI Base URL (为空将使用默认值 https://open.bigmodel.cn/api/paas/v4)',
-    existingConfig.openai.baseURL,
+    'AI Provider',
+    ['openai', 'codex'] as const,
+    aiProviderDefault,
   );
-  if (!baseURL) {
-    baseURL = 'https://open.bigmodel.cn/api/paas/v4';
+
+  existingConfig.aiProvider = aiProvider;
+
+  if (aiProvider === 'openai') {
+    console.log('\n请填写 OpenAI 配置：');
+    existingConfig.openai = await configureOpenAI(
+      rl,
+      existingConfig.openai ?? {},
+    );
+  } else {
+    console.log('\n请填写 Codex 配置：');
+    existingConfig.codex = await configureCodex(rl, existingConfig.codex ?? {});
   }
-
-  let model = await ask(
-    rl,
-    '默认模型 (为空将使用默认值 glm-4.5)',
-    existingConfig.openai.model,
-  );
-  if (!model) {
-    model = 'glm-4.5';
-  }
-
-  const apiKey = await askRequired(
-    rl,
-    'OpenAI API Key',
-    existingConfig.openai.apiKey,
-  );
 
   rl.close();
-
-  existingConfig.openai.apiKey = apiKey;
-  existingConfig.openai.baseURL = baseURL;
-  existingConfig.openai.model = model;
 
   try {
     const yamlContent = yaml.dump(existingConfig, {
@@ -202,6 +203,110 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     console.error('写入配置失败:', error);
     throw error;
   }
+}
+
+async function configureOpenAI(
+  rl: readline.Interface,
+  existing: Partial<OpenAIConfig>,
+): Promise<OpenAIConfig> {
+  const baseURL = await ask(
+    rl,
+    'OpenAI Base URL (默认 https://open.bigmodel.cn/api/paas/v4)',
+    existing.baseURL ?? 'https://open.bigmodel.cn/api/paas/v4',
+  );
+
+  const model = await ask(
+    rl,
+    '默认模型 (默认 glm-4.5)',
+    existing.model ?? 'glm-4.5',
+  );
+
+  const apiKey = await askRequired(rl, 'OpenAI API Key', existing.apiKey);
+
+  const timeout = await askNumber(
+    rl,
+    '请求超时时间 (ms, 默认 30000)',
+    existing.timeout ?? 30000,
+  );
+
+  return {
+    apiKey,
+    baseURL,
+    model,
+    timeout,
+    extraBody: existing.extraBody,
+  };
+}
+
+async function configureCodex(
+  rl: readline.Interface,
+  existing: Partial<CodexConfig>,
+): Promise<CodexConfig> {
+  const baseURL = await ask(
+    rl,
+    'Codex Base URL (默认 https://chatgpt.com/backend-api/codex)',
+    existing.baseURL ?? 'https://chatgpt.com/backend-api/codex',
+  );
+
+  const model = await ask(
+    rl,
+    '默认模型 (默认 gpt-5-codex-high)',
+    existing.model ?? 'gpt-5-codex-high',
+  );
+
+  const apiKey = await askRequired(rl, 'Codex API Key', existing.apiKey);
+
+  const timeout = await askNumber(
+    rl,
+    '请求超时时间 (ms, 默认 60000)',
+    existing.timeout ?? 60000,
+  );
+
+  const textVerbosity = await askChoice(
+    rl,
+    '输出详略程度 (verbosity)',
+    ['low', 'medium', 'high'] as const,
+    existing.textVerbosity ?? 'low',
+  );
+
+  const reasoningEffort = await askChoice(
+    rl,
+    '推理模式 (reasoning.effort)',
+    ['minimal', 'low', 'medium', 'high'] as const,
+    typeof existing.reasoning?.effort === 'string'
+      ? (existing.reasoning?.effort.toLowerCase() as
+          | 'minimal'
+          | 'low'
+          | 'medium'
+          | 'high')
+      : 'minimal',
+  );
+
+  const reasoningSummary = await askChoice(
+    rl,
+    '推理总结模式 (reasoning.summary)',
+    ['concise', 'detailed', 'auto'] as const,
+    typeof existing.reasoning?.summary === 'string'
+      ? (existing.reasoning?.summary.toLowerCase() as
+          | 'concise'
+          | 'detailed'
+          | 'auto')
+      : 'auto',
+  );
+
+  const reasoning: CodexReasoningConfig = {
+    effort: reasoningEffort,
+    summary: reasoningSummary,
+  };
+
+  return {
+    apiKey,
+    baseURL,
+    model,
+    timeout,
+    reasoning,
+    textVerbosity,
+  };
 }
 
 function ask(
@@ -224,6 +329,24 @@ function ask(
   });
 }
 
+async function askChoice<T extends string>(
+  rl: readline.Interface,
+  prompt: string,
+  options: readonly T[],
+  defaultValue: T,
+): Promise<T> {
+  const displayPrompt = `${prompt} [${options.join('/')}]`;
+  while (true) {
+    const answer = await ask(rl, displayPrompt, defaultValue);
+    const normalized = answer.trim().toLowerCase();
+    const match = options.find((option) => option === normalized);
+    if (match) {
+      return match;
+    }
+    console.log(`无效选项，请输入 ${options.join('/')}`);
+  }
+}
+
 async function askRequired(
   rl: readline.Interface,
   prompt: string,
@@ -236,6 +359,25 @@ async function askRequired(
     }
 
     console.log('该字段不能为空，请重新输入。');
+  }
+}
+
+async function askNumber(
+  rl: readline.Interface,
+  prompt: string,
+  defaultValue: number,
+): Promise<number> {
+  while (true) {
+    const answer = await ask(rl, prompt, defaultValue.toString());
+    const trimmed = answer.trim();
+    const parsed = Number(trimmed);
+    if (!Number.isNaN(parsed) && Number.isFinite(parsed) && parsed > 0) {
+      return Math.floor(parsed);
+    }
+    if (trimmed === defaultValue.toString()) {
+      return defaultValue;
+    }
+    console.log('请输入有效的正整数。');
   }
 }
 
@@ -628,8 +770,10 @@ function readGlobalApiKey(configFile: string): string {
     }
 
     const raw = fs.readFileSync(configFile, 'utf8');
-    const data = yaml.load(raw) as { openai?: { apiKey?: string } } | undefined;
-    const value = data?.openai?.apiKey;
+    const data = yaml.load(raw) as Partial<GlobalConfig> | undefined;
+    const provider = data?.aiProvider ?? 'openai';
+    const value =
+      provider === 'codex' ? data?.codex?.apiKey : data?.openai?.apiKey;
     return typeof value === 'string' ? value.trim() : '';
   } catch {
     return '';
