@@ -2,14 +2,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import {
-  runGalCode,
-  runGalKill,
-  runGalStart,
-  runGalStatus,
-  runGalStop,
-} from './gal-code';
+import { runGalCode, runGalStart, runGalStatus, runGalStop } from './gal-code';
 import { runGalAuth } from './gal-auth';
+import { runGalKill } from './gal-kill';
 
 function loadVersion(): string {
   const packageJsonPath = resolve(__dirname, '../../package.json');

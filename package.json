@@ -1,6 +1,6 @@
 {
   "name": "@kdump/gemini-any-llm",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "author": "x22x22",
   "private": false,
   "bin": {
@@ -18,16 +18,15 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "kill": "node scripts/force-kill.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "gal:code": "pnpm run build && node dist/cli/gal.js code",
-    "gal:code:dev": "node --require ts-node/register/transpile-only src/cli/gal.ts code",
-    "gal:auth:dev": "node --require ts-node/register/transpile-only src/cli/gal.ts auth",
+    "gal": "node --require ts-node/register/transpile-only src/cli/gal.ts",
+    "gal:dist": "pnpm run build && node dist/cli/gal.js",
+    "kill": "pnpm run gal:dev kill",
     "prepublishOnly": "pnpm run build",
     "ps": "pnpm publish --registry https://registry.npmjs.org"
   },
