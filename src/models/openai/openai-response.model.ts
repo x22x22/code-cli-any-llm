@@ -28,6 +28,7 @@ export interface OpenAIStreamChunk {
   created: number;
   model: string;
   choices: OpenAIStreamChoice[];
+  usage?: OpenAIUsage;
 }
 
 export interface OpenAIStreamChoice {

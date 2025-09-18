@@ -11,15 +11,31 @@ import { TokenizerService } from '../../services/tokenizer.service';
 @Injectable()
 export class OpenAIProvider implements OnModuleInit {
   private readonly logger = new Logger(OpenAIProvider.name);
-  private openai: OpenAI;
-  private config: OpenAIConfig;
+  private openai: OpenAI | null = null;
+  private config?: OpenAIConfig;
+  private enabled = false;
 
   constructor(
     private configService: ConfigService,
     private tokenizerService: TokenizerService,
   ) {}
 
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
   onModuleInit(): void {
+    const activeProvider = (
+      this.configService.get<string>('aiProvider') || 'openai'
+    ).toLowerCase();
+    if (activeProvider !== 'openai') {
+      this.logger.debug(
+        'OpenAI provider disabled because aiProvider is set to Codex.',
+      );
+      this.enabled = false;
+      return;
+    }
+
     const config = this.configService.get<OpenAIConfig>('openai');
     if (!config) {
       throw new Error('OpenAI configuration not found');
@@ -34,14 +50,16 @@ export class OpenAIProvider implements OnModuleInit {
       dangerouslyAllowBrowser: false, // Ensure we're not in browser context
     });
 
+    this.enabled = true;
     this.logger.log(`OpenAI provider initialized with model: ${config.model}`);
   }
 
   getConfig() {
-    return this.configService.get<OpenAIConfig>('openai');
+    return this.enabled ? this.config : undefined;
   }
 
   async generateContent(request: OpenAIRequest): Promise<OpenAIResponse> {
+    const { config, client } = this.ensureReady();
     let lastError: Error | null = null;
     const maxRetries = 3;
     const initialDelay = 1000;
@@ -61,19 +79,19 @@ export class OpenAIProvider implements OnModuleInit {
           stop: request.stop,
           user: request.user,
           stream: false,
-          ...(this.config.extraBody || {}),
+          ...(config.extraBody || {}),
         };
 
         this.logger.debug('=== OpenAI Request Details ===');
-        this.logger.debug(`URL: ${this.config.baseURL}/chat/completions`);
+        this.logger.debug(`URL: ${config.baseURL}/chat/completions`);
         this.logger.debug(`Headers: {
-          'Authorization': 'Bearer ${this.config.apiKey.substring(0, 20)}...',
+          'Authorization': 'Bearer ${config.apiKey.substring(0, 20)}...',
           'Content-Type': 'application/json'
         }`);
         this.logger.debug(`Body: ${JSON.stringify(requestBody, null, 2)}`);
         this.logger.debug('================================');
 
-        const response = await this.openai.chat.completions.create({
+        const response = await client.chat.completions.create({
           model: request.model,
           messages:
             request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
@@ -85,7 +103,7 @@ export class OpenAIProvider implements OnModuleInit {
           stop: request.stop,
           user: request.user,
           stream: false,
-          ...(this.config.extraBody || {}),
+          ...(config.extraBody || {}),
         });
 
         // 打印 OpenAI 响应内容
@@ -141,6 +159,7 @@ export class OpenAIProvider implements OnModuleInit {
   async *generateContentStream(
     request: OpenAIRequest,
   ): AsyncIterable<OpenAIStreamChunk> {
+    const { config, client } = this.ensureReady();
     try {
       this.logger.debug('Starting stream request to OpenAI', {
         model: request.model,
@@ -153,7 +172,14 @@ export class OpenAIProvider implements OnModuleInit {
 
       let stream;
       try {
-        stream = await this.openai.chat.completions.create({
+        const extraBody = { ...(config.extraBody || {}) } as {
+          stream_options?: Record<string, any>;
+        };
+        const extraStreamOptions = extraBody.stream_options;
+        if (extraStreamOptions) {
+          delete extraBody.stream_options;
+        }
+        stream = await client.chat.completions.create({
           model: request.model,
           messages:
             request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
@@ -165,7 +191,11 @@ export class OpenAIProvider implements OnModuleInit {
           stop: request.stop,
           user: request.user,
           stream: true,
-          ...(this.config.extraBody || {}),
+          stream_options: {
+            include_usage: true,
+            ...(extraStreamOptions || {}),
+          },
+          ...extraBody,
         });
       } catch (createError) {
         this.logger.error('Failed to create OpenAI stream:', {
@@ -196,8 +226,9 @@ export class OpenAIProvider implements OnModuleInit {
   }
 
   async listModels(): Promise<unknown> {
+    const { client } = this.ensureReady();
     try {
-      const response = await this.openai.models.list();
+      const response = await client.models.list();
       return response.data;
     } catch (error) {
       this.logger.error('Failed to list models', error);
@@ -254,18 +285,28 @@ export class OpenAIProvider implements OnModuleInit {
     details?: unknown;
   }> {
     try {
+      const { client, config } = this.ensureReady();
       // Try a simple API call to check if the service is accessible
-      await this.openai.models.list();
+      await client.models.list();
 
       return {
         status: 'healthy',
         details: {
           provider: 'OpenAI',
-          baseURL: this.openai.baseURL,
-          model: this.configService.get('openai.model') as string,
+          baseURL: client.baseURL,
+          model: config.model,
         },
       };
     } catch (error) {
+      if (!this.enabled) {
+        return {
+          status: 'unhealthy',
+          details: {
+            provider: 'OpenAI',
+            message: 'OpenAI provider disabled by configuration',
+          },
+        };
+      }
       return {
         status: 'unhealthy',
         details: {
@@ -277,10 +318,10 @@ export class OpenAIProvider implements OnModuleInit {
   }
 
   countTokens(request: GeminiRequestDto): number {
+    const { config } = this.ensureReady();
     try {
       // Get the configured model
-      const config = this.getConfig();
-      const model = config?.model || 'glm-4.5';
+      const model = config.model || 'glm-4.5';
 
       // Use tokenizer service to count tokens
       const tokenCount = this.tokenizerService.countTokensInRequest(
@@ -297,5 +338,12 @@ export class OpenAIProvider implements OnModuleInit {
       this.logger.error('Error counting tokens', error);
       throw new Error(`Failed to count tokens: ${(error as Error).message}`);
     }
+  }
+
+  private ensureReady(): { config: OpenAIConfig; client: OpenAI } {
+    if (!this.enabled || !this.openai || !this.config) {
+      throw new Error('OpenAI provider is not enabled.');
+    }
+    return { config: this.config, client: this.openai };
   }
 }
