@@ -55,23 +55,33 @@ security:
 
 ## 环境变量支持
 
-除了 YAML 配置文件，项目还支持通过环境变量覆盖配置：
+除了 YAML 配置文件，项目还支持通过环境变量覆盖配置（所有应用相关环境变量使用 GAL_ 前缀）：
 
 ```bash
 # OpenAI 配置
-OPENAI_API_KEY=your-key
-OPENAI_BASE_URL=https://api.example.com/v1
-OPENAI_MODEL=gpt-4
+GAL_OPENAI_API_KEY=your-key
+GAL_OPENAI_BASE_URL=https://api.example.com/v1
+GAL_OPENAI_MODEL=gpt-4
+GAL_OPENAI_TIMEOUT=30000
+GAL_OPENAI_ORGANIZATION=org-xxxxxx
 
 # 网关配置
-GATEWAY_PORT=8080
-GATEWAY_LOG_LEVEL=debug
+GAL_PORT=8080
+GAL_HOST=0.0.0.0
+GAL_LOG_LEVEL=debug
+GAL_GATEWAY_LOG_DIR=~/.gemini-any-llm/logs
+
+# 性能和安全配置（可选）
+GAL_RATE_LIMIT_MAX=100
+GAL_REQUEST_TIMEOUT=120000
+GAL_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
 
 ## 配置优先级
 
-1. 环境变量（最高优先级）
-2. YAML 配置文件
+1. 项目配置文件 (`./config/config.yaml`) - 最高优先级
+2. 全局配置文件 (`~/.gemini-any-llm/config.yaml`) - 中等优先级
+3. 环境变量（GAL_ 前缀）- 最低优先级，作为基础配置
 3. 默认值（最低优先级）
 
 ## 多提供商配置
@@ -197,5 +207,5 @@ gateway:
 或使用环境变量：
 
 ```bash
-GATEWAY_LOG_LEVEL=debug pnpm run start:dev
+GAL_LOG_LEVEL=debug pnpm run start:dev
 ```

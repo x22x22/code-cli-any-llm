@@ -1,6 +1,6 @@
 {
   "name": "@kdump/gemini-any-llm",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "author": "x22x22",
   "private": false,
   "bin": {
@@ -102,5 +102,17 @@
   ],
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": [
+    "gemini cli",
+    "gemini",
+    "llm",
+    "api gateway",
+    "openai",
+    "ai proxy",
+    "chat api",
+    "zhipu",
+    "qwen",
+    "openai"
+  ]
 }

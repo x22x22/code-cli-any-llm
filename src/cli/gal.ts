@@ -2,9 +2,15 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { runGalCode, runGalStart, runGalStatus, runGalStop } from './gal-code';
+import { runGalCode } from './gal-code';
 import { runGalAuth } from './gal-auth';
-import { runGalKill } from './gal-kill';
+import {
+  runGalStart,
+  runGalRestart,
+  runGalStatus,
+  runGalStop,
+  runGalKill,
+} from './gal-gateway';
 
 function loadVersion(): string {
   const packageJsonPath = resolve(__dirname, '../../package.json');
@@ -17,14 +23,22 @@ function loadVersion(): string {
   }
 }
 
+function loadHelpText(): string {
+  const helpTextPath = resolve(__dirname, 'help-text.txt');
+  try {
+    const content = readFileSync(helpTextPath, 'utf8');
+    return `\n${content}\n`;
+  } catch {
+    return '\n帮助文档加载失败\n';
+  }
+}
+
 const version = loadVersion();
 
 const [, , command, ...restArgs] = process.argv;
 
-const HELP_TEXT = `\nUsage: gal [command]\n\nCommands:\n  code          启动/连接网关并调用 gemini CLI\n  start         以守护进程方式启动网关组件\n  stop          停止网关组件\n  status        查看网关组件的运行状态\n  kill          强制终止本地网关进程\n  auth          配置 Gemini CLI 身份认证\n  version       查看当前 gal 版本\n  -h, --help    查看帮助\n  -v, --version 查看当前 gal 版本\n\n示例:\n  gal code "请用TypeScript写一个HTTP服务"\n  gal start\n  gal status\n  gal kill\n`;
-
 function showHelp() {
-  console.log(HELP_TEXT);
+  console.log(loadHelpText());
 }
 
 function showVersion() {
@@ -53,6 +67,9 @@ async function main() {
       break;
     case 'stop':
       await runGalStop();
+      break;
+    case 'restart':
+      await runGalRestart();
       break;
     case 'status':
       await runGalStatus();

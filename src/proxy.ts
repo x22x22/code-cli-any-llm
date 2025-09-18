@@ -28,7 +28,7 @@ function tsForFile() {
   return `${y}${m}${day}-${hh}${mm}${ss}`;
 }
 
-const LOG_DIR = process.env.LOG_DIR || path.join(process.cwd(), 'logs');
+const LOG_DIR = process.env.GAL_LOG_DIR || path.join(process.cwd(), 'logs');
 if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
@@ -280,7 +280,7 @@ const exampleProxy = createProxyMiddleware({
 // mount `exampleProxy` in web server
 app.use('/proxy', exampleProxy);
 
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.GAL_PORT || 3000);
 app
   .listen(PORT, () => {
     const msg = [

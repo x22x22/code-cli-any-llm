@@ -38,21 +38,21 @@ function normalizeLogDir(value?: string): string {
 export class OpenAIConfig {
   @IsString()
   @Transform(
-    ({ value }: { value: string }) => value || process.env.OPENAI_API_KEY,
+    ({ value }: { value: string }) => value || process.env.GAL_OPENAI_API_KEY,
   )
   apiKey!: string;
 
   @IsUrl()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+      value || process.env.GAL_OPENAI_BASE_URL || 'https://api.openai.com/v1',
   )
   baseURL!: string;
 
   @IsString()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      value || process.env.GAL_OPENAI_MODEL || 'gpt-3.5-turbo',
   )
   model!: string;
 
@@ -91,7 +91,7 @@ export class GatewayConfig {
   @IsString()
   @Transform(({ value }: { value: string }) =>
     normalizeLogDir(
-      value || process.env.GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
+      value || process.env.GAL_GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
     ),
   )
   logDir?: string;

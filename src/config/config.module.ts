@@ -65,18 +65,19 @@ export class ConfigModule {
               // Fallback to environment variables if global config fails
               return {
                 openai: {
-                  apiKey: process.env.OPENAI_API_KEY,
+                  apiKey: process.env.GAL_OPENAI_API_KEY,
                   baseURL:
-                    process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-                  model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-                  organization: process.env.OPENAI_ORGANIZATION,
-                  timeout: Number(process.env.OPENAI_TIMEOUT) || 30000,
+                    process.env.GAL_OPENAI_BASE_URL ||
+                    'https://api.openai.com/v1',
+                  model: process.env.GAL_OPENAI_MODEL || 'gpt-3.5-turbo',
+                  organization: process.env.GAL_OPENAI_ORGANIZATION,
+                  timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 30000,
                 },
                 gateway: {
-                  port: Number(process.env.PORT) || 23062,
-                  host: process.env.HOST || '0.0.0.0',
-                  logLevel: process.env.LOG_LEVEL || 'info',
-                  logDir: resolveLogDir(process.env.GATEWAY_LOG_DIR),
+                  port: Number(process.env.GAL_PORT) || 23062,
+                  host: process.env.GAL_HOST || '0.0.0.0',
+                  logLevel: process.env.GAL_LOG_LEVEL || 'info',
+                  logDir: resolveLogDir(process.env.GAL_GATEWAY_LOG_DIR),
                 },
               };
             },

@@ -25,6 +25,7 @@ export class StreamTransformer {
   private cumulativeThoughtText = '';
   private lastUsageMetadata: GeminiUsageMetadataDto | null = null;
   private tokenizerModel: string | null = null;
+  private apiUsageMetadata: GeminiUsageMetadataDto | null = null;
 
   // Initialize for specific model type
   constructor(
@@ -41,6 +42,7 @@ export class StreamTransformer {
     this.cumulativeThoughtText = '';
     this.lastUsageMetadata = null;
     this.tokenizerModel = model;
+    this.apiUsageMetadata = null;
   }
 
   // Helper function to remove control characters
@@ -102,6 +104,25 @@ export class StreamTransformer {
       geminiResponse.modelVersion = chunk.model || 'unknown';
 
       // Note: thoughtSignature should be set at the controller level based on query param
+
+      // Process API usage information if available (prioritize over local calculation)
+      if (chunk.usage) {
+        const usage = chunk.usage;
+        const promptTokens = usage.prompt_tokens ?? this.promptTokenCount;
+        const completionTokens = usage.completion_tokens ?? 0;
+        const totalTokens =
+          usage.total_tokens ?? promptTokens + completionTokens;
+
+        this.apiUsageMetadata = {
+          promptTokenCount: promptTokens,
+          candidatesTokenCount: completionTokens,
+          totalTokenCount: totalTokens,
+        };
+        this.logger.debug(
+          'Using API-provided usage metadata:',
+          this.apiUsageMetadata,
+        );
+      }
 
       if (chunk.choices && chunk.choices.length > 0) {
         const choice = chunk.choices[0];
@@ -380,52 +401,53 @@ export class StreamTransformer {
   private buildUsageMetadata(
     parts: Array<Record<string, unknown>>,
   ): GeminiUsageMetadataDto {
-    if (!Array.isArray(parts)) {
-      return (
-        this.lastUsageMetadata || {
-          promptTokenCount: this.promptTokenCount,
-          candidatesTokenCount: 0,
-          totalTokenCount: this.promptTokenCount,
+    // Accumulate text from parts for local calculation if needed
+    if (Array.isArray(parts)) {
+      for (const part of parts) {
+        const text = typeof part?.text === 'string' ? part.text : undefined;
+        if (!text) {
+          continue;
         }
-      );
-    }
 
-    for (const part of parts) {
-      const text = typeof part?.text === 'string' ? part.text : undefined;
-      if (!text) {
-        continue;
-      }
-
-      if ((part as { thought?: boolean }).thought) {
-        this.cumulativeThoughtText += text;
-      } else {
-        this.cumulativeCandidateText += text;
+        if ((part as { thought?: boolean }).thought) {
+          this.cumulativeThoughtText += text;
+        } else {
+          this.cumulativeCandidateText += text;
+        }
       }
     }
 
     const model = this.tokenizerModel || 'gpt-3.5-turbo';
 
-    const candidatesTokenCount = this.cumulativeCandidateText
-      ? this.tokenizerService.countTokens(this.cumulativeCandidateText, model)
-      : 0;
-    const thoughtsTokenCount = this.cumulativeThoughtText
-      ? this.tokenizerService.countTokens(this.cumulativeThoughtText, model)
-      : 0;
-    const totalTokenCount =
-      this.promptTokenCount + candidatesTokenCount + thoughtsTokenCount;
+    // Convert API usage to the expected format
+    const apiUsage = this.apiUsageMetadata
+      ? {
+          prompt_tokens: this.apiUsageMetadata.promptTokenCount,
+          completion_tokens: this.apiUsageMetadata.candidatesTokenCount,
+          total_tokens: this.apiUsageMetadata.totalTokenCount,
+        }
+      : null;
 
-    const usage: GeminiUsageMetadataDto = {
-      promptTokenCount: this.promptTokenCount,
-      candidatesTokenCount,
-      totalTokenCount,
-    };
+    // Use the new combined approach
+    const usage = this.tokenizerService.combineUsageInfo(
+      apiUsage,
+      {
+        candidateText: this.cumulativeCandidateText || undefined,
+        thoughtText: this.cumulativeThoughtText || undefined,
+      },
+      model,
+    );
 
-    if (thoughtsTokenCount > 0) {
-      usage.thoughtsTokenCount = thoughtsTokenCount;
+    // Override prompt tokens with our tracked value if API didn't provide it
+    if (!apiUsage?.prompt_tokens && this.promptTokenCount > 0) {
+      usage.promptTokenCount = this.promptTokenCount;
+      usage.totalTokenCount =
+        usage.promptTokenCount +
+        usage.candidatesTokenCount +
+        (usage.thoughtsTokenCount || 0);
     }
 
     this.lastUsageMetadata = usage;
-
     return usage;
   }
 
