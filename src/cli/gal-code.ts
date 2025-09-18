@@ -213,36 +213,6 @@ export async function runGalStatus(): Promise<void> {
   outputGatewayStatus('网关状态', context, status);
 }
 
-export async function runGalKill(): Promise<void> {
-  const projectRoot = locateProjectRoot(__dirname);
-  const scriptPath = path.join(projectRoot, 'scripts', 'force-kill.js');
-
-  if (!fs.existsSync(scriptPath)) {
-    console.error('未找到 scripts/force-kill.js，请确认项目结构完整。');
-    process.exit(1);
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, [scriptPath], {
-      cwd: projectRoot,
-      stdio: 'inherit',
-      env: process.env,
-    });
-
-    child.on('error', (error) => {
-      reject(error);
-    });
-
-    child.on('exit', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`force-kill 脚本以状态码 ${code ?? 'unknown'} 退出`));
-      }
-    });
-  });
-}
-
 function shouldRunWizard(
   configExists: boolean,
   result: ConfigValidationResult,
