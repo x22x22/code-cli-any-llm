@@ -1,6 +1,9 @@
 # Example configuration for gemini-any-llm
 # Copy this file to config.yaml and modify as needed for project-specific settings
 
+# Active provider: 'openai' or 'codex'
+aiProvider: openai
+
 # API Configuration
 openai:
   apiKey: 'your-api-key-here'
@@ -14,6 +17,21 @@ openai:
     # qwen-plus-latest: default 129,024, can be extended to 1,000,000
     # qwen-plus-2025-07-28: default 1,000,000
     max_input_tokens: 200000  # Increase input token limit
+
+# Codex configuration (optional, only used when aiProvider is set to codex)
+codex:
+  apiKey: ''
+  baseURL: 'https://chatgpt.com/backend-api/codex'
+  model: 'gpt-5-codex'
+  timeout: 60000
+  # reasoning.effort 控制推理 token 数量，可选 minimal/low/medium/high；默认 medium。
+  # 设置为 minimal 可显著降低延迟与推理 token 使用量（参考 OpenAI 最新模型指南）。
+  reasoning:
+    effort: minimal
+    summary: auto
+  # textVerbosity 控制回复详略程度，可选 low/medium/high；默认 medium。
+  # 较低值可得到更简洁的输出，适合追求低延迟或精简代码生成的场景。
+  textVerbosity: low
 
 # Gateway Configuration
 gateway:

@@ -52,13 +52,25 @@ export class ConfigModule {
                     baseURL: config.openai.baseURL,
                     model: config.openai.model,
                     timeout: config.openai.timeout,
+                    extraBody: config.openai.extraBody,
                   },
+                  codex: config.codex
+                    ? {
+                        apiKey: config.codex.apiKey,
+                        baseURL: config.codex.baseURL,
+                        model: config.codex.model,
+                        timeout: config.codex.timeout,
+                        reasoning: config.codex.reasoning,
+                        textVerbosity: config.codex.textVerbosity,
+                      }
+                    : undefined,
                   gateway: {
                     port: config.gateway.port,
                     host: config.gateway.host,
                     logLevel: config.gateway.logLevel,
                     logDir: resolveLogDir(config.gateway.logDir),
                   },
+                  aiProvider: config.aiProvider,
                 };
               }
 
@@ -72,13 +84,44 @@ export class ConfigModule {
                   model: process.env.GAL_OPENAI_MODEL || 'gpt-3.5-turbo',
                   organization: process.env.GAL_OPENAI_ORGANIZATION,
                   timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 30000,
+                  extraBody: undefined,
                 },
+                codex: process.env.GAL_CODEX_API_KEY
+                  ? {
+                      apiKey: process.env.GAL_CODEX_API_KEY,
+                      baseURL:
+                        process.env.GAL_CODEX_BASE_URL ||
+                        'https://chatgpt.com/backend-api/codex',
+                      model: process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
+                      timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 60000,
+                      reasoning: (() => {
+                        const raw = process.env.GAL_CODEX_REASONING;
+                        if (!raw) return undefined;
+                        try {
+                          return JSON.parse(raw);
+                        } catch {
+                          return undefined;
+                        }
+                      })(),
+                      textVerbosity: (() => {
+                        const raw = (
+                          process.env.GAL_CODEX_TEXT_VERBOSITY || ''
+                        ).toLowerCase();
+                        return ['low', 'medium', 'high'].includes(raw)
+                          ? (raw as 'low' | 'medium' | 'high')
+                          : undefined;
+                      })(),
+                    }
+                  : undefined,
                 gateway: {
                   port: Number(process.env.GAL_PORT) || 23062,
                   host: process.env.GAL_HOST || '0.0.0.0',
                   logLevel: process.env.GAL_LOG_LEVEL || 'info',
                   logDir: resolveLogDir(process.env.GAL_GATEWAY_LOG_DIR),
                 },
+                aiProvider: (
+                  process.env.GAL_AI_PROVIDER || 'openai'
+                ).toLowerCase(),
               };
             },
           ],
