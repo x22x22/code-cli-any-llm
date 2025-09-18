@@ -3,12 +3,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as yaml from 'js-yaml';
-import {
+import type {
   ConfigValidationResult,
   ConfigError,
   DefaultConfigTemplate,
   OpenAIConfig,
+  CodexConfig,
   GatewayConfig,
+  GlobalConfig,
 } from './global-config.interface';
 
 const DEFAULT_GATEWAY_LOG_DIR = path.join(
@@ -30,11 +32,17 @@ export class GlobalConfigService {
   loadGlobalConfig(): ConfigValidationResult {
     try {
       // 配置优先级：项目配置 > 全局配置 > 环境变量
-      let mergedConfig: any = {};
+      let mergedConfig: Partial<GlobalConfig> = {};
       const configSources: string[] = [];
 
       // 1. 环境变量作为基础配置（最低优先级）
-      const envConfig = {
+      const envAiProviderRaw = (
+        process.env.GAL_AI_PROVIDER || 'openai'
+      ).toLowerCase();
+      const envAiProvider: 'openai' | 'codex' =
+        envAiProviderRaw === 'codex' ? 'codex' : 'openai';
+      const envConfig: Partial<GlobalConfig> = {
+        aiProvider: envAiProvider,
         openai: {
           apiKey: process.env.GAL_OPENAI_API_KEY || '',
           baseURL:
@@ -42,7 +50,35 @@ export class GlobalConfigService {
             'https://open.bigmodel.cn/api/paas/v4',
           model: process.env.GAL_OPENAI_MODEL || 'glm-4.5',
           timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 30000,
+          extraBody: undefined,
         },
+        codex: process.env.GAL_CODEX_API_KEY
+          ? {
+              apiKey: process.env.GAL_CODEX_API_KEY || '',
+              baseURL:
+                process.env.GAL_CODEX_BASE_URL ||
+                'https://chatgpt.com/backend-api/codex',
+              model: process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
+              timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 60000,
+              reasoning: (() => {
+                const raw = process.env.GAL_CODEX_REASONING;
+                if (!raw) return undefined;
+                try {
+                  return JSON.parse(raw);
+                } catch {
+                  return undefined;
+                }
+              })(),
+              textVerbosity: (() => {
+                const raw = (
+                  process.env.GAL_CODEX_TEXT_VERBOSITY || ''
+                ).toLowerCase();
+                return ['low', 'medium', 'high'].includes(raw)
+                  ? (raw as 'low' | 'medium' | 'high')
+                  : undefined;
+              })(),
+            }
+          : undefined,
         gateway: {
           port: Number(process.env.GAL_PORT) || 23062,
           host: process.env.GAL_HOST || '0.0.0.0',
@@ -50,11 +86,20 @@ export class GlobalConfigService {
           logDir: process.env.GAL_GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
         },
       };
-      mergedConfig = this.deepMerge(mergedConfig, envConfig);
+      mergedConfig = this.deepMerge(
+        mergedConfig as Record<string, unknown>,
+        envConfig as Record<string, unknown>,
+      ) as Partial<GlobalConfig>;
       if (
         process.env.GAL_OPENAI_API_KEY ||
         process.env.GAL_OPENAI_BASE_URL ||
         process.env.GAL_OPENAI_MODEL ||
+        process.env.GAL_AI_PROVIDER ||
+        process.env.GAL_CODEX_API_KEY ||
+        process.env.GAL_CODEX_BASE_URL ||
+        process.env.GAL_CODEX_MODEL ||
+        process.env.GAL_CODEX_REASONING ||
+        process.env.GAL_CODEX_TEXT_VERBOSITY ||
         process.env.GAL_PORT ||
         process.env.GAL_HOST ||
         process.env.GAL_LOG_LEVEL ||
@@ -70,9 +115,14 @@ export class GlobalConfigService {
       }
 
       const globalConfigContent = fs.readFileSync(this.configFile, 'utf8');
-      const globalConfig = yaml.load(globalConfigContent) as any;
+      const globalConfig = yaml.load(globalConfigContent) as
+        | Partial<GlobalConfig>
+        | undefined;
       if (globalConfig) {
-        mergedConfig = this.deepMerge(mergedConfig, globalConfig);
+        mergedConfig = this.deepMerge(
+          mergedConfig as Record<string, unknown>,
+          globalConfig as Record<string, unknown>,
+        ) as Partial<GlobalConfig>;
         configSources.push(this.configFile);
       }
 
@@ -85,9 +135,14 @@ export class GlobalConfigService {
 
       if (fs.existsSync(projectConfigFile)) {
         const projectConfigContent = fs.readFileSync(projectConfigFile, 'utf8');
-        const projectConfig = yaml.load(projectConfigContent) as any;
+        const projectConfig = yaml.load(projectConfigContent) as
+          | Partial<GlobalConfig>
+          | undefined;
         if (projectConfig) {
-          mergedConfig = this.deepMerge(mergedConfig, projectConfig);
+          mergedConfig = this.deepMerge(
+            mergedConfig as Record<string, unknown>,
+            projectConfig as Record<string, unknown>,
+          ) as Partial<GlobalConfig>;
           configSources.unshift(projectConfigFile); // 项目配置放在最前面
         }
       }
@@ -125,24 +180,29 @@ export class GlobalConfigService {
     }
   }
 
-  private deepMerge(target: any, source: any): any {
-    const result = { ...target };
+  private deepMerge(
+    target: Record<string, unknown> | undefined,
+    source: Record<string, unknown> | undefined,
+  ): Record<string, unknown> {
+    if (!source) {
+      return target ?? {};
+    }
 
-    for (const key in source) {
-      if (Object.prototype.hasOwnProperty.call(source, key)) {
-        if (
-          source[key] !== null &&
-          typeof source[key] === 'object' &&
-          !Array.isArray(source[key])
-        ) {
-          // 如果是对象，递归合并
-          result[key] = this.deepMerge(result[key] || {}, source[key]);
-        } else {
-          // 如果不是对象，覆盖（但跳过空字符串，除非target中也没有值）
-          if (source[key] !== '' || !result[key]) {
-            result[key] = source[key];
-          }
-        }
+    const result: Record<string, unknown> = { ...(target ?? {}) };
+
+    for (const [key, value] of Object.entries(source)) {
+      if (
+        value !== null &&
+        typeof value === 'object' &&
+        !Array.isArray(value)
+      ) {
+        const existing = result[key];
+        result[key] = this.deepMerge(
+          (existing as Record<string, unknown>) ?? {},
+          value as Record<string, unknown>,
+        );
+      } else if (value !== '' || result[key] === undefined) {
+        result[key] = value;
       }
     }
 
@@ -164,6 +224,8 @@ export class GlobalConfigService {
     const template = `# Global configuration for gemini-any-llm
 # Edit this file to configure your default API settings
 
+aiProvider: openai
+
 # API Configuration (REQUIRED)
 openai:
   # Your API key - REQUIRED, get it from your provider
@@ -177,6 +239,17 @@ openai:
 
   # Request timeout in milliseconds
   timeout: 30000
+
+# Codex configuration (optional)
+codex:
+  apiKey: ""
+  baseURL: "https://chatgpt.com/backend-api/codex"
+  model: "gpt-5-codex-high"
+  timeout: 60000
+  reasoning:
+    effort: minimal
+    summary: auto
+  textVerbosity: low
 
 # Gateway Configuration
 gateway:
@@ -192,21 +265,37 @@ gateway:
     };
   }
 
-  private validateConfig(config: any): ConfigValidationResult {
+  private validateConfig(
+    rawConfig: Partial<GlobalConfig>,
+  ): ConfigValidationResult {
+    const config: Partial<GlobalConfig> = JSON.parse(
+      JSON.stringify(rawConfig ?? {}),
+    );
     const errors: ConfigError[] = [];
     const warnings: string[] = [];
 
+    let openaiConfig = config.openai as OpenAIConfig | undefined;
+
     // 验证openai配置
-    if (!config.openai) {
+    if (!openaiConfig) {
       errors.push({
         field: 'openai',
         message: 'OpenAI配置缺失',
         suggestion: '请添加openai配置节',
         required: true,
       });
+      openaiConfig = {
+        apiKey: '',
+        baseURL: 'https://open.bigmodel.cn/api/paas/v4',
+        model: 'glm-4.5',
+        timeout: 30000,
+        extraBody: undefined,
+      };
+      config.openai = openaiConfig;
     } else {
+      const trimmedApiKey = openaiConfig.apiKey?.trim();
       // 验证apiKey
-      if (!config.openai.apiKey || config.openai.apiKey.trim() === '') {
+      if (!trimmedApiKey) {
         errors.push({
           field: 'openai.apiKey',
           message: 'API密钥为空',
@@ -216,41 +305,145 @@ gateway:
       }
 
       // 验证baseURL
-      if (!config.openai.baseURL) {
+      if (!openaiConfig.baseURL) {
         warnings.push('baseURL未设置，将使用默认值');
-        config.openai.baseURL = 'https://open.bigmodel.cn/api/paas/v4';
+        openaiConfig.baseURL = 'https://open.bigmodel.cn/api/paas/v4';
       }
 
       // 验证model
-      if (!config.openai.model) {
+      if (!openaiConfig.model) {
         warnings.push('model未设置，将使用默认值');
-        config.openai.model = 'glm-4.5';
+        openaiConfig.model = 'glm-4.5';
       }
 
       // 验证timeout
-      if (!config.openai.timeout) {
+      if (!openaiConfig.timeout) {
         warnings.push('timeout未设置，将使用默认值');
-        config.openai.timeout = 30000;
+        openaiConfig.timeout = 30000;
       }
     }
 
+    const aiProviderRaw = (config.aiProvider || 'openai')
+      .toString()
+      .toLowerCase();
+    let aiProvider: 'openai' | 'codex';
+    if (aiProviderRaw === 'codex') {
+      aiProvider = 'codex';
+    } else if (aiProviderRaw === 'openai') {
+      aiProvider = 'openai';
+    } else {
+      errors.push({
+        field: 'aiProvider',
+        message: `不支持的 aiProvider: ${aiProviderRaw}`,
+        suggestion: '仅支持 openai 或 codex',
+        required: true,
+      });
+      aiProvider = 'openai';
+    }
+    config.aiProvider = aiProvider;
+
+    let codexConfig = config.codex as CodexConfig | undefined;
+    if (aiProvider === 'codex') {
+      if (!codexConfig) {
+        codexConfig = {
+          apiKey: '',
+          baseURL: 'https://chatgpt.com/backend-api/codex',
+          model: 'gpt-5-codex-high',
+          timeout: 60000,
+          reasoning: {
+            effort: 'minimal',
+            summary: 'auto',
+          },
+          textVerbosity: 'low',
+        };
+        config.codex = codexConfig;
+      }
+
+      const trimmedCodexKey = codexConfig.apiKey?.trim();
+      if (!trimmedCodexKey) {
+        errors.push({
+          field: 'codex.apiKey',
+          message: 'Codex API密钥为空',
+          suggestion: '请在配置文件中设置 codex.apiKey',
+          required: true,
+        });
+      }
+      if (!codexConfig.baseURL) {
+        warnings.push('codex.baseURL未设置，将使用默认值');
+        codexConfig.baseURL = 'https://chatgpt.com/backend-api/codex';
+      }
+      if (!codexConfig.model) {
+        warnings.push('codex.model未设置，将使用默认值');
+        codexConfig.model = 'gpt-5-codex-high';
+      }
+      if (!codexConfig.timeout) {
+        warnings.push('codex.timeout未设置，将使用默认值');
+        codexConfig.timeout = 60000;
+      }
+      if (!codexConfig.reasoning) {
+        codexConfig.reasoning = {
+          effort: 'minimal',
+          summary: 'auto',
+        };
+      } else {
+        const effortRaw = codexConfig.reasoning.effort;
+        if (
+          effortRaw &&
+          typeof effortRaw === 'string' &&
+          ['minimal', 'low', 'medium', 'high'].includes(effortRaw.toLowerCase())
+        ) {
+          codexConfig.reasoning.effort = effortRaw.toLowerCase() as
+            | 'minimal'
+            | 'low'
+            | 'medium'
+            | 'high';
+        } else {
+          codexConfig.reasoning.effort = 'minimal';
+          warnings.push('codex.reasoning.effort无效，将使用默认值 minimal');
+        }
+
+        const summaryRaw = codexConfig.reasoning.summary;
+        if (
+          summaryRaw &&
+          typeof summaryRaw === 'string' &&
+          ['concise', 'detailed', 'auto'].includes(summaryRaw.toLowerCase())
+        ) {
+          codexConfig.reasoning.summary = summaryRaw.toLowerCase() as
+            | 'concise'
+            | 'detailed'
+            | 'auto';
+        } else {
+          codexConfig.reasoning.summary = 'auto';
+          warnings.push('codex.reasoning.summary无效，将使用默认值 auto');
+        }
+      }
+      if (!codexConfig.textVerbosity) {
+        codexConfig.textVerbosity = 'low';
+      }
+    } else {
+      config.codex =
+        codexConfig && codexConfig.apiKey ? codexConfig : undefined;
+    }
+
     // 验证gateway配置
-    if (!config.gateway) {
+    let gatewayConfig = config.gateway;
+    if (!gatewayConfig) {
       warnings.push('gateway配置缺失，将使用默认值');
-      config.gateway = {
+      gatewayConfig = {
         port: 23062,
         host: '0.0.0.0',
         logLevel: 'info',
         logDir: DEFAULT_GATEWAY_LOG_DIR,
       };
+      config.gateway = gatewayConfig;
     }
 
-    if (!config.gateway.logDir) {
+    if (!gatewayConfig.logDir) {
       warnings.push('gateway.logDir未设置，将使用默认值');
-      config.gateway.logDir = DEFAULT_GATEWAY_LOG_DIR;
+      gatewayConfig.logDir = DEFAULT_GATEWAY_LOG_DIR;
     }
 
-    config.gateway.logDir = this.normalizeLogDir(config.gateway.logDir);
+    gatewayConfig.logDir = this.normalizeLogDir(gatewayConfig.logDir);
 
     const isValid = errors.length === 0;
     const result: ConfigValidationResult = {
@@ -261,8 +454,10 @@ gateway:
 
     if (isValid) {
       result.config = {
-        openai: config.openai as OpenAIConfig,
+        openai: config.openai ?? openaiConfig,
+        codex: config.codex,
         gateway: config.gateway as GatewayConfig,
+        aiProvider: config.aiProvider ?? 'openai',
         configSource: '', // 将在调用方设置
         isValid: true,
       };
