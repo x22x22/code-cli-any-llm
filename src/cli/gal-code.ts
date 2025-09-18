@@ -250,8 +250,8 @@ async function configureCodex(
 
   const model = await ask(
     rl,
-    '默认模型 (默认 gpt-5-codex-high)',
-    existing.model ?? 'gpt-5-codex-high',
+    '默认模型 (默认 gpt-5-codex)',
+    existing.model ?? 'gpt-5-codex',
   );
 
   const apiKey = await askRequired(rl, 'Codex API Key', existing.apiKey);

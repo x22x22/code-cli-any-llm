@@ -244,7 +244,7 @@ openai:
 codex:
   apiKey: ""
   baseURL: "https://chatgpt.com/backend-api/codex"
-  model: "gpt-5-codex-high"
+  model: "gpt-5-codex"
   timeout: 60000
   reasoning:
     effort: minimal
@@ -350,7 +350,7 @@ gateway:
         codexConfig = {
           apiKey: '',
           baseURL: 'https://chatgpt.com/backend-api/codex',
-          model: 'gpt-5-codex-high',
+          model: 'gpt-5-codex',
           timeout: 60000,
           reasoning: {
             effort: 'minimal',
@@ -378,7 +378,7 @@ gateway:
       }
       if (!codexConfig.model) {
         warnings.push('codex.model未设置，将使用默认值');
-        codexConfig.model = 'gpt-5-codex-high';
+        codexConfig.model = 'gpt-5-codex';
       }
       if (!codexConfig.timeout) {
         warnings.push('codex.timeout未设置，将使用默认值');

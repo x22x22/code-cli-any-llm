@@ -8,7 +8,7 @@ Gemini Any LLM Gateway 是一个 API 网关服务，让您可以通过 Gemini CL
 
 **核心特性**：
 - 🔌 **即插即用** - 无需修改 Gemini CLI，完全兼容
-- 🌐 **多提供商支持** - 支持 OpenAI、智谱AI、千问等多种提供商
+- 🌐 **多提供商支持** - 支持 Codex、OpenAI、智谱AI、千问等多种提供商
 - ⚡ **高性能流式响应** - 实时流式输出，体验流畅
 - 🛠️ **智能工具调用** - 完整支持 Function Calling
 - 📁 **灵活配置管理** - 全局配置 + 项目配置，使用便捷
@@ -37,9 +37,10 @@ gal code
 ```
 
 **首次运行流程**：
-- 系统会自动触发配置向导，要求填写：
-  - **OpenAI Base URL**（默认：`https://open.bigmodel.cn/api/paas/v4`）
-  - **默认模型**（默认：`glm-4.5`）  
+- 系统会自动触发配置向导，首先需选择 **AI Provider**（`openai` 或 `codex`）
+- 根据所选提供商填写：
+  - **Base URL**（OpenAI 默认：`https://open.bigmodel.cn/api/paas/v4`，Codex 默认：`https://chatgpt.com/backend-api/codex`）
+  - **默认模型**（OpenAI 默认：`glm-4.5`，Codex 默认：`gpt-5-codex`）
   - **API Key**（必填）
 - 配置将保存到 `~/.gemini-any-llm/config.yaml`
 - 自动生成或更新 `~/.gemini/settings.json`，设置认证类型为 `gemini-api-key`
@@ -116,7 +117,8 @@ gal code --temperature 0.7 "写一个创意故事"
 ### 支持的提供商
 
 | 提供商 | baseURL | 推荐模型 |
-|--------|---------|----------|
+|--------|---------|----------|gpt-5-codex
+| Codex | `https://chatgpt.com/backend-api/codex` | `gpt-5-codex` |
 | **智谱AI**（默认） | `https://open.bigmodel.cn/api/paas/v4` | `glm-4.5` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4`, `gpt-4o` |
 | 千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus`, `qwen-turbo` |
@@ -127,11 +129,25 @@ gal code --temperature 0.7 "写一个创意故事"
 支持通过环境变量进行配置（作为基础配置，优先级最低）：
 
 ```bash
-# API 配置
+# 选择主提供商（支持 openai 或 codex）
+export GAL_AI_PROVIDER="codex"
+
+# Codex 配置
+export GAL_CODEX_API_KEY="your-codex-api-key"
+export GAL_CODEX_BASE_URgpt-5-codexpt.com/backend-api/codex"
+export GAL_CODEX_MODEL="gpt-5-codex"
+export GAL_CODEX_TIMEOUT="60000"
+# 可选：推理参数与输出冗长度控制
+export GAL_CODEX_REASONING='{"effort":"medium"}'
+export GAL_CODEX_TEXT_VERBOSITY="medium"
+
+# OpenAI/兼容服务配置
 export GAL_OPENAI_API_KEY="your-api-key"
 export GAL_OPENAI_BASE_URL="https://api.openai.com/v1"
 export GAL_OPENAI_MODEL="gpt-4"
 export GAL_OPENAI_TIMEOUT="30000"
+# 可选：OpenAI 组织 ID
+export GAL_OPENAI_ORGANIZATION="org-xxxxxx"
 
 # 网关配置
 export GAL_PORT="23062"
@@ -139,8 +155,7 @@ export GAL_HOST="0.0.0.0"
 export GAL_LOG_LEVEL="info"
 export GAL_GATEWAY_LOG_DIR="~/.gemini-any-llm/logs"
 
-# 可选的高级配置
-export GAL_OPENAI_ORGANIZATION="org-xxxxxx"    # OpenAI 组织 ID
+# 通用高级配置
 export GAL_RATE_LIMIT_MAX="100"                # API 限流上限（每15分钟）
 export GAL_REQUEST_TIMEOUT="120000"            # 请求超时时间（毫秒）
 export GAL_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8080"  # CORS 允许的来源
@@ -167,14 +182,36 @@ gateway:
 EOF
 ```
 
+若要将 Codex 作为项目默认提供商，可在同一文件中写入：
+
+```yaml
+aiProvider: codex
+codex:
+  apiKey: "project-codex-key"
+  baseURL: "https://chatgpt.com/backend-api/codex"
+  model: "gpt-5-codex"
+  timeout: 60000
+  # 可选：自定义推理强度与输出冗长度
+  reasoning:
+    effort: medium
+  textVerbosity: medium
+```
+
 ## 🔧 详细配置说明
 
 ### API 配置项
 
-- **`openai.apiKey`** - AI 提供商的 API 密钥（必需）
-- **`openai.baseURL`** - API 端点地址（默认：智谱AI）
+- **`aiProvider`** - 主提供商类型，可选 `openai` 或 `codex`
+- **`openai.apiKey`** - OpenAI 或兼容服务的 API 密钥（使用 `openai` 时必需）
+- **`openai.baseURL`** - OpenAI 兼容 API 端点地址（默认：智谱AI）
 - **`openai.model`** - 默认使用的模型名称（默认：`glm-4.5`）
 - **`openai.timeout`** - 请求超时时间，毫秒（默认：30000）
+- **`codex.apiKey`** - Codex 的 API 密钥（使用 `codex` 时必需）
+- **`codex.baseURL`** - Codex API 端点地址（默认：`https://chatgpt.com/backend-api/codex`）
+- **`codex.model`** - Codex 模型名称（默认：`gpt-5-codex`）
+- **`codex.timeout`** - Codex 请求超时时间，毫秒（默认：60000）
+- **`codex.reasoning`** - Codex 推理配置，遵循 Codex Responses API 的 JSON 结构
+- **`codex.textVerbosity`** - Codex 文本冗长度，支持 `low`/`medium`/`high`
 
 ### 网关配置项
 
@@ -336,10 +373,13 @@ openai:
 gal auth
 ```
 
-然后选择不同的 `baseURL` 和对应的模型：
+在向导中选择想要使用的提供商，也可以通过环境变量 `GAL_AI_PROVIDER`（取值 `openai` 或 `codex`）提前指定。
+
+常见配置示例：
 - **OpenAI**: `https://api.openai.com/v1` + `gpt-4` 或 `gpt-4o`
 - **千问**: `https://dashscope.aliyuncs.com/compatible-mode/v1` + `qwen-plus` 或 `qwen-turbo`
 - **智谱AI**: `https://open.bigmodel.cn/api/paas/v4` + `glm-4.5`
+- **Codex**: `https://chatgpt.com/backend-api/codex` + `gpt-5-codex`
 
 ### Q: 如何为特定项目使用不同的模型？
 

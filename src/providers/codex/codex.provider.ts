@@ -103,7 +103,7 @@ export class CodexProvider implements OnModuleInit {
       const resolved: ResolvedCodexConfig = {
         apiKey: config.apiKey,
         baseURL: config.baseURL || 'https://chatgpt.com/backend-api',
-        model: config.model || 'gpt-5-codex-high',
+        model: config.model || 'gpt-5-codex',
         timeout: config.timeout || 60000,
         textVerbosity: config.textVerbosity,
       };
