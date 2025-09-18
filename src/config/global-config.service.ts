@@ -274,7 +274,8 @@ gateway:
     const errors: ConfigError[] = [];
     const warnings: string[] = [];
 
-    let openaiConfig = config.openai as OpenAIConfig | undefined;
+    let openaiConfig: OpenAIConfig | undefined =
+      config.openai as OpenAIConfig | undefined;
 
     // 验证openai配置
     if (!openaiConfig) {
@@ -342,7 +343,8 @@ gateway:
     }
     config.aiProvider = aiProvider;
 
-    let codexConfig = config.codex as CodexConfig | undefined;
+    let codexConfig: CodexConfig | undefined =
+      config.codex as CodexConfig | undefined;
     if (aiProvider === 'codex') {
       if (!codexConfig) {
         codexConfig = {
@@ -358,6 +360,8 @@ gateway:
         };
         config.codex = codexConfig;
       }
+
+      codexConfig = config.codex as CodexConfig;
 
       const trimmedCodexKey = codexConfig.apiKey?.trim();
       if (!trimmedCodexKey) {
@@ -403,18 +407,19 @@ gateway:
         }
 
         const summaryRaw = codexConfig.reasoning.summary;
-        if (
-          summaryRaw &&
-          typeof summaryRaw === 'string' &&
-          ['concise', 'detailed', 'auto'].includes(summaryRaw.toLowerCase())
-        ) {
-          codexConfig.reasoning.summary = summaryRaw.toLowerCase() as
-            | 'concise'
-            | 'detailed'
-            | 'auto';
+        if (typeof summaryRaw === 'string') {
+          const normalizedSummary = summaryRaw.toLowerCase();
+          if (['concise', 'detailed', 'auto'].includes(normalizedSummary)) {
+            codexConfig.reasoning.summary = normalizedSummary as
+              | 'concise'
+              | 'detailed'
+              | 'auto';
+          } else {
+            codexConfig.reasoning.summary = 'auto';
+            warnings.push('codex.reasoning.summary无效，将使用默认值 auto');
+          }
         } else {
           codexConfig.reasoning.summary = 'auto';
-          warnings.push('codex.reasoning.summary无效，将使用默认值 auto');
         }
       }
       if (!codexConfig.textVerbosity) {
@@ -426,7 +431,8 @@ gateway:
     }
 
     // 验证gateway配置
-    let gatewayConfig = config.gateway;
+    let gatewayConfig: GatewayConfig | undefined =
+      config.gateway as GatewayConfig | undefined;
     if (!gatewayConfig) {
       warnings.push('gateway配置缺失，将使用默认值');
       gatewayConfig = {
