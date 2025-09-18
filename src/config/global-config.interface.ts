@@ -3,6 +3,7 @@ export interface OpenAIConfig {
   baseURL: string;
   model: string;
   timeout: number;
+  extraBody?: Record<string, any>;
 }
 
 export interface GatewayConfig {

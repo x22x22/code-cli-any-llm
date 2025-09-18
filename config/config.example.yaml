@@ -7,6 +7,13 @@ openai:
   baseURL: 'https://open.bigmodel.cn/api/paas/v4'  # 智谱AI endpoint
   model: 'glm-4.5'  # Default model
   timeout: 30000
+  # Extra body parameters that will be added to the API request
+  # Useful for provider-specific parameters like max_input_tokens for qwen models
+  extraBody:
+    # For qwen-plus models, set max_input_tokens to increase input limit
+    # qwen-plus-latest: default 129,024, can be extended to 1,000,000
+    # qwen-plus-2025-07-28: default 1,000,000
+    max_input_tokens: 200000  # Increase input token limit
 
 # Gateway Configuration
 gateway:

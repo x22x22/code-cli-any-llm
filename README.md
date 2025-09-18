@@ -291,10 +291,89 @@ openai:
 
 ```bash
 # 查看网关日志
-tail -n 300 -f ~/.gemini-any-llm/logs/gateway.log
+tail -n 300 -f ~/.gemini-any-llm/logs/gateway-{日期-时间}.log
 
 # 启用调试模式
 export LOG_LEVEL=debug
+gal restart
+```
+
+## ❓ 常见问题 (FAQ)
+
+### Q: 提示输入长度超出范围怎么办？
+
+**现象**：
+- 在 Gemini CLI 中显示："Model stream ended with an invalid chunk or missing finish reason."
+- 在网关日志(~/.gemini-any-llm/logs/)中可见详细错误，例如：
+```
+InternalError.Algo.InvalidParameter: Range of input length should be [1, 98304]
+```
+
+**原因**：输入的 token 数量超过了模型的默认限制
+
+**解决方案**：
+1. 通过配置 `extraBody.max_input_tokens` 增加输入限制：
+```yaml
+# ~/.gemini-any-llm/config.yaml 或项目配置文件
+openai:
+  apiKey: "your-api-key"
+  baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  model: "qwen-plus-latest"
+  extraBody:
+    max_input_tokens: 200000  # 增加输入token限制
+```
+
+2. 不同模型的默认限制：
+   - `qwen-plus-latest`: 默认 129,024，可扩展到 1,000,000
+   - `qwen-plus-2025-07-28`: 默认 1,000,000
+   - 其他模型请查阅相应文档
+
+### Q: 如何切换到其他 AI 提供商？
+
+**解决方案**：
+```bash
+# 重新配置认证信息
+gal auth
+```
+
+然后选择不同的 `baseURL` 和对应的模型：
+- **OpenAI**: `https://api.openai.com/v1` + `gpt-4` 或 `gpt-4o`
+- **千问**: `https://dashscope.aliyuncs.com/compatible-mode/v1` + `qwen-plus` 或 `qwen-turbo`
+- **智谱AI**: `https://open.bigmodel.cn/api/paas/v4` + `glm-4.5`
+
+### Q: 如何为特定项目使用不同的模型？
+
+**解决方案**：
+在项目根目录创建 `config/config.yaml` 文件：
+```yaml
+openai:
+  apiKey: "project-specific-key"
+  model: "gpt-4"
+  baseURL: "https://api.openai.com/v1"
+  timeout: 30000
+gateway:
+  logLevel: "debug"  # 项目开发时使用调试模式
+```
+
+项目配置优先级最高，会覆盖全局配置。
+
+### Q: 服务启动后无法访问或响应缓慢？
+
+**解决方案**：
+1. 检查服务状态：
+```bash
+gal status
+```
+
+2. 检查网络连接到 AI 提供商
+3. 尝试增加超时时间：
+```yaml
+openai:
+  timeout: 60000  # 60秒
+```
+
+4. 如果仍有问题，重启服务：
+```bash
 gal restart
 ```
 

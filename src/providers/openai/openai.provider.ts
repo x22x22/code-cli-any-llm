@@ -61,6 +61,7 @@ export class OpenAIProvider implements OnModuleInit {
           stop: request.stop,
           user: request.user,
           stream: false,
+          ...(this.config.extraBody || {}),
         };
 
         this.logger.debug('=== OpenAI Request Details ===');
@@ -84,6 +85,7 @@ export class OpenAIProvider implements OnModuleInit {
           stop: request.stop,
           user: request.user,
           stream: false,
+          ...(this.config.extraBody || {}),
         });
 
         // 打印 OpenAI 响应内容
@@ -163,6 +165,7 @@ export class OpenAIProvider implements OnModuleInit {
           stop: request.stop,
           user: request.user,
           stream: true,
+          ...(this.config.extraBody || {}),
         });
       } catch (createError) {
         this.logger.error('Failed to create OpenAI stream:', {

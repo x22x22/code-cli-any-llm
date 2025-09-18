@@ -5,6 +5,7 @@ import {
   IsNumber,
   Min,
   Max,
+  IsObject,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import os from 'os';
@@ -68,6 +69,10 @@ export class OpenAIConfig {
     value ? parseInt(value, 10) : 30000,
   )
   timeout?: number;
+
+  @IsOptional()
+  @IsObject()
+  extraBody?: Record<string, any>;
 }
 
 export class GatewayConfig {
