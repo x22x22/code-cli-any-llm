@@ -37,13 +37,14 @@ describe('GlobalConfig Integration Tests', () => {
       fs.rmSync(projectConfigFile, { force: true });
     }
     // Clear environment variables for each test to ensure isolation
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_BASE_URL;
-    delete process.env.OPENAI_MODEL;
-    delete process.env.OPENAI_TIMEOUT;
-    delete process.env.PORT;
-    delete process.env.HOST;
-    delete process.env.LOG_LEVEL;
+    delete process.env.GAL_OPENAI_API_KEY;
+    delete process.env.GAL_OPENAI_BASE_URL;
+    delete process.env.GAL_OPENAI_MODEL;
+    delete process.env.GAL_OPENAI_TIMEOUT;
+    delete process.env.GAL_PORT;
+    delete process.env.GAL_HOST;
+    delete process.env.GAL_LOG_LEVEL;
+    delete process.env.GAL_GATEWAY_LOG_DIR;
   });
 
   afterEach(() => {

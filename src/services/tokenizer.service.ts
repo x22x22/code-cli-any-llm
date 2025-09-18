@@ -1,5 +1,12 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { encoding_for_model, TiktokenModel } from 'tiktoken';
+import { GeminiUsageMetadataDto } from '../models/gemini/gemini-usage-metadata.dto';
+
+export interface UsageInfo {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
 
 @Injectable()
 export class TokenizerService implements OnModuleDestroy {
@@ -70,6 +77,70 @@ export class TokenizerService implements OnModuleDestroy {
     }
 
     return totalTokens;
+  }
+
+  /**
+   * Combine API-provided usage information with local token calculation
+   * Prioritizes API usage data, fills gaps with local calculation
+   */
+  combineUsageInfo(
+    apiUsage: UsageInfo | null,
+    localText: {
+      promptText?: string;
+      candidateText?: string;
+      thoughtText?: string;
+    },
+    model?: string,
+  ): GeminiUsageMetadataDto {
+    const usedModel = model || 'gpt-3.5-turbo';
+
+    // If we have complete API usage info, use it directly
+    if (
+      apiUsage?.prompt_tokens &&
+      apiUsage?.completion_tokens &&
+      apiUsage?.total_tokens
+    ) {
+      this.logger.debug('Using complete API usage information');
+      return {
+        promptTokenCount: apiUsage.prompt_tokens,
+        candidatesTokenCount: apiUsage.completion_tokens,
+        totalTokenCount: apiUsage.total_tokens,
+      };
+    }
+
+    // Calculate missing parts locally
+    const localPromptTokens = localText.promptText
+      ? this.countTokens(localText.promptText, usedModel)
+      : 0;
+    const localCandidateTokens = localText.candidateText
+      ? this.countTokens(localText.candidateText, usedModel)
+      : 0;
+    const localThoughtTokens = localText.thoughtText
+      ? this.countTokens(localText.thoughtText, usedModel)
+      : 0;
+
+    // Use API values when available, fall back to local calculation
+    const promptTokenCount = apiUsage?.prompt_tokens ?? localPromptTokens;
+    const candidatesTokenCount =
+      apiUsage?.completion_tokens ?? localCandidateTokens;
+    const totalTokenCount =
+      apiUsage?.total_tokens ??
+      promptTokenCount + candidatesTokenCount + localThoughtTokens;
+
+    const result: GeminiUsageMetadataDto = {
+      promptTokenCount,
+      candidatesTokenCount,
+      totalTokenCount,
+    };
+
+    if (localThoughtTokens > 0) {
+      result.thoughtsTokenCount = localThoughtTokens;
+    }
+
+    const usageSource = apiUsage ? 'hybrid (API + local)' : 'local only';
+    this.logger.debug(`Token usage calculated using ${usageSource}:`, result);
+
+    return result;
   }
 
   /**

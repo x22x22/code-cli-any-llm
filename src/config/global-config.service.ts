@@ -36,29 +36,29 @@ export class GlobalConfigService {
       // 1. 环境变量作为基础配置（最低优先级）
       const envConfig = {
         openai: {
-          apiKey: process.env.OPENAI_API_KEY || '',
+          apiKey: process.env.GAL_OPENAI_API_KEY || '',
           baseURL:
-            process.env.OPENAI_BASE_URL ||
+            process.env.GAL_OPENAI_BASE_URL ||
             'https://open.bigmodel.cn/api/paas/v4',
-          model: process.env.OPENAI_MODEL || 'glm-4.5',
-          timeout: Number(process.env.OPENAI_TIMEOUT) || 30000,
+          model: process.env.GAL_OPENAI_MODEL || 'glm-4.5',
+          timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 30000,
         },
         gateway: {
-          port: Number(process.env.PORT) || 23062,
-          host: process.env.HOST || '0.0.0.0',
-          logLevel: process.env.LOG_LEVEL || 'info',
-          logDir: process.env.GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
+          port: Number(process.env.GAL_PORT) || 23062,
+          host: process.env.GAL_HOST || '0.0.0.0',
+          logLevel: process.env.GAL_LOG_LEVEL || 'info',
+          logDir: process.env.GAL_GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
         },
       };
       mergedConfig = this.deepMerge(mergedConfig, envConfig);
       if (
-        process.env.OPENAI_API_KEY ||
-        process.env.OPENAI_BASE_URL ||
-        process.env.OPENAI_MODEL ||
-        process.env.PORT ||
-        process.env.HOST ||
-        process.env.LOG_LEVEL ||
-        process.env.GATEWAY_LOG_DIR
+        process.env.GAL_OPENAI_API_KEY ||
+        process.env.GAL_OPENAI_BASE_URL ||
+        process.env.GAL_OPENAI_MODEL ||
+        process.env.GAL_PORT ||
+        process.env.GAL_HOST ||
+        process.env.GAL_LOG_LEVEL ||
+        process.env.GAL_GATEWAY_LOG_DIR
       ) {
         configSources.push('环境变量');
       }

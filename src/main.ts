@@ -18,7 +18,8 @@ async function bootstrap() {
 
   const gatewayLogger = GatewayLoggerService.create({
     logDir:
-      globalConfigResult.config?.gateway?.logDir || process.env.GATEWAY_LOG_DIR,
+      globalConfigResult.config?.gateway?.logDir ||
+      process.env.GAL_GATEWAY_LOG_DIR,
   });
   Logger.overrideLogger(gatewayLogger);
   const logger = new Logger('Bootstrap');

@@ -21,7 +21,7 @@
 ## 测试指南
 - Jest + ts-jest 驱动单元与集成测试，自动收集 `src/**/*.(t|j)s` 覆盖；运行 `pnpm run test:cov` 会在 `coverage/` 输出报告并供 CI 阈值使用。
 - 新增特性时至少补齐单位测试和一条集成或契约测试，目录命名参考 `test/unit/rate-limit/`、`test/integration/tokenizer/`，文件使用 `<feature>.spec.ts`。
-- 端到端脚本在 `app.e2e-spec.ts` 或 `test/e2e/` 扩展，若依赖外部 API，使用 `supertest` + 可配置 baseURL，并通过 `OPENAI_API_KEY=stub` 等环境变量模拟。
+- 端到端脚本在 `app.e2e-spec.ts` 或 `test/e2e/` 扩展，若依赖外部 API，使用 `supertest` + 可配置 baseURL，并通过 `GAL_OPENAI_API_KEY=stub` 等环境变量模拟。
 - 目标覆盖率保持关键模块 ≥80%，若因外部依赖或代理流程无法覆盖，需在 PR 中说明风险与手动验证步骤。
 
 ## 提交与 PR 指南
@@ -31,6 +31,6 @@
 - 默认要求至少一名代码所有者评审；若引入破坏性更改，请附截图、日志片段或 Postman collection 说明现象，并在 PR 讨论中约定发布时间窗。
 
 ## 配置与安全提示
-- 配置加载顺序为环境变量 → `~/.gemini-any-llm/config.yaml` → 仓库 `config/config.yaml` → 默认模板；敏感字段（如 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`HOST`、`LOG_LEVEL`）须通过环境或私有 YAML 提供，严禁提交到版本库。
+- 配置加载顺序为项目配置 > 全局配置 > 环境变量；敏感字段（如 `GAL_OPENAI_API_KEY`、`GAL_OPENAI_BASE_URL`、`GAL_HOST`、`GAL_LOG_LEVEL`）须通过环境或私有 YAML 提供，严禁提交到版本库。
 - 若需新增配置项，请同步更新 `src/config/config.schema.ts` 与 `DefaultConfigTemplate`，并在 README 或 `docs/` 撰写迁移指南，保障旧版部署可平滑升级。
 - 调试代理位于 `src/proxy.ts` 及相关 `controllers/`，提交前确认未开放临时端口、未遗留测试凭据；安全审查时优先检查 `http-proxy-middleware` 与速率限制设置是否匹配部署环境。

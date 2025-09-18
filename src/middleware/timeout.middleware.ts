@@ -6,7 +6,7 @@ import { Logger } from '@nestjs/common';
 export class TimeoutMiddleware implements NestMiddleware {
   private readonly logger = new Logger(TimeoutMiddleware.name);
   private readonly timeout = parseInt(
-    process.env.REQUEST_TIMEOUT || '120000',
+    process.env.GAL_REQUEST_TIMEOUT || '120000',
     10,
   ); // 120 seconds default
 

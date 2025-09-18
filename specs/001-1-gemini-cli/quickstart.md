@@ -40,8 +40,8 @@ PORT=3000
 NODE_ENV=development
 
 # OpenAI 兼容提供商配置
-OPENAI_API_KEY=your-api-key-here
-OPENAI_BASE_URL=https://api.openai.com/v1
+GAL_OPENAI_API_KEY=your-api-key-here
+GAL_OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4
 
 # 可选：其他提供商示例
@@ -171,8 +171,8 @@ OPENAI_MODEL=gpt-4
 ### Azure OpenAI
 ```env
 OPENAI_BASE_URL=https://your-resource.openai.azure.com/openai/deployments/your-deployment
-OPENAI_MODEL=gpt-4
-OPENAI_API_KEY=your-api-key
+GAL_OPENAI_MODEL=gpt-4
+GAL_OPENAI_API_KEY=your-api-key
 ```
 
 ### OpenRouter
@@ -197,7 +197,7 @@ OPENAI_MODEL=llama2
    - 确认目标服务是否正常运行
 
 2. **认证失败**
-   - 验证 `OPENAI_API_KEY` 是否正确
+   - 验证 `GAL_OPENAI_API_KEY` 是否正确
    - 检查 API 密钥是否有效
    - 确认是否有足够的配额
 

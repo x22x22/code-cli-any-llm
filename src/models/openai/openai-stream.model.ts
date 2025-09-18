@@ -4,6 +4,7 @@ export interface OpenAIStreamChunk {
   created: number;
   model: string;
   choices: OpenAIStreamChoice[];
+  usage?: OpenAIStreamUsage;
 }
 
 export interface OpenAIStreamChoice {
@@ -25,4 +26,10 @@ export interface OpenAIStreamToolCall {
     name?: string;
     arguments?: string;
   };
+}
+
+export interface OpenAIStreamUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
 }
