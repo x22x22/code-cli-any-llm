@@ -14,9 +14,8 @@ describe('TokenizerService - API Usage Priority', () => {
     tokenizer = module.get<TokenizerService>(TokenizerService);
   });
 
-  afterEach(async () => {
-    // Clean up tokenizer cache
-    await tokenizer.onModuleDestroy();
+  afterEach(() => {
+    tokenizer.onModuleDestroy();
   });
 
   describe('combineUsageInfo', () => {
@@ -111,8 +110,8 @@ describe('StreamTransformer - API Usage Integration', () => {
     streamTransformer = new StreamTransformer(tokenizer, toolCallProcessor);
   });
 
-  afterEach(async () => {
-    await tokenizer.onModuleDestroy();
+  afterEach(() => {
+    tokenizer.onModuleDestroy();
   });
 
   it('should process API usage from stream chunks', () => {
