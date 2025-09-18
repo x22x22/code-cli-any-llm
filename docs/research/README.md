@@ -7,6 +7,7 @@
 - [llxprt-code 项目分析](./llxprt-code-analysis.md) - 企业级多提供商 AI 编程助手深度分析
 - [aioncli 项目分析](./aioncli-analysis.md) - 生产级适配器架构深度分析
 - [实现方案对比总结](./comparison-summary.md) - 两个项目的详细对比和实施建议
+- [伪装 User-Agent 调研](./user-agent-guise-research.md) - 伪装请求头研究
 
 ## 主要发现：
 
