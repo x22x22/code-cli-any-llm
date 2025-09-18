@@ -138,7 +138,7 @@ export class TokenizerService implements OnModuleDestroy {
     }
 
     const usageSource = apiUsage ? 'hybrid (API + local)' : 'local only';
-    this.logger.debug(`Token usage calculated using ${usageSource}:`, result);
+    this.logger.verbose(`Token usage calculated using ${usageSource}:`, result);
 
     return result;
   }

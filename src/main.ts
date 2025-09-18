@@ -6,7 +6,7 @@ import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { ValidationExceptionFilter } from './filters/validation-exception.filter';
 import { corsConfig } from './config/cors.config';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
+import { Logger, LogLevel } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { GlobalConfigService } from './config/global-config.service';
 import { performanceConfig } from './config/performance.config';
@@ -16,10 +16,44 @@ async function bootstrap() {
   const globalConfigService = new GlobalConfigService();
   const globalConfigResult = globalConfigService.loadGlobalConfig();
 
+  const resolveLogLevels = (level: string | undefined): LogLevel[] => {
+    const normalized = (level || 'info').toLowerCase();
+    const baseLevels: LogLevel[] = [
+      'fatal',
+      'error',
+      'warn',
+      'log',
+      'debug',
+      'verbose',
+    ];
+    switch (normalized) {
+      case 'fatal':
+        return ['fatal'];
+      case 'error':
+        return ['fatal', 'error'];
+      case 'warn':
+        return ['fatal', 'error', 'warn'];
+      case 'info':
+      case 'log':
+        return ['fatal', 'error', 'warn', 'log'];
+      case 'debug':
+        return ['fatal', 'error', 'warn', 'log', 'debug'];
+      case 'verbose':
+        return baseLevels;
+      default:
+        return ['fatal', 'error', 'warn', 'log'];
+    }
+  };
+
+  const configuredLogLevel =
+    globalConfigResult.config?.gateway?.logLevel || process.env.GAL_LOG_LEVEL;
+  const logLevels = resolveLogLevels(configuredLogLevel);
+
   const gatewayLogger = GatewayLoggerService.create({
     logDir:
       globalConfigResult.config?.gateway?.logDir ||
       process.env.GAL_GATEWAY_LOG_DIR,
+    logLevels,
   });
   Logger.overrideLogger(gatewayLogger);
   const logger = new Logger('Bootstrap');
