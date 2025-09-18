@@ -20,7 +20,7 @@ export class LoggingMiddleware implements NestMiddleware {
     }
 
     // Log request
-    this.logger.log(`[${method}] ${originalUrl}`, {
+    this.logger.verbose(`[${method}] ${originalUrl}`, {
       ip,
       userAgent: headers['user-agent'],
       timestamp: new Date().toISOString(),
@@ -28,18 +28,21 @@ export class LoggingMiddleware implements NestMiddleware {
 
     // Override res.end to log response
     const originalEnd = res.end.bind(res);
-    (res as any).end = function (chunk?: unknown, encoding?: unknown): any {
+    (res as any).end = (chunk?: unknown, encoding?: unknown): any => {
       const duration = Date.now() - start;
       const { statusCode } = res;
 
       // Log response
-      console.log(`[${method}] ${originalUrl} ${statusCode} ${duration}ms`, {
-        statusCode,
-        duration,
-        timestamp: new Date().toISOString(),
-      });
+      this.logger.verbose(
+        `[${method}] ${originalUrl} ${statusCode} ${duration}ms`,
+        {
+          statusCode,
+          duration,
+          timestamp: new Date().toISOString(),
+        },
+      );
 
-      return originalEnd.call(this, chunk, encoding);
+      return originalEnd.call(res, chunk, encoding);
     };
 
     next();

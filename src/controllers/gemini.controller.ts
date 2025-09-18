@@ -6,10 +6,13 @@ import {
   Res,
   Logger,
   Query,
+  Optional,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { GeminiRequestDto } from '../models/gemini/gemini-request.dto';
 import { OpenAIProvider } from '../providers/openai/openai.provider';
+import { CodexProvider } from '../providers/codex/codex.provider';
 import { RequestTransformer } from '../transformers/request.transformer';
 import { ResponseTransformer } from '../transformers/response.transformer';
 import { StreamTransformer } from '../transformers/stream.transformer';
@@ -21,31 +24,74 @@ import { TokenizerService } from '../services/tokenizer.service';
 export class GeminiController {
   private readonly logger = new Logger(GeminiController.name);
   private readonly isUsingZhipuModel: boolean;
+  private readonly useCodexProvider: boolean;
+  private readonly llmProvider: OpenAIProvider | CodexProvider;
+  private readonly aiProvider: 'openai' | 'codex';
 
   constructor(
-    private readonly openaiProvider: OpenAIProvider,
     private readonly requestTransformer: RequestTransformer,
     private readonly responseTransformer: ResponseTransformer,
     private readonly streamTransformer: StreamTransformer,
     private readonly enhancedRequestTransformer: EnhancedRequestTransformer,
     private readonly enhancedResponseTransformer: EnhancedResponseTransformer,
     private readonly tokenizerService: TokenizerService,
+    private readonly configService: ConfigService,
+    @Optional() private readonly openaiProvider?: OpenAIProvider,
+    @Optional() private readonly codexProvider?: CodexProvider,
   ) {
-    // 打印 OpenAI 配置信息
-    const config = this.openaiProvider.getConfig();
-    if (config) {
-      this.logger.log('=== OpenAI Configuration ===');
-      this.logger.log(
-        `API Key: ${config.apiKey ? config.apiKey.substring(0, 20) + '...' : 'Not set'}`,
-      );
-      this.logger.log(`Base URL: ${config.baseURL}`);
-      this.logger.log(`Model: ${config.model}`);
-      this.logger.log('==========================');
+    const configuredProvider = (
+      this.configService.get<string>('aiProvider') || 'openai'
+    ).toLowerCase();
+    this.aiProvider = configuredProvider === 'codex' ? 'codex' : 'openai';
+    this.useCodexProvider = this.aiProvider === 'codex';
+    let provider: OpenAIProvider | CodexProvider | undefined =
+      this.openaiProvider;
+    if (this.useCodexProvider) {
+      const codexProvider = this.codexProvider;
+      if (!codexProvider) {
+        throw new Error(
+          'Codex provider selected but CodexProvider is not available',
+        );
+      }
+      if (!codexProvider.isEnabled()) {
+        throw new Error('Codex provider selected but configuration is missing');
+      }
+      provider = codexProvider;
+    } else {
+      if (!this.openaiProvider || !this.openaiProvider.isEnabled()) {
+        throw new Error(
+          'OpenAI provider selected but configuration is missing',
+        );
+      }
+      provider = this.openaiProvider;
     }
+    if (!provider) {
+      throw new Error('LLM provider is not available.');
+    }
+    this.llmProvider = provider;
 
-    // 检查配置的模型是否为智谱模型
-    const configuredModel = config?.model || 'glm-4.5';
+    const config = this.getActiveProviderConfig();
+    const providerName = this.useCodexProvider ? 'Codex' : 'OpenAI';
+    this.logger.log(`=== ${providerName} Configuration ===`);
+    if (config) {
+      const apiKey = config.apiKey as string | undefined;
+      const baseURL = config.baseURL as string | undefined;
+      const model = config.model as string | undefined;
+      this.logger.log(
+        `API Key: ${apiKey ? apiKey.substring(0, 20) + '...' : 'Not set'}`,
+      );
+      this.logger.log(`Base URL: ${baseURL ?? 'Not set'}`);
+      this.logger.log(`Model: ${model ?? 'Not set'}`);
+    } else {
+      this.logger.log('No provider configuration found.');
+    }
+    this.logger.log('==========================');
+
+    const configuredModel =
+      ((config as Record<string, unknown>)?.model as string | undefined) ||
+      (this.useCodexProvider ? 'gpt-5-codex' : 'glm-4.5');
     this.isUsingZhipuModel =
+      !this.useCodexProvider &&
       this.enhancedRequestTransformer.isZhipuModel(configuredModel);
     this.logger.log(`=== Zhipu Optimization ===`);
     this.logger.log(`Configured Model: ${configuredModel}`);
@@ -78,6 +124,11 @@ export class GeminiController {
     }
     this.logger.debug(`Using standard response transformer`);
     return this.responseTransformer;
+  }
+
+  private getActiveProviderConfig(): Record<string, unknown> | undefined {
+    const key = this.useCodexProvider ? 'codex' : 'openai';
+    return this.configService.get<Record<string, unknown>>(key);
   }
 
   private computePromptTokens(
@@ -136,8 +187,10 @@ export class GeminiController {
       );
 
       // Use the configured model from YAML instead of the requested model
-      const config = this.openaiProvider.getConfig();
-      const targetModel = config?.model || 'glm-4.5';
+      const config = this.getActiveProviderConfig();
+      const targetModel =
+        (config?.model as string | undefined) ||
+        (this.useCodexProvider ? 'gpt-5-codex' : 'glm-4.5');
       this.logger.debug(`Mapping model ${actualModel} to ${targetModel}`);
 
       if (isStreamRequest) {
@@ -187,7 +240,7 @@ export class GeminiController {
         // Process the stream and write directly to response
         void (async () => {
           try {
-            for await (const chunk of this.openaiProvider.generateContentStream(
+            for await (const chunk of this.llmProvider.generateContentStream(
               openAIRequest,
             )) {
               // Check if response is still writable
@@ -302,8 +355,8 @@ export class GeminiController {
           `Received countTokens request for model: ${actualModel}`,
         );
 
-        // Count tokens using OpenAI provider
-        const tokenCount = this.openaiProvider.countTokens(request);
+        // Count tokens using tokenizer service
+        const tokenCount = this.computePromptTokens(request, targetModel);
 
         // Return token count response
         response.status(200).json({
@@ -323,9 +376,9 @@ export class GeminiController {
           targetModel,
         );
 
-        // Send to OpenAI provider
+        // Send to active provider
         const openAIResponse =
-          await this.openaiProvider.generateContent(openAIRequest);
+          await this.llmProvider.generateContent(openAIRequest);
 
         // Transform response back to Gemini format
         const responseTransformer = this.getResponseTransformer();
