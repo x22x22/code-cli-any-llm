@@ -9,6 +9,7 @@ import { GeminiController } from './controllers/gemini.controller';
 import { HealthController } from './controllers/health.controller';
 import { OpenAIProvider } from './providers/openai/openai.provider';
 import { CodexProvider } from './providers/codex/codex.provider';
+import { ClaudeCodeProvider } from './providers/claude-code/claude-code.provider';
 import { RequestTransformer } from './transformers/request.transformer';
 import { ResponseTransformer } from './transformers/response.transformer';
 import { StreamTransformer } from './transformers/stream.transformer';
@@ -33,6 +34,7 @@ import { Logger } from '@nestjs/common';
     AppService,
     OpenAIProvider,
     CodexProvider,
+    ClaudeCodeProvider,
     RequestTransformer,
     ResponseTransformer,
     StreamTransformer,

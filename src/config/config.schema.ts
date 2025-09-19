@@ -7,6 +7,8 @@ import {
   Max,
   IsIn,
   IsObject,
+  IsBoolean,
+  IsArray,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import os from 'os';
@@ -144,6 +146,123 @@ export class CodexConfig {
   textVerbosity?: 'low' | 'medium' | 'high';
 }
 
+export class ClaudeCodeConfig {
+  @IsString()
+  @Transform(
+    ({ value }: { value: string }) =>
+      value ||
+      process.env.GAL_CLAUDE_CODE_API_KEY ||
+      process.env.GAL_ANTHROPIC_API_KEY,
+  )
+  apiKey!: string;
+
+  @IsUrl()
+  @Transform(
+    ({ value }: { value: string }) =>
+      value ||
+      process.env.GAL_CLAUDE_CODE_BASE_URL ||
+      'https://open.bigmodel.cn/api/anthropic',
+  )
+  baseURL!: string;
+
+  @IsString()
+  @Transform(
+    ({ value }: { value: string }) =>
+      value || process.env.GAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
+  )
+  model!: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1000)
+  @Max(120000)
+  @Transform(({ value }: { value: string }) =>
+    value
+      ? parseInt(value, 10)
+      : Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 60000,
+  )
+  timeout?: number;
+
+  @IsOptional()
+  @IsString()
+  @Transform(
+    ({ value }: { value: string }) =>
+      value || process.env.GAL_CLAUDE_CODE_VERSION || '2023-06-01',
+  )
+  anthropicVersion?: string;
+
+  @IsOptional()
+  @IsArray()
+  @Transform(({ value }: { value: unknown }) => parseBetaList(value))
+  beta?: string[];
+
+  @IsOptional()
+  @IsString()
+  @Transform(
+    ({ value }: { value: string }) =>
+      value ||
+      process.env.GAL_CLAUDE_CODE_USER_AGENT ||
+      'claude-cli/1.0.119 (external, cli)',
+  )
+  userAgent?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(
+    ({ value }: { value: string }) =>
+      value || process.env.GAL_CLAUDE_CODE_X_APP || 'cli',
+  )
+  xApp?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }: { value: unknown }) =>
+    toBoolean(value ?? process.env.GAL_CLAUDE_CODE_DANGEROUS_DIRECT ?? 'true'),
+  )
+  dangerousDirectBrowserAccess?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(128)
+  @Max(200000)
+  @Transform(({ value }: { value: string }) =>
+    value
+      ? parseInt(value, 10)
+      : process.env.GAL_CLAUDE_CODE_MAX_OUTPUT
+        ? parseInt(process.env.GAL_CLAUDE_CODE_MAX_OUTPUT, 10)
+        : undefined,
+  )
+  maxOutputTokens?: number;
+
+  @IsOptional()
+  @IsObject()
+  extraHeaders?: Record<string, string>;
+}
+
+export class GatewayConfigSchema {
+  @IsNumber()
+  @Min(1)
+  @Max(65535)
+  @Transform(({ value }: { value: string }) =>
+    value ? parseInt(value, 10) : Number(process.env.GAL_PORT) || 23062,
+  )
+  port!: number;
+
+  @IsString()
+  @Transform(({ value }: { value: string }) => value || process.env.GAL_HOST)
+  host!: string;
+
+  @IsString()
+  @Transform(
+    ({ value }: { value: string }) => value || process.env.GAL_LOG_LEVEL,
+  )
+  logLevel!: string;
+
+  @IsString()
+  @Transform(({ value }: { value: string }) => normalizeLogDir(value))
+  logDir!: string;
+}
+
 function parseReasoningConfig(raw: unknown): CodexReasoningConfig | undefined {
   if (!raw) {
     return undefined;
@@ -198,46 +317,63 @@ function parseReasoningConfig(raw: unknown): CodexReasoningConfig | undefined {
 
 function normalizeAuthMode(value?: string): 'ApiKey' | 'ChatGPT' {
   const envRaw = value ?? process.env.GAL_CODEX_AUTH_MODE;
-  const normalized = (envRaw || 'ApiKey').toString().trim().toLowerCase();
-  return normalized === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
+  if (!envRaw) {
+    return 'ApiKey';
+  }
+  return envRaw.toLowerCase() === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
 }
 
-export class GatewayConfig {
-  @IsNumber()
-  @Min(1)
-  @Max(65535)
-  @Transform(({ value }: { value: string }) =>
-    value ? parseInt(value, 10) : 3000,
-  )
-  port!: number;
-
-  @IsString()
-  @Transform(({ value }: { value: string }) => value || '0.0.0.0')
-  host!: string;
-
-  @IsOptional()
-  @IsString()
-  logLevel?: 'debug' | 'info' | 'warn' | 'error';
-
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }: { value: string }) =>
-    normalizeLogDir(
-      value || process.env.GAL_GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
-    ),
-  )
-  logDir?: string;
+function parseBetaList(value: unknown): string[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        typeof item === 'string' ? item.trim() : String(item).trim(),
+      )
+      .filter((item) => item.length > 0);
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    if (!normalized) {
+      return undefined;
+    }
+    return normalized
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+  return undefined;
 }
 
-export class AppConfig {
-  openai!: OpenAIConfig;
-  @IsOptional()
-  codex?: CodexConfig;
-  gateway!: GatewayConfig;
-  @IsString()
-  @IsIn(['openai', 'codex'])
-  @Transform(({ value }: { value: string }) =>
-    (value || process.env.GAL_AI_PROVIDER || 'openai').toLowerCase(),
-  )
-  aiProvider!: 'openai' | 'codex';
+function toBoolean(value: unknown, defaultValue = true): boolean {
+  if (value === undefined || value === null) {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return defaultValue;
+    }
+    if (['false', '0', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+    if (['true', '1', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+    return defaultValue;
+  }
+  if (typeof value === 'number') {
+    if (value === 0) {
+      return false;
+    }
+    if (value === 1) {
+      return true;
+    }
+  }
+  return defaultValue;
 }

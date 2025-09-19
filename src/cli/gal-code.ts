@@ -13,6 +13,7 @@ import type {
   OpenAIConfig,
   CodexConfig,
   CodexReasoningConfig,
+  ClaudeCodeConfig,
 } from '../config/global-config.interface';
 import { ChatGPTAuthManager } from '../providers/codex/chatgpt-auth.manager';
 import { runGalRestart } from './gal-gateway';
@@ -83,7 +84,9 @@ async function handleUpgradePrompt(): Promise<void> {
   console.log(
     `✨ 检测到新版本！当前 ${currentVersion} → 最新 ${context.info.latestVersion}`,
   );
-  console.log('请选择操作：y(现在更新) / n(暂不更新) / skip(跳过本次版本) / off(关闭自动检查)');
+  console.log(
+    '请选择操作：y(现在更新) / n(暂不更新) / skip(跳过本次版本) / off(关闭自动检查)',
+  );
 
   while (true) {
     const answerRaw = await promptUser('[Y/n/skip/off] (默认Y): ');
@@ -129,7 +132,8 @@ async function handleUpgradePrompt(): Promise<void> {
           await runGalRestart();
           console.log('网关重启完成，请重新运行 `gal code`。');
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           console.error(`重启网关失败: ${message}`);
         }
         process.exit(0);
@@ -265,6 +269,11 @@ function shouldRunWizard(
     if (!codexConfig.apiKey) {
       return true;
     }
+  } else if (provider === 'claudeCode') {
+    const claudeConfig = result.config.claudeCode;
+    if (!claudeConfig || !claudeConfig.apiKey) {
+      return true;
+    }
   } else {
     const openaiConfig = result.config.openai;
     if (!openaiConfig || !openaiConfig.apiKey) {
@@ -273,7 +282,11 @@ function shouldRunWizard(
   }
 
   const providerConfig =
-    provider === 'codex' ? result.config.codex : result.config.openai;
+    provider === 'codex'
+      ? result.config.codex
+      : provider === 'claudeCode'
+        ? result.config.claudeCode
+        : result.config.openai;
 
   if (!providerConfig || !(providerConfig as { apiKey?: string }).apiKey) {
     return true;
@@ -304,12 +317,18 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     output: process.stdout,
   });
 
-  const aiProviderDefault = existingConfig.aiProvider || 'openai';
+  const providerOptions = ['claudeCode', 'codex', 'openai'] as const;
+  const existingProvider = existingConfig.aiProvider;
+  const aiProviderDefault = providerOptions.includes(
+    existingProvider as (typeof providerOptions)[number],
+  )
+    ? (existingProvider as (typeof providerOptions)[number])
+    : 'openai';
   console.log('请选择要配置的 AI Provider：');
   const aiProvider = await askChoice(
     rl,
     'AI Provider',
-    ['openai', 'codex'] as const,
+    providerOptions,
     aiProviderDefault,
   );
 
@@ -321,9 +340,15 @@ export async function runConfigWizard(configFile: string): Promise<void> {
       rl,
       existingConfig.openai ?? {},
     );
-  } else {
+  } else if (aiProvider === 'codex') {
     console.log('\n请填写 Codex 配置：');
     existingConfig.codex = await configureCodex(rl, existingConfig.codex ?? {});
+  } else {
+    console.log('\n请填写 Claude Code 配置：');
+    existingConfig.claudeCode = await configureClaudeCode(
+      rl,
+      existingConfig.claudeCode ?? {},
+    );
   }
 
   rl.close();
@@ -461,6 +486,87 @@ async function configureCodex(
   };
 }
 
+async function configureClaudeCode(
+  rl: readline.Interface,
+  existing: Partial<ClaudeCodeConfig>,
+): Promise<ClaudeCodeConfig> {
+  const baseURL = await ask(
+    rl,
+    'Claude Code Base URL (默认 https://open.bigmodel.cn/api/anthropic)',
+    existing.baseURL ?? 'https://open.bigmodel.cn/api/anthropic',
+  );
+
+  const model = await ask(
+    rl,
+    '默认模型 (默认 claude-sonnet-4-20250514)',
+    existing.model ?? 'claude-sonnet-4-20250514',
+  );
+
+  const apiKey = await askRequired(rl, 'Claude Code API Key', existing.apiKey);
+
+  const anthropicVersion = await ask(
+    rl,
+    'Anthropic API 版本 (默认 2023-06-01)',
+    existing.anthropicVersion ?? '2023-06-01',
+  );
+
+  const defaultBetaString = Array.isArray(existing.beta)
+    ? existing.beta.join(',')
+    : typeof existing.beta === 'string'
+      ? existing.beta
+      : 'claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14';
+  const betaRaw = await ask(
+    rl,
+    'anthropic-beta 头 (逗号分隔，留空表示使用默认)',
+    defaultBetaString,
+  );
+  const betaList = betaRaw
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  const timeout = await askNumber(
+    rl,
+    '请求超时时间 (ms, 默认 60000)',
+    existing.timeout ?? 60000,
+  );
+
+  const maxOutputTokens = await askNumber(
+    rl,
+    '最大输出 tokens (默认 128000)',
+    existing.maxOutputTokens ?? 128000,
+  );
+
+  const userAgent = await ask(
+    rl,
+    'User-Agent (默认 claude-cli/1.0.119 (external, cli))',
+    existing.userAgent ?? 'claude-cli/1.0.119 (external, cli)',
+  );
+
+  const xApp = await ask(rl, 'X-App 头 (默认 cli)', existing.xApp ?? 'cli');
+
+  const dangerousChoice = await askChoice(
+    rl,
+    '是否启用 anthropic-dangerous-direct-browser-access',
+    ['true', 'false'] as const,
+    (existing.dangerousDirectBrowserAccess ?? true) ? 'true' : 'false',
+  );
+
+  return {
+    apiKey,
+    baseURL,
+    model,
+    timeout,
+    anthropicVersion,
+    beta: betaList.length > 0 ? betaList : undefined,
+    userAgent,
+    xApp,
+    dangerousDirectBrowserAccess: dangerousChoice === 'true',
+    maxOutputTokens,
+    extraHeaders: existing.extraHeaders,
+  };
+}
+
 function ask(
   rl: readline.Interface,
   prompt: string,
@@ -491,7 +597,7 @@ async function askChoice<T extends string>(
   while (true) {
     const answer = await ask(rl, displayPrompt, defaultValue);
     const normalized = answer.trim().toLowerCase();
-    const match = options.find((option) => option === normalized);
+    const match = options.find((option) => option.toLowerCase() === normalized);
     if (match) {
       return match;
     }
@@ -932,7 +1038,11 @@ function readGlobalApiKey(configFile: string): string {
     }
 
     const value =
-      provider === 'codex' ? data?.codex?.apiKey : data?.openai?.apiKey;
+      provider === 'codex'
+        ? data?.codex?.apiKey
+        : provider === 'claudeCode'
+          ? data?.claudeCode?.apiKey
+          : data?.openai?.apiKey;
     return typeof value === 'string' ? value.trim() : '';
   } catch {
     return '';

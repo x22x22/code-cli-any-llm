@@ -30,7 +30,7 @@ export class OpenAIProvider implements OnModuleInit {
     ).toLowerCase();
     if (activeProvider !== 'openai') {
       this.logger.debug(
-        'OpenAI provider disabled because aiProvider is set to Codex.',
+        `OpenAI provider disabled because aiProvider is set to ${activeProvider}.`,
       );
       this.enabled = false;
       return;

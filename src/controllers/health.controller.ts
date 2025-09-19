@@ -1,6 +1,7 @@
 import { Controller, Get, Optional } from '@nestjs/common';
 import { OpenAIProvider } from '../providers/openai/openai.provider';
 import { CodexProvider } from '../providers/codex/codex.provider';
+import { ClaudeCodeProvider } from '../providers/claude-code/claude-code.provider';
 import { ConfigService } from '@nestjs/config';
 
 interface HealthResponse {
@@ -18,26 +19,50 @@ interface HealthResponse {
 @Controller()
 export class HealthController {
   private readonly startTime = Date.now();
-  private readonly aiProvider: 'openai' | 'codex';
+  private readonly aiProvider: 'openai' | 'codex' | 'claudeCode';
   private readonly useCodexProvider: boolean;
-  private readonly provider: OpenAIProvider | CodexProvider;
+  private readonly useClaudeCodeProvider: boolean;
+  private readonly provider:
+    | OpenAIProvider
+    | CodexProvider
+    | ClaudeCodeProvider;
 
   constructor(
     private readonly configService: ConfigService,
     @Optional() private readonly openAIProvider?: OpenAIProvider,
     @Optional() private readonly codexProvider?: CodexProvider,
+    @Optional() private readonly claudeCodeProvider?: ClaudeCodeProvider,
   ) {
-    const configuredProvider = (
-      this.configService.get<string>('aiProvider') || 'openai'
-    ).toLowerCase();
-    this.aiProvider = configuredProvider === 'codex' ? 'codex' : 'openai';
+    const providerInput =
+      this.configService.get<string>('aiProvider') || 'claudeCode';
+    const normalizedProvider = providerInput.trim().toLowerCase();
+    if (normalizedProvider === 'codex') {
+      this.aiProvider = 'codex';
+    } else if (
+      normalizedProvider === 'claudecode' ||
+      normalizedProvider === 'claude-code'
+    ) {
+      this.aiProvider = 'claudeCode';
+    } else {
+      this.aiProvider = 'openai';
+    }
     this.useCodexProvider = this.aiProvider === 'codex';
+    this.useClaudeCodeProvider = this.aiProvider === 'claudeCode';
+
     if (this.useCodexProvider) {
       const codexProvider = this.codexProvider;
       if (!codexProvider || !codexProvider.isEnabled()) {
         throw new Error('Codex provider selected but configuration is missing');
       }
       this.provider = codexProvider;
+    } else if (this.useClaudeCodeProvider) {
+      const claudeProvider = this.claudeCodeProvider;
+      if (!claudeProvider || !claudeProvider.isEnabled()) {
+        throw new Error(
+          'Claude Code provider selected but configuration is missing',
+        );
+      }
+      this.provider = claudeProvider;
     } else {
       if (!this.openAIProvider || !this.openAIProvider.isEnabled()) {
         throw new Error(
@@ -65,7 +90,11 @@ export class HealthController {
         response.provider = providerHealth.details;
 
         // Add basic config info (without sensitive data)
-        const configKey = this.useCodexProvider ? 'codex' : 'openai';
+        const configKey = this.useCodexProvider
+          ? 'codex'
+          : this.useClaudeCodeProvider
+            ? 'claudeCode'
+            : 'openai';
         const providerConfig =
           this.configService.get<Record<string, unknown>>(configKey);
         response.config = {

@@ -29,6 +29,40 @@ const resolveLogDir = (value?: string): string => {
   return path.isAbsolute(trimmed) ? trimmed : path.resolve(trimmed);
 };
 
+const normalizeBoolean = (
+  value: string | undefined,
+  defaultValue = true,
+): boolean => {
+  if (value === undefined) {
+    return defaultValue;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return defaultValue;
+  }
+  if (['false', '0', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+  if (['true', '1', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+  return defaultValue;
+};
+
+const parseBetaEnv = (value?: string): string[] | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  return normalized
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+};
+
 @Module({})
 export class ConfigModule {
   static forRoot(): DynamicModule {
@@ -63,6 +97,22 @@ export class ConfigModule {
                         reasoning: config.codex.reasoning,
                         textVerbosity: config.codex.textVerbosity,
                         authMode: config.codex.authMode || 'ApiKey',
+                      }
+                    : undefined,
+                  claudeCode: config.claudeCode
+                    ? {
+                        apiKey: config.claudeCode.apiKey,
+                        baseURL: config.claudeCode.baseURL,
+                        model: config.claudeCode.model,
+                        timeout: config.claudeCode.timeout,
+                        anthropicVersion: config.claudeCode.anthropicVersion,
+                        beta: config.claudeCode.beta,
+                        userAgent: config.claudeCode.userAgent,
+                        xApp: config.claudeCode.xApp,
+                        dangerousDirectBrowserAccess:
+                          config.claudeCode.dangerousDirectBrowserAccess,
+                        maxOutputTokens: config.claudeCode.maxOutputTokens,
+                        extraHeaders: config.claudeCode.extraHeaders,
                       }
                     : undefined,
                   gateway: {
@@ -128,6 +178,41 @@ export class ConfigModule {
                         : undefined;
                     })(),
                     authMode,
+                  };
+                })(),
+                claudeCode: (() => {
+                  const apiKey =
+                    process.env.GAL_CLAUDE_CODE_API_KEY ||
+                    process.env.GAL_ANTHROPIC_API_KEY ||
+                    '';
+                  if (!apiKey.trim()) {
+                    return undefined;
+                  }
+                  return {
+                    apiKey: apiKey.trim(),
+                    baseURL:
+                      process.env.GAL_CLAUDE_CODE_BASE_URL ||
+                      'https://open.bigmodel.cn/api/anthropic',
+                    model:
+                      process.env.GAL_CLAUDE_CODE_MODEL ||
+                      'claude-sonnet-4-20250514',
+                    timeout:
+                      Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 60000,
+                    anthropicVersion:
+                      process.env.GAL_CLAUDE_CODE_VERSION || '2023-06-01',
+                    beta: parseBetaEnv(process.env.GAL_CLAUDE_CODE_BETA),
+                    userAgent:
+                      process.env.GAL_CLAUDE_CODE_USER_AGENT ||
+                      'claude-cli/1.0.119 (external, cli)',
+                    xApp: process.env.GAL_CLAUDE_CODE_X_APP || 'cli',
+                    dangerousDirectBrowserAccess: normalizeBoolean(
+                      process.env.GAL_CLAUDE_CODE_DANGEROUS_DIRECT,
+                      true,
+                    ),
+                    maxOutputTokens: process.env.GAL_CLAUDE_CODE_MAX_OUTPUT
+                      ? Number(process.env.GAL_CLAUDE_CODE_MAX_OUTPUT)
+                      : undefined,
+                    extraHeaders: undefined,
                   };
                 })(),
                 gateway: {

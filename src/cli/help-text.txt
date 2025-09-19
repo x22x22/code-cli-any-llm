@@ -1,76 +1,78 @@
 Usage: gal [command]
 
-Gemini Any LLM AI 助手工具 - 通过本地网关提供优化的 AI 对话体验
+Gemini Any LLM assistant tool - provides an optimized AI chat experience through the local gateway
 
 Commands:
-  code [prompt]     与 AI 助手对话（主要功能）
-                    • 直接发送问题或任务给 AI 助手
-                    • 自动启动和管理后台网关服务
-                    • 支持所有 gemini CLI 原生参数和选项
-                    • 首次使用会自动引导配置认证信息
-                    • 若检测到新版本会先提示是否升级
+  code [prompt]     Chat with the AI assistant (primary command)
+                    • Send questions or tasks to the assistant directly
+                    • Automatically starts and manages the background gateway service
+                    • Supports all native options and flags from the gemini CLI
+                    • Guides you through configuring credentials on first use
+                    • Alerts you about new versions before upgrading
 
-  auth              配置 AI 服务认证信息
-                    • 交互式设置 API Key、服务地址和默认模型
-                    • 配置文件：~/.gemini-any-llm/config.yaml
-                    • 首次使用或更换服务商时需要运行
+  auth              Configure AI service credentials
+                    • Supports providers claudeCode / codex / openai
+                    • Interactively sets API keys, base URLs, and default models
+                    • Configuration file: ~/.gemini-any-llm/config.yaml
+                    • Run this the first time or when switching providers
 
-  update            主动检查并安装最新版本
-                    • 同步刷新版本缓存并执行升级命令
-                    • 如果已是最新版本则提示后退出
+  update            Check for and install the latest version
+                    • Refreshes the version cache and runs the upgrade command
+                    • Exits after informing you if you already have the latest version
 
-网关管理命令:
-  start             启动后台网关服务
-                    • 手动启动网关，通常不需要直接使用
-                    • 智能检测现有进程，避免重复启动
-                    • 等待健康检查通过后返回
+  version           Show the current gal version
+  help              Show this help in English (aliases: -h, --help)
+  help-cn           Show this help in Chinese (alias: --help-cn)
+  -v, --version     Show the current gal version (alias of version)
 
-  stop              停止后台网关服务
-                    • 优雅关闭网关进程和清理资源
-                    • 等待进程完全退出（10秒超时）
+Gateway management commands:
+  start             Start the background gateway service
+                    • Manual start, usually not needed directly
+                    • Detects existing processes to avoid duplicates
+                    • Waits for the health check before returning
 
-  restart           重启网关服务
-                    • 完整的停止和启动流程
-                    • 配置更改后建议重启
+  stop              Stop the background gateway service
+                    • Gracefully shuts down the gateway and cleans resources
+                    • Waits for processes to exit (10 second timeout)
 
-  status            查看网关运行状态
-                    • 显示服务健康状态和连接信息
-                    • 显示进程信息和提供方配置
+  restart           Restart the gateway service
+                    • Performs a full stop followed by a fresh start
+                    • Recommended after configuration changes
 
-  kill              强制终止异常进程（故障排除）
-                    • 多种方式查找和终止僵尸进程
-                    • 仅在网关无响应时使用
+  status            Show gateway status
+                    • Displays health and connection information
+                    • Shows process details and provider configuration
 
-  version           查看当前 gal 版本
-  -h, --help        查看此帮助信息
-  -v, --version     查看当前 gal 版本
+  kill              Force terminate stuck processes (troubleshooting)
+                    • Tries multiple methods to find and kill zombie processes
+                    • Use only when the gateway becomes unresponsive
 
-配置与环境:
-  • 配置文件：~/.gemini-any-llm/config.yaml
-  • 默认网关端口：23062（可在配置文件中修改）
-  • PID 文件：~/.gemini-any-llm/gateway.pid.json
-  • 关闭自动更新检查：设置环境变量 GAL_DISABLE_UPDATE_CHECK=1
+Configuration & environment:
+  • Config file: ~/.gemini-any-llm/config.yaml
+  • Default gateway port: 23062 (changeable in the config file)
+  • PID file: ~/.gemini-any-llm/gateway.pid.json
+  • Disable automatic update checks: set GAL_DISABLE_UPDATE_CHECK=1
 
-使用示例:
-  # 首次使用，配置认证信息
+Usage examples:
+  # First run: configure credentials
   gal auth
 
-  # 与 AI 助手对话（主要使用方式）
-  gal code "请用TypeScript写一个HTTP服务"
-  gal code "解释一下这段代码的作用"
-  gal code "帮我优化这个算法"
+  # Chat with the AI assistant (primary usage)
+  gal code "Write an HTTP server in TypeScript"
+  gal code "Explain what this code does"
+  gal code "Help me optimize this algorithm"
   
-  # 查看 gemini CLI 的更多选项
+  # View additional gemini CLI options
   gal code --help
   
-  # 高级管理（通常不需要）
-  gal status          # 查看服务状态
-  gal restart         # 配置更改后重启
-  gal kill           # 故障排除
+  # Advanced operations (rarely needed)
+  gal status         # Check gateway status
+  gal restart        # Restart after config changes
+  gal kill           # Troubleshoot stuck processes
 
-故障排除:
-  • AI 助手无响应：使用 'gal kill' 清理进程后重试
-  • 认证失败：运行 'gal auth' 重新配置 API Key
-  • 服务启动失败：检查网络连接和端口占用情况
-  • 配置问题：检查 ~/.gemini-any-llm/config.yaml 文件
-  • 权限问题：确保有读写 ~/.gemini-any-llm/ 目录的权限
+Troubleshooting:
+  • Assistant not responding: run 'gal kill' to clean up and try again
+  • Authentication failure: run 'gal auth' to reconfigure the API key
+  • Service fails to start: check network connectivity and port usage
+  • Configuration issues: inspect ~/.gemini-any-llm/config.yaml
+  • Permission issues: ensure read/write access to ~/.gemini-any-llm/

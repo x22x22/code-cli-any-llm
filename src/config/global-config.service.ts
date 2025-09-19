@@ -9,6 +9,7 @@ import type {
   DefaultConfigTemplate,
   OpenAIConfig,
   CodexConfig,
+  ClaudeCodeConfig,
   GatewayConfig,
   GlobalConfig,
 } from './global-config.interface';
@@ -18,6 +19,40 @@ const DEFAULT_GATEWAY_LOG_DIR = path.join(
   '.gemini-any-llm',
   'logs',
 );
+
+const parseBetaEnv = (value?: string): string[] | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  return normalized
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+};
+
+const normalizeBoolean = (
+  value: string | undefined,
+  defaultValue = true,
+): boolean => {
+  if (value === undefined) {
+    return defaultValue;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return defaultValue;
+  }
+  if (['false', '0', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+  if (['true', '1', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+  return defaultValue;
+};
 
 @Injectable()
 export class GlobalConfigService {
@@ -39,8 +74,12 @@ export class GlobalConfigService {
       const envAiProviderRaw = (
         process.env.GAL_AI_PROVIDER || 'openai'
       ).toLowerCase();
-      const envAiProvider: 'openai' | 'codex' =
-        envAiProviderRaw === 'codex' ? 'codex' : 'openai';
+      const envAiProvider: 'openai' | 'codex' | 'claudeCode' =
+        envAiProviderRaw === 'codex'
+          ? 'codex'
+          : envAiProviderRaw === 'claudecode'
+            ? 'claudeCode'
+            : 'openai';
       const envConfig: Partial<GlobalConfig> = {
         aiProvider: envAiProvider,
         openai: {
@@ -79,6 +118,39 @@ export class GlobalConfigService {
               })(),
             }
           : undefined,
+        claudeCode: (() => {
+          const apiKey =
+            process.env.GAL_CLAUDE_CODE_API_KEY ||
+            process.env.GAL_ANTHROPIC_API_KEY ||
+            '';
+          if (!apiKey.trim()) {
+            return undefined;
+          }
+          return {
+            apiKey: apiKey.trim(),
+            baseURL:
+              process.env.GAL_CLAUDE_CODE_BASE_URL ||
+              'https://open.bigmodel.cn/api/anthropic',
+            model:
+              process.env.GAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
+            timeout: Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 60000,
+            anthropicVersion:
+              process.env.GAL_CLAUDE_CODE_VERSION || '2023-06-01',
+            beta: parseBetaEnv(process.env.GAL_CLAUDE_CODE_BETA),
+            userAgent:
+              process.env.GAL_CLAUDE_CODE_USER_AGENT ||
+              'claude-cli/1.0.119 (external, cli)',
+            xApp: process.env.GAL_CLAUDE_CODE_X_APP || 'cli',
+            dangerousDirectBrowserAccess: normalizeBoolean(
+              process.env.GAL_CLAUDE_CODE_DANGEROUS_DIRECT,
+              true,
+            ),
+            maxOutputTokens: process.env.GAL_CLAUDE_CODE_MAX_OUTPUT
+              ? Number(process.env.GAL_CLAUDE_CODE_MAX_OUTPUT)
+              : undefined,
+            extraHeaders: undefined,
+          } as ClaudeCodeConfig;
+        })(),
         gateway: {
           port: Number(process.env.GAL_PORT) || 23062,
           host: process.env.GAL_HOST || '0.0.0.0',
@@ -100,6 +172,15 @@ export class GlobalConfigService {
         process.env.GAL_CODEX_MODEL ||
         process.env.GAL_CODEX_REASONING ||
         process.env.GAL_CODEX_TEXT_VERBOSITY ||
+        process.env.GAL_CLAUDE_CODE_API_KEY ||
+        process.env.GAL_CLAUDE_CODE_BASE_URL ||
+        process.env.GAL_CLAUDE_CODE_MODEL ||
+        process.env.GAL_CLAUDE_CODE_VERSION ||
+        process.env.GAL_CLAUDE_CODE_BETA ||
+        process.env.GAL_CLAUDE_CODE_USER_AGENT ||
+        process.env.GAL_CLAUDE_CODE_X_APP ||
+        process.env.GAL_CLAUDE_CODE_DANGEROUS_DIRECT ||
+        process.env.GAL_CLAUDE_CODE_MAX_OUTPUT ||
         process.env.GAL_PORT ||
         process.env.GAL_HOST ||
         process.env.GAL_LOG_LEVEL ||
@@ -226,21 +307,14 @@ export class GlobalConfigService {
 
 aiProvider: openai
 
-# API Configuration (REQUIRED)
+# OpenAI-compatible provider (default)
 openai:
-  # Your API key - REQUIRED, get it from your provider
   apiKey: ""
-
-  # API endpoint - can customize for different providers
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
-
-  # Default model to use
   model: "glm-4.5"
-
-  # Request timeout in milliseconds
   timeout: 30000
 
-# Codex configuration (optional)
+# Codex provider (optional)
 codex:
   apiKey: ""
   baseURL: "https://chatgpt.com/backend-api/codex"
@@ -250,6 +324,22 @@ codex:
     effort: minimal
     summary: auto
   textVerbosity: low
+
+# Claude Code provider (optional)
+claudeCode:
+  apiKey: ""
+  baseURL: "https://open.bigmodel.cn/api/anthropic"
+  model: "claude-sonnet-4-20250514"
+  timeout: 60000
+  anthropicVersion: "2023-06-01"
+  beta:
+    - claude-code-20250219
+    - interleaved-thinking-2025-05-14
+    - fine-grained-tool-streaming-2025-05-14
+  userAgent: "claude-cli/1.0.119 (external, cli)"
+  xApp: "cli"
+  dangerousDirectBrowserAccess: true
+  maxOutputTokens: 64000
 
 # Gateway Configuration
 gateway:
@@ -323,19 +413,21 @@ gateway:
       }
     }
 
-    const aiProviderRaw = (config.aiProvider || 'openai')
+    const aiProviderRaw = (config.aiProvider || 'claudeCode')
       .toString()
       .toLowerCase();
-    let aiProvider: 'openai' | 'codex';
+    let aiProvider: 'openai' | 'codex' | 'claudeCode';
     if (aiProviderRaw === 'codex') {
       aiProvider = 'codex';
+    } else if (aiProviderRaw === 'claudecode') {
+      aiProvider = 'claudeCode';
     } else if (aiProviderRaw === 'openai') {
       aiProvider = 'openai';
     } else {
       errors.push({
         field: 'aiProvider',
         message: `不支持的 aiProvider: ${aiProviderRaw}`,
-        suggestion: '仅支持 openai 或 codex',
+        suggestion: '仅支持 openai、codex 或 claudeCode',
         required: true,
       });
       aiProvider = 'openai';
@@ -455,6 +547,120 @@ gateway:
       config.codex = shouldKeepCodex ? codexConfig : undefined;
     }
 
+    let claudeConfig: ClaudeCodeConfig | undefined = config.claudeCode;
+    const normalizeBetaList = (value: unknown): string[] | undefined => {
+      if (!value) {
+        return undefined;
+      }
+      if (Array.isArray(value)) {
+        return value
+          .map((item) =>
+            typeof item === 'string' ? item.trim() : String(item).trim(),
+          )
+          .filter((item) => item.length > 0);
+      }
+      if (typeof value === 'string') {
+        const normalized = value.trim();
+        if (!normalized) {
+          return undefined;
+        }
+        return normalized
+          .split(',')
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0);
+      }
+      return undefined;
+    };
+
+    if (aiProvider === 'claudeCode') {
+      if (!claudeConfig) {
+        claudeConfig = {
+          apiKey: '',
+          baseURL: 'https://open.bigmodel.cn/api/anthropic',
+          model: 'claude-sonnet-4-20250514',
+          timeout: 60000,
+          anthropicVersion: '2023-06-01',
+          beta: [
+            'claude-code-20250219',
+            'interleaved-thinking-2025-05-14',
+            'fine-grained-tool-streaming-2025-05-14',
+          ],
+          userAgent: 'claude-cli/1.0.119 (external, cli)',
+          xApp: 'cli',
+          dangerousDirectBrowserAccess: true,
+          maxOutputTokens: 64000,
+          extraHeaders: undefined,
+        };
+        config.claudeCode = claudeConfig;
+      }
+
+      claudeConfig = config.claudeCode as ClaudeCodeConfig;
+
+      const trimmedKey = claudeConfig.apiKey?.trim();
+      if (!trimmedKey) {
+        errors.push({
+          field: 'claudeCode.apiKey',
+          message: 'Claude Code API密钥为空',
+          suggestion: '请在配置文件中设置 claudeCode.apiKey',
+          required: true,
+        });
+      } else {
+        claudeConfig.apiKey = trimmedKey;
+      }
+
+      if (!claudeConfig.baseURL) {
+        warnings.push('claudeCode.baseURL未设置，将使用默认值');
+        claudeConfig.baseURL = 'https://open.bigmodel.cn/api/anthropic';
+      }
+
+      if (!claudeConfig.model) {
+        warnings.push('claudeCode.model未设置，将使用默认值');
+        claudeConfig.model = 'claude-sonnet-4-20250514';
+      }
+
+      if (!claudeConfig.timeout) {
+        warnings.push('claudeCode.timeout未设置，将使用默认值');
+        claudeConfig.timeout = 60000;
+      }
+
+      if (!claudeConfig.anthropicVersion) {
+        claudeConfig.anthropicVersion = '2023-06-01';
+      }
+
+      const betaList = normalizeBetaList(claudeConfig.beta);
+      claudeConfig.beta =
+        betaList && betaList.length > 0
+          ? betaList
+          : [
+              'claude-code-20250219',
+              'interleaved-thinking-2025-05-14',
+              'fine-grained-tool-streaming-2025-05-14',
+            ];
+
+      if (!claudeConfig.userAgent) {
+        claudeConfig.userAgent = 'claude-cli/1.0.119 (external, cli)';
+      }
+
+      if (!claudeConfig.xApp) {
+        claudeConfig.xApp = 'cli';
+      }
+
+      if (claudeConfig.dangerousDirectBrowserAccess === undefined) {
+        claudeConfig.dangerousDirectBrowserAccess = true;
+      }
+
+      if (!claudeConfig.maxOutputTokens) {
+        claudeConfig.maxOutputTokens = 64000;
+      }
+    } else {
+      if (claudeConfig && !claudeConfig.apiKey?.trim()) {
+        config.claudeCode = undefined;
+      } else if (claudeConfig) {
+        claudeConfig.apiKey = claudeConfig.apiKey.trim();
+        claudeConfig.beta = normalizeBetaList(claudeConfig.beta);
+      }
+    }
+
     // 验证gateway配置
     let gatewayConfig: GatewayConfig | undefined = config.gateway;
     if (!gatewayConfig) {
@@ -486,6 +692,7 @@ gateway:
       result.config = {
         openai: config.openai ?? openaiConfig,
         codex: config.codex,
+        claudeCode: config.claudeCode,
         gateway: config.gateway as GatewayConfig,
         aiProvider: config.aiProvider ?? 'openai',
         configSource: '', // 将在调用方设置

@@ -14,6 +14,7 @@ import { GeminiRequestDto } from '../models/gemini/gemini-request.dto';
 import { GeminiResponseDto } from '../models/gemini/gemini-response.dto';
 import { OpenAIProvider } from '../providers/openai/openai.provider';
 import { CodexProvider } from '../providers/codex/codex.provider';
+import { ClaudeCodeProvider } from '../providers/claude-code/claude-code.provider';
 import { RequestTransformer } from '../transformers/request.transformer';
 import { ResponseTransformer } from '../transformers/response.transformer';
 import { StreamTransformer } from '../transformers/stream.transformer';
@@ -26,8 +27,12 @@ export class GeminiController {
   private readonly logger = new Logger(GeminiController.name);
   private readonly isUsingZhipuModel: boolean;
   private readonly useCodexProvider: boolean;
-  private readonly llmProvider: OpenAIProvider | CodexProvider;
-  private readonly aiProvider: 'openai' | 'codex';
+  private readonly useClaudeCodeProvider: boolean;
+  private readonly llmProvider:
+    | OpenAIProvider
+    | CodexProvider
+    | ClaudeCodeProvider;
+  private readonly aiProvider: 'openai' | 'codex' | 'claudeCode';
 
   constructor(
     private readonly requestTransformer: RequestTransformer,
@@ -39,14 +44,30 @@ export class GeminiController {
     private readonly configService: ConfigService,
     @Optional() private readonly openaiProvider?: OpenAIProvider,
     @Optional() private readonly codexProvider?: CodexProvider,
+    @Optional() private readonly claudeCodeProvider?: ClaudeCodeProvider,
   ) {
-    const configuredProvider = (
-      this.configService.get<string>('aiProvider') || 'openai'
-    ).toLowerCase();
-    this.aiProvider = configuredProvider === 'codex' ? 'codex' : 'openai';
+    const providerInput =
+      this.configService.get<string>('aiProvider') || 'claudeCode';
+    const normalizedProvider = providerInput.trim().toLowerCase();
+    if (normalizedProvider === 'codex') {
+      this.aiProvider = 'codex';
+    } else if (
+      normalizedProvider === 'claudecode' ||
+      normalizedProvider === 'claude-code'
+    ) {
+      this.aiProvider = 'claudeCode';
+    } else {
+      this.aiProvider = 'openai';
+    }
     this.useCodexProvider = this.aiProvider === 'codex';
-    let provider: OpenAIProvider | CodexProvider | undefined =
-      this.openaiProvider;
+    this.useClaudeCodeProvider = this.aiProvider === 'claudeCode';
+
+    let provider:
+      | OpenAIProvider
+      | CodexProvider
+      | ClaudeCodeProvider
+      | undefined = this.openaiProvider;
+
     if (this.useCodexProvider) {
       const codexProvider = this.codexProvider;
       if (!codexProvider) {
@@ -58,6 +79,14 @@ export class GeminiController {
         throw new Error('Codex provider selected but configuration is missing');
       }
       provider = codexProvider;
+    } else if (this.useClaudeCodeProvider) {
+      const claudeProvider = this.claudeCodeProvider;
+      if (!claudeProvider || !claudeProvider.isEnabled()) {
+        throw new Error(
+          'Claude Code provider selected but configuration is missing',
+        );
+      }
+      provider = claudeProvider;
     } else {
       if (!this.openaiProvider || !this.openaiProvider.isEnabled()) {
         throw new Error(
@@ -72,7 +101,11 @@ export class GeminiController {
     this.llmProvider = provider;
 
     const config = this.getActiveProviderConfig();
-    const providerName = this.useCodexProvider ? 'Codex' : 'OpenAI';
+    const providerName = this.useCodexProvider
+      ? 'Codex'
+      : this.useClaudeCodeProvider
+        ? 'Claude Code'
+        : 'OpenAI';
     this.logger.log(`=== ${providerName} Configuration ===`);
     if (config) {
       const apiKey = config.apiKey as string | undefined;
@@ -90,9 +123,14 @@ export class GeminiController {
 
     const configuredModel =
       ((config as Record<string, unknown>)?.model as string | undefined) ||
-      (this.useCodexProvider ? 'gpt-5-codex' : 'glm-4.5');
+      (this.useCodexProvider
+        ? 'gpt-5-codex'
+        : this.useClaudeCodeProvider
+          ? 'claude-sonnet-4-20250514'
+          : 'glm-4.5');
     this.isUsingZhipuModel =
       !this.useCodexProvider &&
+      !this.useClaudeCodeProvider &&
       this.enhancedRequestTransformer.isZhipuModel(configuredModel);
     this.logger.log(`=== Zhipu Optimization ===`);
     this.logger.log(`Configured Model: ${configuredModel}`);
@@ -128,7 +166,11 @@ export class GeminiController {
   }
 
   private getActiveProviderConfig(): Record<string, unknown> | undefined {
-    const key = this.useCodexProvider ? 'codex' : 'openai';
+    const key = this.useCodexProvider
+      ? 'codex'
+      : this.useClaudeCodeProvider
+        ? 'claudeCode'
+        : 'openai';
     return this.configService.get<Record<string, unknown>>(key);
   }
 
@@ -191,8 +233,40 @@ export class GeminiController {
       const config = this.getActiveProviderConfig();
       const targetModel =
         (config?.model as string | undefined) ||
-        (this.useCodexProvider ? 'gpt-5-codex' : 'glm-4.5');
+        (this.useCodexProvider
+          ? 'gpt-5-codex'
+          : this.useClaudeCodeProvider
+            ? 'claude-sonnet-4-20250514'
+            : 'glm-4.5');
       this.logger.debug(`Mapping model ${actualModel} to ${targetModel}`);
+
+      if (this.useClaudeCodeProvider) {
+        if (isStreamRequest) {
+          await this.handleClaudeStream(
+            request,
+            response,
+            targetModel,
+            thoughtSignature,
+          );
+          return;
+        }
+
+        if (isGenerateRequest) {
+          this.logger.debug(
+            `Received generateContent request (Claude Code) for model: ${actualModel}`,
+          );
+          const claudeResponse =
+            await this.claudeCodeProvider!.generateFromGemini(
+              request,
+              targetModel,
+            );
+          if (thoughtSignature) {
+            claudeResponse.thoughtSignature = thoughtSignature;
+          }
+          response.status(200).json(claudeResponse);
+          return;
+        }
+      }
 
       if (isStreamRequest) {
         // Handle streaming request
@@ -238,10 +312,12 @@ export class GeminiController {
           this.logger.error('Response error:', err);
         });
 
+        const provider = this.llmProvider as OpenAIProvider | CodexProvider;
+
         // Process the stream and write directly to response
         void (async () => {
           try {
-            for await (const chunk of this.llmProvider.generateContentStream(
+            for await (const chunk of provider.generateContentStream(
               openAIRequest,
             )) {
               // Check if response is still writable
@@ -400,14 +476,14 @@ export class GeminiController {
         );
 
         // Send to active provider
-        const openAIResponse =
-          await this.llmProvider.generateContent(openAIRequest);
+        const openAIResponse = await (
+          this.llmProvider as OpenAIProvider | CodexProvider
+        ).generateContent(openAIRequest);
 
         // Transform response back to Gemini format
         const responseTransformer = this.getResponseTransformer();
         const geminiResponse = responseTransformer.transformResponse(
           openAIResponse,
-          targetModel,
         ) as Record<string, unknown>;
 
         // Add thought signature if provided
@@ -489,6 +565,111 @@ export class GeminiController {
     });
     const contentChunk = createChunk(normalizedContentParts);
     return [thoughtChunk, contentChunk];
+  }
+
+  private async handleClaudeStream(
+    request: GeminiRequestDto,
+    response: Response,
+    targetModel: string,
+    thoughtSignature?: string,
+  ): Promise<void> {
+    this.logger.debug(
+      `Received streamGenerateContent request (Claude Code) for model: ${targetModel}`,
+    );
+
+    response.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'Transfer-Encoding': 'chunked',
+    });
+
+    if (typeof response.flushHeaders === 'function') {
+      response.flushHeaders();
+    }
+
+    // Reset transformer state to avoid leaking previous stream data
+    this.streamTransformer.reset();
+
+    response.on('close', () => {
+      this.logger.debug('Client disconnected (Claude stream)');
+    });
+
+    response.on('error', (err) => {
+      this.logger.error('Response error (Claude stream):', err);
+    });
+
+    const provider = this.claudeCodeProvider!;
+
+    try {
+      for await (const chunk of provider.streamFromGemini(
+        request,
+        targetModel,
+      )) {
+        if (response.destroyed || response.closed) {
+          this.logger.debug('Response closed, stopping Claude stream');
+          break;
+        }
+
+        const chunkList = this.splitThoughtAndContentChunks(chunk);
+        let shouldStop = false;
+
+        for (const chunkToSend of chunkList) {
+          this.logStreamChunk('stream', chunkToSend);
+          if (thoughtSignature) {
+            (
+              chunkToSend as unknown as Record<string, unknown>
+            ).thoughtSignature = thoughtSignature;
+          }
+
+          const sseData = this.streamTransformer.toSSEFormat(chunkToSend);
+          if (!sseData || !sseData.trim()) {
+            continue;
+          }
+
+          const writeSuccess = response.write(sseData);
+          if (!writeSuccess) {
+            this.logger.warn(
+              'Claude stream backpressure detected, waiting for drain',
+            );
+            await new Promise((resolve) => {
+              response.once('drain', resolve);
+              setTimeout(resolve, 5000);
+            });
+            if (response.destroyed || response.closed) {
+              shouldStop = true;
+              break;
+            }
+          }
+        }
+
+        if (shouldStop) {
+          break;
+        }
+      }
+
+      if (!response.destroyed && !response.closed) {
+        const endMarker = this.streamTransformer.createSSEEndMarker();
+        if (endMarker && endMarker.trim()) {
+          response.write(endMarker);
+        }
+        response.end();
+      }
+    } catch (error) {
+      this.logger.error('Claude stream processing error:', error);
+      if (!response.destroyed && !response.closed) {
+        response.write(
+          `data: ${JSON.stringify({
+            error: {
+              code: 'STREAM_ERROR',
+              message: (error as Error).message,
+            },
+          })}\n\n`,
+        );
+        response.end();
+      }
+    }
   }
 
   private normalizeParts(

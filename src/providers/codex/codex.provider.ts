@@ -99,7 +99,7 @@ export class CodexProvider implements OnModuleInit {
     ).toLowerCase();
     if (activeProvider !== 'codex') {
       this.logger.debug(
-        'Codex provider disabled because aiProvider is set to OpenAI.',
+        `Codex provider disabled because aiProvider is set to ${activeProvider}.`,
       );
       this.enabled = false;
       this.config = undefined;

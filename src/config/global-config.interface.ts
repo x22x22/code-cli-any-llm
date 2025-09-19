@@ -26,6 +26,20 @@ export interface CodexConfig {
   authMode?: CodexAuthMode;
 }
 
+export interface ClaudeCodeConfig {
+  apiKey: string;
+  baseURL: string;
+  model: string;
+  timeout: number;
+  anthropicVersion?: string;
+  beta?: string | string[];
+  userAgent?: string;
+  xApp?: string;
+  dangerousDirectBrowserAccess?: boolean;
+  maxOutputTokens?: number;
+  extraHeaders?: Record<string, string>;
+}
+
 export interface GatewayConfig {
   port: number;
   host: string;
@@ -36,8 +50,9 @@ export interface GatewayConfig {
 export interface GlobalConfig {
   openai: OpenAIConfig;
   codex?: CodexConfig;
+  claudeCode?: ClaudeCodeConfig;
   gateway: GatewayConfig;
-  aiProvider: 'openai' | 'codex';
+  aiProvider: 'openai' | 'codex' | 'claudeCode';
   configSource: string;
   configSources?: string[]; // 可选字段，记录所有配置来源
   isValid: boolean;
