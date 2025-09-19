@@ -1127,7 +1127,11 @@ function readGlobalApiKey(configFile: string): string {
     }
 
     const value =
-      provider === 'codex' ? data?.codex?.apiKey : data?.openai?.apiKey;
+      provider === 'codex'
+        ? data?.codex?.apiKey
+        : provider === 'claudeCode'
+          ? data?.claudeCode?.apiKey
+          : data?.openai?.apiKey;
     return typeof value === 'string' ? value.trim() : '';
   } catch {
     return '';

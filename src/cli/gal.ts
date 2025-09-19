@@ -15,13 +15,19 @@ import { showUpdateBanner } from './update-checker';
 import { runGalUpdate } from './gal-update';
 import { loadCliVersion } from './upgrade-utils';
 
-function loadHelpText(): string {
-  const helpTextPath = resolve(__dirname, 'help-text.txt');
+type HelpLanguage = 'en' | 'zh';
+
+function loadHelpText(language: HelpLanguage = 'en'): string {
+  const filename = language === 'zh' ? 'help-text-cn.txt' : 'help-text.txt';
+  const helpTextPath = resolve(__dirname, filename);
   try {
     const content = readFileSync(helpTextPath, 'utf8');
     return `\n${content}\n`;
   } catch {
-    return '\n帮助文档加载失败\n';
+    if (language === 'zh') {
+      return '\n帮助文档加载失败\n';
+    }
+    return '\nFailed to load help content\n';
   }
 }
 
@@ -29,8 +35,8 @@ const version = loadCliVersion();
 
 const [, , command, ...restArgs] = process.argv;
 
-function showHelp() {
-  console.log(loadHelpText());
+function showHelp(language: HelpLanguage = 'en') {
+  console.log(loadHelpText(language));
 }
 
 function showVersion() {
@@ -52,11 +58,16 @@ async function main() {
 
   switch (command) {
     case undefined:
-      showHelp();
+      showHelp('en');
       break;
     case '-h':
     case '--help':
-      showHelp();
+    case 'help':
+      showHelp('en');
+      break;
+    case 'help-cn':
+    case '--help-cn':
+      showHelp('zh');
       break;
     case '-v':
     case '--version':
@@ -89,7 +100,7 @@ async function main() {
       break;
     default:
       console.log(`未知命令: ${command}`);
-      showHelp();
+      showHelp('en');
       process.exitCode = 1;
   }
 }

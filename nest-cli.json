@@ -10,6 +10,10 @@
         "outDir": "dist"
       },
       {
+        "include": "cli/help-text-cn.txt",
+        "outDir": "dist"
+      },
+      {
         "include": "common/prompts/gpt5-codex-instructions.md",
         "outDir": "dist"
       }
