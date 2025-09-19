@@ -274,8 +274,7 @@ gateway:
     const errors: ConfigError[] = [];
     const warnings: string[] = [];
 
-    let openaiConfig: OpenAIConfig | undefined =
-      config.openai as OpenAIConfig | undefined;
+    let openaiConfig: OpenAIConfig | undefined = config.openai;
 
     // 验证openai配置
     if (!openaiConfig) {
@@ -343,8 +342,7 @@ gateway:
     }
     config.aiProvider = aiProvider;
 
-    let codexConfig: CodexConfig | undefined =
-      config.codex as CodexConfig | undefined;
+    let codexConfig: CodexConfig | undefined = config.codex;
     if (aiProvider === 'codex') {
       if (!codexConfig) {
         codexConfig = {
@@ -357,20 +355,36 @@ gateway:
             summary: 'auto',
           },
           textVerbosity: 'low',
+          authMode: 'ApiKey',
         };
         config.codex = codexConfig;
       }
 
       codexConfig = config.codex as CodexConfig;
 
+      const authModeRaw = (codexConfig.authMode || 'ApiKey')
+        .toString()
+        .trim()
+        .toLowerCase();
+      codexConfig.authMode = authModeRaw === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
+
       const trimmedCodexKey = codexConfig.apiKey?.trim();
-      if (!trimmedCodexKey) {
-        errors.push({
-          field: 'codex.apiKey',
-          message: 'Codex API密钥为空',
-          suggestion: '请在配置文件中设置 codex.apiKey',
-          required: true,
-        });
+      if (codexConfig.authMode === 'ApiKey') {
+        if (!trimmedCodexKey) {
+          errors.push({
+            field: 'codex.apiKey',
+            message: 'Codex API密钥为空',
+            suggestion: '请在配置文件中设置 codex.apiKey',
+            required: true,
+          });
+        } else {
+          codexConfig.apiKey = trimmedCodexKey;
+        }
+      } else {
+        if (trimmedCodexKey) {
+          warnings.push('codex.apiKey 在 ChatGPT 模式下将被忽略');
+        }
+        codexConfig.apiKey = undefined;
       }
       if (!codexConfig.baseURL) {
         warnings.push('codex.baseURL未设置，将使用默认值');
@@ -426,13 +440,23 @@ gateway:
         codexConfig.textVerbosity = 'low';
       }
     } else {
-      config.codex =
-        codexConfig && codexConfig.apiKey ? codexConfig : undefined;
+      const authModeRaw = (codexConfig?.authMode || 'ApiKey')
+        .toString()
+        .trim()
+        .toLowerCase();
+      const normalizedAuthMode =
+        authModeRaw === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
+      if (codexConfig) {
+        codexConfig.authMode = normalizedAuthMode;
+      }
+      const shouldKeepCodex =
+        codexConfig &&
+        (codexConfig.authMode === 'ChatGPT' || !!codexConfig.apiKey);
+      config.codex = shouldKeepCodex ? codexConfig : undefined;
     }
 
     // 验证gateway配置
-    let gatewayConfig: GatewayConfig | undefined =
-      config.gateway as GatewayConfig | undefined;
+    let gatewayConfig: GatewayConfig | undefined = config.gateway;
     if (!gatewayConfig) {
       warnings.push('gateway配置缺失，将使用默认值');
       gatewayConfig = {

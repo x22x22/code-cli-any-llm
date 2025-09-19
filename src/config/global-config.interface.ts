@@ -14,6 +14,8 @@ export interface CodexReasoningConfig {
   summary?: CodexReasoningSummary;
 }
 
+export type CodexAuthMode = 'ApiKey' | 'ChatGPT';
+
 export interface CodexConfig {
   apiKey?: string;
   baseURL?: string;
@@ -21,6 +23,7 @@ export interface CodexConfig {
   timeout?: number;
   reasoning?: CodexReasoningConfig | null;
   textVerbosity?: 'low' | 'medium' | 'high';
+  authMode?: CodexAuthMode;
 }
 
 export interface GatewayConfig {

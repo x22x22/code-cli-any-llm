@@ -62,6 +62,7 @@ export class ConfigModule {
                         timeout: config.codex.timeout,
                         reasoning: config.codex.reasoning,
                         textVerbosity: config.codex.textVerbosity,
+                        authMode: config.codex.authMode || 'ApiKey',
                       }
                     : undefined,
                   gateway: {
@@ -86,33 +87,49 @@ export class ConfigModule {
                   timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 30000,
                   extraBody: undefined,
                 },
-                codex: process.env.GAL_CODEX_API_KEY
-                  ? {
-                      apiKey: process.env.GAL_CODEX_API_KEY,
-                      baseURL:
-                        process.env.GAL_CODEX_BASE_URL ||
-                        'https://chatgpt.com/backend-api/codex',
-                      model: process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
-                      timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 60000,
-                      reasoning: (() => {
-                        const raw = process.env.GAL_CODEX_REASONING;
-                        if (!raw) return undefined;
-                        try {
-                          return JSON.parse(raw);
-                        } catch {
-                          return undefined;
-                        }
-                      })(),
-                      textVerbosity: (() => {
-                        const raw = (
-                          process.env.GAL_CODEX_TEXT_VERBOSITY || ''
-                        ).toLowerCase();
-                        return ['low', 'medium', 'high'].includes(raw)
-                          ? (raw as 'low' | 'medium' | 'high')
-                          : undefined;
-                      })(),
-                    }
-                  : undefined,
+                codex: (() => {
+                  const authModeRaw = (
+                    process.env.GAL_CODEX_AUTH_MODE || 'ApiKey'
+                  )
+                    .trim()
+                    .toLowerCase();
+                  const authMode =
+                    authModeRaw === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
+                  const hasApiKey = !!(
+                    process.env.GAL_CODEX_API_KEY || ''
+                  ).trim();
+                  if (!hasApiKey && authMode !== 'ChatGPT') {
+                    return undefined;
+                  }
+                  return {
+                    apiKey: hasApiKey
+                      ? process.env.GAL_CODEX_API_KEY
+                      : undefined,
+                    baseURL:
+                      process.env.GAL_CODEX_BASE_URL ||
+                      'https://chatgpt.com/backend-api/codex',
+                    model: process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
+                    timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 60000,
+                    reasoning: (() => {
+                      const raw = process.env.GAL_CODEX_REASONING;
+                      if (!raw) return undefined;
+                      try {
+                        return JSON.parse(raw);
+                      } catch {
+                        return undefined;
+                      }
+                    })(),
+                    textVerbosity: (() => {
+                      const raw = (
+                        process.env.GAL_CODEX_TEXT_VERBOSITY || ''
+                      ).toLowerCase();
+                      return ['low', 'medium', 'high'].includes(raw)
+                        ? (raw as 'low' | 'medium' | 'high')
+                        : undefined;
+                    })(),
+                    authMode,
+                  };
+                })(),
                 gateway: {
                   port: Number(process.env.GAL_PORT) || 23062,
                   host: process.env.GAL_HOST || '0.0.0.0',
