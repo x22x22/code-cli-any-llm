@@ -11,6 +11,7 @@ import {
   runGalStop,
   runGalKill,
 } from './gal-gateway';
+import { showUpdateBanner } from './update-checker';
 
 function loadVersion(): string {
   const packageJsonPath = resolve(__dirname, '../../package.json');
@@ -46,6 +47,16 @@ function showVersion() {
 }
 
 async function main() {
+  const versionCommandAliases = new Set(['-v', '--version', 'version']);
+  const shouldShowUpdateBanner =
+    process.env.GAL_DISABLE_UPDATE_CHECK !== '1' &&
+    process.stdout.isTTY &&
+    !versionCommandAliases.has(command ?? '');
+
+  if (shouldShowUpdateBanner) {
+    await showUpdateBanner(version);
+  }
+
   switch (command) {
     case undefined:
       showHelp();
