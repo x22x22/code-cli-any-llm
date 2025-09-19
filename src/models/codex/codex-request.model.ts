@@ -5,7 +5,7 @@ export interface CodexMessageContent {
 
 export interface CodexMessageItem {
   type: 'message';
-  role: 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant';
   content: CodexMessageContent[];
 }
 

@@ -83,6 +83,11 @@ export class OpenAIConfig {
 
 export class CodexConfig {
   @IsOptional()
+  @IsIn(['ApiKey', 'ChatGPT'])
+  @Transform(({ value }: { value: string }) => normalizeAuthMode(value))
+  authMode?: 'ApiKey' | 'ChatGPT';
+
+  @IsOptional()
   @IsString()
   @Transform(
     ({ value }: { value: string }) => value || process.env.GAL_CODEX_API_KEY,
@@ -189,6 +194,12 @@ function parseReasoningConfig(raw: unknown): CodexReasoningConfig | undefined {
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function normalizeAuthMode(value?: string): 'ApiKey' | 'ChatGPT' {
+  const envRaw = value ?? process.env.GAL_CODEX_AUTH_MODE;
+  const normalized = (envRaw || 'ApiKey').toString().trim().toLowerCase();
+  return normalized === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
 }
 
 export class GatewayConfig {

@@ -161,7 +161,7 @@ export class StreamTransformer {
           const safeText = this.removeControlCharacters(
             String(choiceWithDelta.delta.reasoning_content),
           );
-          if (safeText.trim()) {
+          if (safeText.length > 0) {
             content.parts.push({
               text: safeText,
               thought: true,
@@ -176,7 +176,7 @@ export class StreamTransformer {
             String(choiceWithDelta.delta.content),
           );
 
-          if (safeText.trim()) {
+          if (safeText.length > 0) {
             if (this.isGLMModel) {
               // For GLM models, buffer text to avoid formatting issues
               this.textBuffer += safeText;

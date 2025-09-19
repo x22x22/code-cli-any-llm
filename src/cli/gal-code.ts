@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as http from 'http';
@@ -13,6 +14,7 @@ import type {
   CodexConfig,
   CodexReasoningConfig,
 } from '../config/global-config.interface';
+import { ChatGPTAuthManager } from '../providers/codex/chatgpt-auth.manager';
 
 const GEMINI_AUTH_TYPE = 'gemini-api-key';
 
@@ -74,15 +76,32 @@ async function prepareGatewayContext(
     process.exit(1);
   }
 
-  const gatewayHost = normalizeGatewayHost(configResult.config.gateway.host);
-  const gatewayPort = configResult.config.gateway.port;
+  const config = configResult.config;
+  const gatewayHost = normalizeGatewayHost(config.gateway.host);
+  const gatewayPort = config.gateway.port;
+
+  const isChatGPTMode = isCodexChatGPTMode(config);
 
   let geminiApiKey: string | undefined;
   if (requireApiKey) {
-    geminiApiKey = readGlobalApiKey(configFile);
-    if (!geminiApiKey) {
-      console.error('未能在 ~/.gemini-any-llm/config.yaml 中找到有效的 apikey');
-      process.exit(1);
+    if (isChatGPTMode) {
+      try {
+        await ensureChatGPTAuth('GalCodeChatGPT');
+        geminiApiKey = 'chatgpt-mode';
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        console.error(`初始化 ChatGPT 凭据失败: ${reason}`);
+        console.error('请重新运行 `pnpm run gal auth` 并完成浏览器登录。');
+        process.exit(1);
+      }
+    } else {
+      geminiApiKey = readGlobalApiKey(configFile);
+      if (!geminiApiKey) {
+        console.error(
+          '未能在 ~/.gemini-any-llm/config.yaml 中找到有效的 apikey',
+        );
+        process.exit(1);
+      }
     }
   }
 
@@ -135,6 +154,26 @@ function shouldRunWizard(
   }
 
   const provider = result.config.aiProvider ?? 'openai';
+  if (provider === 'codex') {
+    const codexConfig = result.config.codex;
+    if (!codexConfig) {
+      return true;
+    }
+
+    if ((codexConfig.authMode ?? 'ApiKey') === 'ChatGPT') {
+      return false;
+    }
+
+    if (!codexConfig.apiKey) {
+      return true;
+    }
+  } else {
+    const openaiConfig = result.config.openai;
+    if (!openaiConfig || !openaiConfig.apiKey) {
+      return true;
+    }
+  }
+
   const providerConfig =
     provider === 'codex' ? result.config.codex : result.config.openai;
 
@@ -242,6 +281,14 @@ async function configureCodex(
   rl: readline.Interface,
   existing: Partial<CodexConfig>,
 ): Promise<CodexConfig> {
+  const authModeChoice = await askChoice(
+    rl,
+    '认证模式 (ApiKey / ChatGPT)',
+    ['apikey', 'chatgpt'] as const,
+    existing.authMode === 'ChatGPT' ? 'chatgpt' : 'apikey',
+  );
+  const authMode = authModeChoice === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
+
   const baseURL = await ask(
     rl,
     'Codex Base URL (默认 https://chatgpt.com/backend-api/codex)',
@@ -254,7 +301,13 @@ async function configureCodex(
     existing.model ?? 'gpt-5-codex',
   );
 
-  const apiKey = await askRequired(rl, 'Codex API Key', existing.apiKey);
+  let apiKey: string | undefined = existing.apiKey;
+  if (authMode === 'ApiKey') {
+    apiKey = await askRequired(rl, 'Codex API Key', existing.apiKey);
+  } else {
+    console.log('已选择 ChatGPT 模式，将在首次请求时提示登录。');
+    apiKey = undefined;
+  }
 
   const timeout = await askNumber(
     rl,
@@ -306,6 +359,7 @@ async function configureCodex(
     timeout,
     reasoning,
     textVerbosity,
+    authMode,
   };
 }
 
@@ -772,12 +826,31 @@ function readGlobalApiKey(configFile: string): string {
     const raw = fs.readFileSync(configFile, 'utf8');
     const data = yaml.load(raw) as Partial<GlobalConfig> | undefined;
     const provider = data?.aiProvider ?? 'openai';
+    if (
+      provider === 'codex' &&
+      (data?.codex?.authMode ?? 'ApiKey') === 'ChatGPT'
+    ) {
+      return 'chatgpt-mode';
+    }
+
     const value =
       provider === 'codex' ? data?.codex?.apiKey : data?.openai?.apiKey;
     return typeof value === 'string' ? value.trim() : '';
   } catch {
     return '';
   }
+}
+
+function isCodexChatGPTMode(config: GlobalConfig): boolean {
+  if ((config.aiProvider ?? 'openai') !== 'codex') {
+    return false;
+  }
+  return (config.codex?.authMode ?? 'ApiKey') === 'ChatGPT';
+}
+
+async function ensureChatGPTAuth(loggerLabel: string): Promise<void> {
+  const manager = new ChatGPTAuthManager(new Logger(loggerLabel));
+  await manager.getAuthHeaders();
 }
 
 function normalizeGatewayHost(host: string): string {

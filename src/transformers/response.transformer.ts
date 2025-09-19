@@ -53,17 +53,17 @@ export class ResponseTransformer {
       }>;
     };
 
-    // Handle text content
-    if (messageObj.content) {
-      parts.push({ text: messageObj.content });
-    }
-
     // Handle reasoning content (from models like GLM) - convert to thought part
     if (messageObj.reasoning_content) {
       parts.push({
         text: messageObj.reasoning_content,
         thought: true,
       });
+    }
+
+    // Handle text content
+    if (messageObj.content) {
+      parts.push({ text: messageObj.content });
     }
 
     // Handle tool calls

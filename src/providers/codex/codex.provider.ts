@@ -17,6 +17,7 @@ import {
   OpenAIStreamChunk,
 } from '../../models/openai/openai-response.model';
 import { CodexConfig } from '../../config/config.schema';
+import { ChatGPTAuthManager } from './chatgpt-auth.manager';
 import type { CodexReasoningConfig } from '../../config/global-config.interface';
 import {
   CodexRequest,
@@ -41,7 +42,8 @@ interface ToolCallState {
 }
 
 interface ResolvedCodexConfig {
-  apiKey: string;
+  authMode: 'ApiKey' | 'ChatGPT';
+  apiKey?: string;
   baseURL: string;
   model: string;
   timeout: number;
@@ -60,6 +62,11 @@ interface CodexStreamContext {
   usage?: OpenAIUsage;
   toolCalls: OpenAIToolCall[];
   toolCallState: Map<string, ToolCallState>;
+  reasoningStates: Map<string, CodexReasoningState>;
+}
+
+interface CodexReasoningState {
+  hasStreamed: boolean;
 }
 
 class CodexHttpError extends Error {
@@ -77,6 +84,8 @@ export class CodexProvider implements OnModuleInit {
   private config?: ResolvedCodexConfig;
   private enabled = false;
   private initialized = false;
+  private chatgptAuth?: ChatGPTAuthManager;
+  private readonly conversationId = randomUUID();
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -99,29 +108,55 @@ export class CodexProvider implements OnModuleInit {
 
     const config = this.configService.get<CodexConfig>('codex');
 
-    if (config?.apiKey && config.apiKey.trim()) {
-      const resolved: ResolvedCodexConfig = {
-        apiKey: config.apiKey,
-        baseURL: config.baseURL || 'https://chatgpt.com/backend-api',
-        model: config.model || 'gpt-5-codex',
-        timeout: config.timeout || 60000,
-        textVerbosity: config.textVerbosity,
-      };
-      if (config.reasoning) {
-        resolved.reasoning = { ...config.reasoning };
-      }
-      this.config = resolved;
-      this.enabled = true;
-      this.logger.log(
-        `Codex provider initialized with model: ${resolved.model} (${resolved.baseURL})`,
-      );
-    } else {
-      this.logger.log(
-        'Codex provider configuration not found or missing apiKey.',
-      );
+    if (!config) {
+      this.logger.log('Codex provider配置缺失，已禁用。');
       this.enabled = false;
       this.config = undefined;
+      this.chatgptAuth = undefined;
+      this.initialized = true;
+      return;
     }
+
+    const authMode =
+      (config.authMode || 'ApiKey').toString().toLowerCase() === 'chatgpt'
+        ? 'ChatGPT'
+        : 'ApiKey';
+
+    const resolved: ResolvedCodexConfig = {
+      authMode,
+      baseURL: config.baseURL || 'https://chatgpt.com/backend-api',
+      model: config.model || 'gpt-5-codex',
+      timeout: config.timeout || 60000,
+      textVerbosity: config.textVerbosity,
+    };
+    if (config.reasoning) {
+      resolved.reasoning = { ...config.reasoning };
+    }
+
+    if (authMode === 'ApiKey') {
+      const apiKey = config.apiKey?.trim();
+      if (!apiKey) {
+        this.logger.log('Codex provider 缺少 API Key，已禁用。');
+        this.enabled = false;
+        this.config = undefined;
+        this.chatgptAuth = undefined;
+        this.initialized = true;
+        return;
+      }
+      resolved.apiKey = apiKey;
+      this.chatgptAuth = undefined;
+      this.logger.log(
+        `Codex provider 以 ApiKey 模式初始化，模型：${resolved.model} (${resolved.baseURL})`,
+      );
+    } else {
+      this.chatgptAuth = new ChatGPTAuthManager(this.logger);
+      this.logger.log(
+        `Codex provider 以 ChatGPT 模式初始化，模型：${resolved.model} (${resolved.baseURL})`,
+      );
+    }
+
+    this.config = resolved;
+    this.enabled = true;
     this.initialized = true;
   }
 
@@ -168,6 +203,15 @@ export class CodexProvider implements OnModuleInit {
         message.content = undefined;
       }
     }
+
+    this.logger.debug(
+      `[CodexProvider] inbound response (non-stream): ${this.sanitizeForLog({
+        responseId: context.responseId,
+        finishReason: context.finishReason,
+        hasToolCalls: !!toolCalls,
+        contentPreview: context.accumulated,
+      })}`,
+    );
 
     const finishReason = toolCalls
       ? 'tool_calls'
@@ -239,18 +283,31 @@ export class CodexProvider implements OnModuleInit {
 
   private ensureEnabledConfig(): ResolvedCodexConfig {
     this.ensureInitialized();
-    if (!this.enabled || !this.config || !this.config.apiKey) {
+    if (!this.enabled || !this.config) {
       throw new Error('Codex provider is not enabled.');
     }
 
-    return {
+    if (
+      this.config.authMode === 'ApiKey' &&
+      (!this.config.apiKey || !this.config.apiKey.trim())
+    ) {
+      throw new Error('Codex provider ApiKey 模式缺少 API Key。');
+    }
+
+    const resolved: ResolvedCodexConfig = {
+      authMode: this.config.authMode,
       apiKey: this.config.apiKey,
       baseURL: this.config.baseURL || 'https://chatgpt.com/backend-api',
       model: this.config.model || 'gpt-5-codex',
       timeout: this.config.timeout || 60000,
-      reasoning: this.config.reasoning,
       textVerbosity: this.config.textVerbosity,
     };
+
+    if (this.config.reasoning) {
+      resolved.reasoning = { ...this.config.reasoning };
+    }
+
+    return resolved;
   }
 
   private buildCodexPayload(
@@ -266,8 +323,8 @@ export class CodexProvider implements OnModuleInit {
       input,
       stream: true,
       store: false,
-      include: [],
-      prompt_cache_key: randomUUID(),
+      include: ['reasoning.encrypted_content'],
+      prompt_cache_key: this.conversationId,
       parallel_tool_calls: false,
     };
 
@@ -296,12 +353,29 @@ export class CodexProvider implements OnModuleInit {
     instructions: string;
     input: CodexInputItem[];
   } {
-    let instructions = GPT5_CODEX_BASE_INSTRUCTIONS;
+    const instructions = GPT5_CODEX_BASE_INSTRUCTIONS;
     const input: CodexInputItem[] = [];
 
     for (const message of messages) {
+      // if (message.role === 'system' && message.content) {
+      //   instructions += `\n\n${message.content}`;
+      //   continue;
+      // }
+
       if (message.role === 'system' && message.content) {
-        instructions += `\n\n${message.content}`;
+        const content = message.content;
+        if (content) {
+          input.push({
+            type: 'message',
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: `<system>${content}</system>`,
+              } as CodexMessageContent,
+            ],
+          } as CodexMessageItem);
+        }
         continue;
       }
 
@@ -420,71 +494,93 @@ export class CodexProvider implements OnModuleInit {
       usage: undefined,
       toolCalls: [],
       toolCallState: new Map<string, ToolCallState>(),
+      reasoningStates: new Map<string, CodexReasoningState>(),
     };
   }
 
   private async *streamCodexChunks(
     payload: CodexRequest,
-    config: {
-      apiKey: string;
-      baseURL: string;
-      model: string;
-      timeout: number;
-    },
+    config: ResolvedCodexConfig,
     context: CodexStreamContext,
   ): AsyncGenerator<OpenAIStreamChunk> {
     const endpoint = this.resolveEndpoint(config.baseURL);
+    const maxRetries = config.authMode === 'ChatGPT' ? 1 : 0;
+    const requestBody = JSON.stringify(payload);
 
-    const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), config.timeout);
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timeoutHandle = setTimeout(
+        () => controller.abort(),
+        config.timeout,
+      );
 
-    let response: Response;
-    try {
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-        'User-Agent': this.buildUserAgent(),
-        originator: 'codex_cli_rs',
-        version: CODEX_VERSION,
-      };
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutHandle);
-    }
+      let response: Response;
+      try {
+        const baseHeaders = await this.buildRequestHeaders(config);
+        const requestHeaders: Record<string, string> = {
+          ...baseHeaders,
+          conversation_id: this.conversationId,
+          session_id: this.conversationId,
+        };
 
-    if (!response.ok) {
-      const body = await response.text();
-      throw new CodexHttpError(response.status, body || response.statusText);
-    }
+        this.logger.debug(
+          `[CodexProvider] outbound request attempt=${attempt + 1} url=${endpoint} headers=${JSON.stringify(requestHeaders)} body=${requestBody}`,
+        );
 
-    if (!response.body) {
-      throw new Error('Codex response body is empty');
-    }
-
-    const stream = Readable.fromWeb(
-      response.body as unknown as NodeReadableStream<Uint8Array>,
-    );
-
-    for await (const event of this.parseSSE(stream)) {
-      if (event === '[DONE]') {
-        break;
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: requestHeaders,
+          body: requestBody,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutHandle);
       }
-      const chunk = this.mapEventToChunk(event as CodexStreamEvent, context);
-      if (chunk) {
-        yield chunk;
+
+      if (!response.ok) {
+        const status = response.status;
+
+        if (
+          status === 401 &&
+          config.authMode === 'ChatGPT' &&
+          this.chatgptAuth &&
+          attempt < maxRetries
+        ) {
+          await this.chatgptAuth.refreshAuthTokens();
+          continue;
+        }
+
+        const body = await response.text().catch(() => '');
+        throw new CodexHttpError(status, body || response.statusText);
       }
+
+      if (!response.body) {
+        throw new Error('Codex response body is empty');
+      }
+
+      const stream = Readable.fromWeb(
+        response.body as unknown as NodeReadableStream<Uint8Array>,
+      );
+
+      for await (const event of this.parseSSE(stream)) {
+        if (event === '[DONE]') {
+          break;
+        }
+        const chunk = this.mapEventToChunk(event as CodexStreamEvent, context);
+        if (chunk) {
+          yield chunk;
+        }
+      }
+
+      if (!context.completed) {
+        yield this.createCompletionChunk(context);
+        context.completed = true;
+      }
+
+      return;
     }
 
-    if (!context.completed) {
-      yield this.createCompletionChunk(context);
-      context.completed = true;
-    }
+    throw new Error('Codex request failed after retries');
   }
 
   private async *parseSSE(stream: Readable): AsyncGenerator<any> {
@@ -520,7 +616,9 @@ export class CodexProvider implements OnModuleInit {
         }
 
         try {
-          yield JSON.parse(data);
+          const parsed = JSON.parse(data);
+          this.logCodexResponseEvent(parsed);
+          yield parsed;
         } catch (error: unknown) {
           this.logger.warn(`Failed to parse Codex SSE chunk: ${String(error)}`);
         }
@@ -528,11 +626,80 @@ export class CodexProvider implements OnModuleInit {
     }
   }
 
+  private sanitizeForLog(value: unknown, maxLength = 500): string {
+    let stringified: string;
+    if (typeof value === 'string') {
+      stringified = value;
+    } else {
+      try {
+        stringified = JSON.stringify(value);
+      } catch {
+        stringified = String(value);
+      }
+    }
+
+    if (stringified.length > maxLength) {
+      return `${stringified.slice(0, maxLength)}…`;
+    }
+    return stringified;
+  }
+
+  private logCodexResponseEvent(event: unknown): void {
+    if (!event || typeof event !== 'object') {
+      this.logger.debug(
+        `[CodexProvider] inbound event: ${this.sanitizeForLog(event)}`,
+      );
+      return;
+    }
+
+    const eventObj = event as Record<string, unknown>;
+    const type = typeof eventObj.type === 'string' ? eventObj.type : 'unknown';
+
+    let preview: unknown;
+    if (typeof eventObj.delta === 'string') {
+      preview = eventObj.delta;
+    } else if (
+      eventObj.delta &&
+      typeof (eventObj.delta as Record<string, unknown>).text === 'string'
+    ) {
+      preview = (eventObj.delta as Record<string, unknown>).text;
+    } else if (typeof eventObj.text === 'string') {
+      preview = eventObj.text;
+    } else {
+      const item = eventObj.item as
+        | { content?: Array<{ text?: string }> }
+        | undefined;
+      if (
+        item &&
+        Array.isArray(item.content) &&
+        typeof item.content[0]?.text === 'string'
+      ) {
+        preview = item.content[0]?.text;
+      }
+    }
+
+    const previewText = preview ? this.sanitizeForLog(preview, 200) : '∅';
+
+    this.logger.debug(
+      `[CodexProvider] inbound event type=${type} preview=${previewText}`,
+    );
+  }
+
   private mapEventToChunk(
     event: CodexStreamEvent,
     context: CodexStreamContext,
   ): OpenAIStreamChunk | null {
     const eventType = event.type ?? '';
+
+    if (
+      eventType === 'response.reasoning_text.delta' ||
+      eventType === 'response.reasoning_text.done' ||
+      eventType === 'response.reasoning_summary_text.delta' ||
+      eventType === 'response.reasoning_summary_text.done'
+    ) {
+      const reasoningChunk = this.handleReasoningEvent(event, context);
+      return reasoningChunk;
+    }
 
     if (eventType === 'response.completed') {
       const usageRaw = (event.response?.usage ?? {}) as {
@@ -744,12 +911,25 @@ export class CodexProvider implements OnModuleInit {
       return null;
     }
 
+    let normalizedDelta = delta;
+    if (context.accumulated.length > 0) {
+      if (normalizedDelta.startsWith(context.accumulated)) {
+        normalizedDelta = normalizedDelta.slice(context.accumulated.length);
+      } else if (context.accumulated.endsWith(normalizedDelta)) {
+        return null;
+      }
+    }
+
+    if (!normalizedDelta) {
+      return null;
+    }
+
     const firstChunk = !context.started;
     if (firstChunk) {
       context.started = true;
     }
 
-    context.accumulated += delta;
+    context.accumulated += normalizedDelta;
 
     const chunk: OpenAIStreamChunk = {
       id: (event.response?.id as string) || context.responseId,
@@ -761,13 +941,131 @@ export class CodexProvider implements OnModuleInit {
           index: 0,
           delta: {
             ...(firstChunk ? { role: 'assistant' as const } : {}),
-            content: delta,
+            content: normalizedDelta,
           },
         },
       ],
     };
 
     return chunk;
+  }
+
+  private handleReasoningEvent(
+    event: CodexStreamEvent,
+    context: CodexStreamContext,
+  ): OpenAIStreamChunk | null {
+    const text = this.extractReasoningText(event);
+    if (!text) {
+      return null;
+    }
+
+    const key = this.getReasoningStateKey(event);
+    if (key) {
+      const state = this.getOrCreateReasoningState(context, key);
+      if (
+        (event.type === 'response.reasoning_text.done' ||
+          event.type === 'response.reasoning_summary_text.done') &&
+        state.hasStreamed
+      ) {
+        return null;
+      }
+      state.hasStreamed = true;
+    }
+
+    return this.buildReasoningChunk(context, text);
+  }
+
+  private getReasoningStateKey(event: CodexStreamEvent): string | null {
+    const itemId = event.item_id;
+    if (!itemId) {
+      return null;
+    }
+
+    const outputIndex =
+      typeof event.output_index === 'number' ? event.output_index : 0;
+    const contentIndex =
+      typeof event.content_index === 'number' ? event.content_index : 0;
+
+    return `${itemId}:${outputIndex}:${contentIndex}`;
+  }
+
+  private getOrCreateReasoningState(
+    context: CodexStreamContext,
+    key: string,
+  ): CodexReasoningState {
+    if (!context.reasoningStates.has(key)) {
+      context.reasoningStates.set(key, { hasStreamed: false });
+    }
+    return context.reasoningStates.get(key)!;
+  }
+
+  private extractReasoningText(event: CodexStreamEvent): string | undefined {
+    if (
+      event.type === 'response.reasoning_text.delta' ||
+      event.type === 'response.reasoning_summary_text.delta'
+    ) {
+      if (typeof event.delta === 'string') {
+        return event.delta;
+      }
+      if (
+        event.delta &&
+        typeof (event.delta as { delta?: string }).delta === 'string'
+      ) {
+        return (event.delta as { delta?: string }).delta;
+      }
+      if (
+        event.delta &&
+        typeof (event.delta as { text?: string }).text === 'string'
+      ) {
+        return (event.delta as { text?: string }).text;
+      }
+    }
+
+    if (
+      event.type === 'response.reasoning_text.done' ||
+      event.type === 'response.reasoning_summary_text.done'
+    ) {
+      if (typeof event.text === 'string') {
+        return event.text;
+      }
+      if (typeof event.delta === 'string') {
+        return event.delta;
+      }
+      if (
+        event.delta &&
+        typeof (event.delta as { text?: string }).text === 'string'
+      ) {
+        return (event.delta as { text?: string }).text;
+      }
+    }
+
+    return undefined;
+  }
+
+  private buildReasoningChunk(
+    context: CodexStreamContext,
+    text: string,
+  ): OpenAIStreamChunk {
+    const firstChunk = !context.started;
+    if (firstChunk) {
+      context.started = true;
+    }
+
+    return {
+      id: context.responseId,
+      object: 'chat.completion.chunk',
+      created: Math.floor(Date.now() / 1000),
+      model: context.model,
+      choices: [
+        {
+          index: 0,
+          delta: {
+            ...(firstChunk ? { role: 'assistant' as const } : {}),
+            reasoning_content: text,
+          },
+        },
+      ],
+    };
   }
 
   private createCompletionChunk(
@@ -882,6 +1180,39 @@ export class CodexProvider implements OnModuleInit {
   private resolveEndpoint(baseURL: string): string {
     const normalized = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
     return `${normalized}/responses`;
+  }
+
+  private async buildRequestHeaders(
+    config: ResolvedCodexConfig,
+  ): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'User-Agent': this.buildUserAgent(),
+      originator: 'codex_cli_rs',
+      version: CODEX_VERSION,
+      'OpenAI-Beta': 'responses=experimental',
+    };
+
+    if (config.authMode === 'ApiKey') {
+      if (!config.apiKey) {
+        throw new Error('Codex ApiKey 模式缺少 API Key');
+      }
+      headers.Authorization = `Bearer ${config.apiKey}`;
+      return headers;
+    }
+
+    if (!this.chatgptAuth) {
+      throw new Error('ChatGPT 认证未初始化');
+    }
+
+    const { authorization, accountId } =
+      await this.chatgptAuth.getAuthHeaders();
+    headers.Authorization = authorization;
+    if (accountId) {
+      headers['chatgpt-account-id'] = accountId;
+    }
+    return headers;
   }
 
   private buildUserAgent(): string {

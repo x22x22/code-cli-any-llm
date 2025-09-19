@@ -11,6 +11,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { GeminiRequestDto } from '../models/gemini/gemini-request.dto';
+import { GeminiResponseDto } from '../models/gemini/gemini-response.dto';
 import { OpenAIProvider } from '../providers/openai/openai.provider';
 import { CodexProvider } from '../providers/codex/codex.provider';
 import { RequestTransformer } from '../transformers/request.transformer';
@@ -252,36 +253,48 @@ export class GeminiController {
               const geminiChunk =
                 this.streamTransformer.transformStreamChunk(chunk);
 
-              // Add thought signature if provided
-              if (thoughtSignature) {
-                (
-                  geminiChunk as unknown as Record<string, unknown>
-                ).thoughtSignature = thoughtSignature;
+              const chunkList = this.splitThoughtAndContentChunks(geminiChunk);
+
+              let shouldStopProcessing = false;
+              for (const chunkToSend of chunkList) {
+                this.logStreamChunk('stream', chunkToSend);
+                // Add thought signature if provided
+                if (thoughtSignature) {
+                  (
+                    chunkToSend as unknown as Record<string, unknown>
+                  ).thoughtSignature = thoughtSignature;
+                }
+
+                const sseData = this.streamTransformer.toSSEFormat(chunkToSend);
+
+                // Only write if SSE data is not empty (skip empty chunks)
+                if (
+                  sseData &&
+                  sseData.trim() &&
+                  !response.destroyed &&
+                  !response.closed
+                ) {
+                  const writeSuccess = response.write(sseData);
+                  if (!writeSuccess) {
+                    this.logger.warn('Write buffer full, waiting for drain');
+                    // Wait for drain event if buffer is full
+                    await new Promise((resolve) => {
+                      response.once('drain', resolve);
+                      // Timeout after 5 seconds to prevent hanging
+                      setTimeout(resolve, 5000);
+                    });
+                  }
+                } else if (!sseData || !sseData.trim()) {
+                  // Skip empty SSE chunk
+                  continue;
+                } else {
+                  // Response closed during data write
+                  shouldStopProcessing = true;
+                  break;
+                }
               }
 
-              const sseData = this.streamTransformer.toSSEFormat(geminiChunk);
-
-              // Only write if SSE data is not empty (skip empty chunks)
-              if (
-                sseData &&
-                sseData.trim() &&
-                !response.destroyed &&
-                !response.closed
-              ) {
-                const writeSuccess = response.write(sseData);
-                if (!writeSuccess) {
-                  this.logger.warn('Write buffer full, waiting for drain');
-                  // Wait for drain event if buffer is full
-                  await new Promise((resolve) => {
-                    response.once('drain', resolve);
-                    // Timeout after 5 seconds to prevent hanging
-                    setTimeout(resolve, 5000);
-                  });
-                }
-              } else if (!sseData || !sseData.trim()) {
-                // Skip empty SSE chunk
-              } else {
-                // Response closed during data write
+              if (shouldStopProcessing) {
                 break;
               }
             }
@@ -309,11 +322,21 @@ export class GeminiController {
 
               this.streamTransformer.applyUsageMetadata(finalChunk);
 
-              const finalSSEData = this.streamTransformer.toSSEFormat(
+              const finalChunks = this.splitThoughtAndContentChunks(
                 finalChunk as unknown as any,
               );
-              if (finalSSEData && finalSSEData.trim()) {
-                response.write(finalSSEData);
+              for (const chunkToSend of finalChunks) {
+                this.logStreamChunk('stream-final', chunkToSend);
+                if (thoughtSignature) {
+                  (
+                    chunkToSend as unknown as Record<string, unknown>
+                  ).thoughtSignature = thoughtSignature;
+                }
+                const finalSSEData =
+                  this.streamTransformer.toSSEFormat(chunkToSend);
+                if (finalSSEData && finalSSEData.trim()) {
+                  response.write(finalSSEData);
+                }
               }
             }
 
@@ -410,6 +433,152 @@ export class GeminiController {
     } catch (error) {
       this.logger.error(`Error in model request for ${model}:`, error);
       throw error;
+    }
+  }
+
+  private splitThoughtAndContentChunks(
+    chunk: GeminiResponseDto,
+  ): GeminiResponseDto[] {
+    const candidates = chunk?.candidates;
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      return [chunk];
+    }
+
+    const [candidate] = candidates;
+    const contentInfo = candidate?.content;
+    const parts = contentInfo?.parts;
+    if (!contentInfo || !Array.isArray(parts) || parts.length === 0) {
+      return [chunk];
+    }
+
+    const thoughtParts = parts
+      .filter((part) => (part as { thought?: boolean }).thought)
+      .map((part) => ({ ...part }));
+    const contentParts = parts
+      .filter((part) => !(part as { thought?: boolean }).thought)
+      .map((part) => ({ ...part }));
+
+    if (thoughtParts.length === 0 || contentParts.length === 0) {
+      return [chunk];
+    }
+
+    const baseContent = { ...contentInfo };
+    const normalizedThoughtParts = this.normalizeParts(thoughtParts);
+    const normalizedContentParts = this.normalizeParts(contentParts, {
+      prependLeadingNewline: true,
+    });
+
+    const createChunk = (
+      selectedParts: Array<Record<string, unknown>>,
+      options?: { isThoughtChunk?: boolean },
+    ): GeminiResponseDto => ({
+      ...chunk,
+      candidates: [
+        {
+          ...candidate,
+          content: { ...baseContent, parts: selectedParts },
+          finishReason: options?.isThoughtChunk
+            ? undefined
+            : candidate.finishReason,
+        },
+      ],
+    });
+
+    const thoughtChunk = createChunk(normalizedThoughtParts, {
+      isThoughtChunk: true,
+    });
+    const contentChunk = createChunk(normalizedContentParts);
+    return [thoughtChunk, contentChunk];
+  }
+
+  private normalizeParts(
+    parts: Array<Record<string, unknown>>,
+    options?: { prependLeadingNewline?: boolean },
+  ): Array<Record<string, unknown>> {
+    const normalized: Array<Record<string, unknown>> = [];
+    let lastText: string | undefined;
+
+    for (const part of parts) {
+      const partText =
+        typeof (part as { text?: unknown }).text === 'string'
+          ? (part as { text: string }).text
+          : undefined;
+      if (partText !== undefined) {
+        let text = partText;
+        if (options?.prependLeadingNewline && normalized.length === 0) {
+          text = text.startsWith('\n') ? text : `\n${text}`;
+        }
+        if (text === lastText) {
+          continue;
+        }
+        lastText = text;
+        const cloned = { ...part };
+        cloned.text = text;
+        normalized.push(cloned);
+      } else {
+        normalized.push({ ...part });
+        lastText = undefined;
+      }
+    }
+
+    return normalized;
+  }
+
+  private logStreamChunk(label: string, chunk: GeminiResponseDto): void {
+    const candidate = chunk?.candidates?.[0];
+    if (!candidate) {
+      this.logger.debug(`[Stream][${label}] empty candidate`);
+      return;
+    }
+
+    const parts = candidate.content?.parts;
+    let preview: string | undefined;
+    if (Array.isArray(parts) && parts.length > 0) {
+      preview = parts
+        .map((part) => {
+          const isThought = Boolean((part as { thought?: boolean }).thought);
+          const text =
+            typeof (part as { text?: unknown }).text === 'string'
+              ? ((part as { text: string }).text as string)
+              : undefined;
+          if (text) {
+            return `${isThought ? '[thought]' : '[content]'}${this.sanitizeForLog(
+              text,
+              120,
+            )}`;
+          }
+          if ((part as { functionCall?: { name?: string } }).functionCall) {
+            return '[function-call]';
+          }
+          return '[non-text]';
+        })
+        .join(' | ');
+    }
+
+    this.logger.debug(
+      `[Stream][${label}] id=${chunk.responseId ?? 'unknown'} preview=${
+        preview ?? '∅'
+      } finish=${candidate.finishReason ?? '∅'}`,
+    );
+  }
+
+  private sanitizeForLog(value: unknown, maxLength = 500): string {
+    if (typeof value === 'string') {
+      return value.length > maxLength
+        ? `${value.slice(0, maxLength)}…`
+        : value;
+    }
+
+    try {
+      const serialized = JSON.stringify(value);
+      return serialized.length > maxLength
+        ? `${serialized.slice(0, maxLength)}…`
+        : serialized;
+    } catch {
+      const fallback = String(value);
+      return fallback.length > maxLength
+        ? `${fallback.slice(0, maxLength)}…`
+        : fallback;
     }
   }
 }

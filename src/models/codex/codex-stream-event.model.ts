@@ -10,6 +10,9 @@ export interface CodexStreamEvent {
       completion_tokens?: number;
     };
   };
+  item_id?: string;
+  output_index?: number;
+  content_index?: number;
   item?: {
     type?: string;
     role?: string;
