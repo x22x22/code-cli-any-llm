@@ -1,8 +1,8 @@
 # Example configuration for gemini-any-llm
 # Copy this file to config.yaml and modify as needed for project-specific settings
 
-# Active provider: 'openai' or 'codex'
-aiProvider: openai
+# Active provider: 'openai', 'codex' 或 'claudeCode'
+aiProvider: claudeCode
 
 # API Configuration
 openai:
@@ -32,6 +32,24 @@ codex:
   # textVerbosity 控制回复详略程度，可选 low/medium/high；默认 medium。
   # 较低值可得到更简洁的输出，适合追求低延迟或精简代码生成的场景。
   textVerbosity: low
+
+# Claude Code configuration (optional, only used when aiProvider is set to claudeCode)
+claudeCode:
+  apiKey: ''
+  baseURL: 'https://open.bigmodel.cn/api/anthropic'
+  model: 'claude-sonnet-4-20250514'
+  timeout: 60000
+  anthropicVersion: '2023-06-01'
+  beta:
+    - claude-code-20250219
+    - interleaved-thinking-2025-05-14
+    - fine-grained-tool-streaming-2025-05-14
+  userAgent: 'claude-cli/1.0.119 (external, cli)'
+  xApp: 'cli'
+  dangerousDirectBrowserAccess: true
+  maxOutputTokens: 64000
+  # extraHeaders 可用于追加额外的 HTTP 请求头（键值对形式）
+  extraHeaders: {}
 
 # Gateway Configuration
 gateway:
