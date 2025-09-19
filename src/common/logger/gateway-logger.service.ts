@@ -64,36 +64,48 @@ export class GatewayLoggerService extends ConsoleLogger {
 
   log(message: any, ...optionalParams: any[]): void {
     super.log(message, ...optionalParams);
-    this.persist('INFO', message, optionalParams);
+    this.persistIfEnabled('log', 'INFO', message, optionalParams);
   }
 
   error(message: any, ...optionalParams: any[]): void {
     super.error(message, ...optionalParams);
-    this.persist('ERROR', message, optionalParams);
+    this.persistIfEnabled('error', 'ERROR', message, optionalParams);
   }
 
   warn(message: any, ...optionalParams: any[]): void {
     super.warn(message, ...optionalParams);
-    this.persist('WARN', message, optionalParams);
+    this.persistIfEnabled('warn', 'WARN', message, optionalParams);
   }
 
   debug(message: any, ...optionalParams: any[]): void {
     super.debug(message, ...optionalParams);
-    this.persist('DEBUG', message, optionalParams);
+    this.persistIfEnabled('debug', 'DEBUG', message, optionalParams);
   }
 
   verbose(message: any, ...optionalParams: any[]): void {
     super.verbose(message, ...optionalParams);
-    this.persist('VERBOSE', message, optionalParams);
+    this.persistIfEnabled('verbose', 'VERBOSE', message, optionalParams);
   }
 
   fatal(message: any, ...optionalParams: any[]): void {
     super.fatal?.(message, ...optionalParams);
-    this.persist('FATAL', message, optionalParams);
+    this.persistIfEnabled('fatal', 'FATAL', message, optionalParams);
   }
 
   setLogLevels(levels: LogLevel[]): void {
     super.setLogLevels(levels);
+  }
+
+  private persistIfEnabled(
+    level: LogLevel,
+    label: string,
+    message: any,
+    optionalParams: any[],
+  ): void {
+    if (!this.isLevelEnabled(level)) {
+      return;
+    }
+    this.persist(label, message, optionalParams);
   }
 
   private persist(level: string, message: any, optionalParams: any[]): void {
