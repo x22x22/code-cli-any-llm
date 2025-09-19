@@ -41,11 +41,14 @@ gal code
 - 根据所选提供商填写：
   - **Base URL**（OpenAI 默认：`https://open.bigmodel.cn/api/paas/v4`，Codex 默认：`https://chatgpt.com/backend-api/codex`）
   - **默认模型**（OpenAI 默认：`glm-4.5`，Codex 默认：`gpt-5-codex`）
-  - **API Key**（必填）
+  - **认证模式**（仅 Codex，支持 `ApiKey` 或 `ChatGPT`）
+  - **API Key**（当选择 OpenAI 或 Codex 的 `ApiKey` 模式时必填）
 - 配置将保存到 `~/.gemini-any-llm/config.yaml`
 - 自动生成或更新 `~/.gemini/settings.json`，设置认证类型为 `gemini-api-key`
 - 自动启动后台网关服务并等待就绪
 - 启动 Gemini CLI 进行对话
+
+> 💡 **Codex ChatGPT 模式**：若在向导中选择 `Codex + ChatGPT`，首次请求时会提示在浏览器完成 OAuth 登录，登录链接将在终端显示。认证成功后令牌将保存到 `~/.gemini-any-llm/codex/auth.json`，后续请求会自动刷新，无需重复登录。
 
 ### 重新配置
 
@@ -106,6 +109,16 @@ gal code --temperature 0.7 "写一个创意故事"
 - **`gal version`** - 查看当前版本
 - **`gal --help`** - 查看帮助信息
 
+### Codex ChatGPT (OAuth) 模式
+
+1. 运行 `gal auth`，在向导中选择 **Codex** 作为提供商，并将认证模式设为 **ChatGPT**。
+2. 首次执行 `gal code` 或 `gal start` 等命令时，终端会打印一条 `https://auth.openai.com/oauth/authorize?...` 的链接，请复制到浏览器完成登录。
+3. 登录过程中 CLI 会在本地 `127.0.0.1:1455` 启动临时回调服务；若端口被占用，可先释放端口或再次尝试（CLI 会自动重试并提示失败原因）。
+4. 授权成功后窗口会提示“登录成功，可以返回终端”，令牌将写入 `~/.gemini-any-llm/codex/auth.json`，包含 `access_token`、`refresh_token`、`id_token` 以及刷新时间戳。
+5. 之后网关会自动刷新令牌，不需要重复登录；若手动清理或移动 `auth.json`，再次发起请求时会重新触发浏览器登录。
+
+> 如需自定义令牌目录，可设置环境变量 `CODEX_HOME` 指向目标路径（默认为 `~/.gemini-any-llm/codex`）。
+
 ### 配置管理
 
 系统支持灵活的配置层次结构，优先级如下（高优先级覆盖低优先级）：
@@ -116,8 +129,8 @@ gal code --temperature 0.7 "写一个创意故事"
 
 ### 支持的提供商
 
-| 提供商 | baseURL | 推荐模型 |
-|--------|---------|----------|gpt-5-codex
+| 提供商 | Base URL | 推荐模型 |
+| --- | --- | --- |
 | Codex | `https://chatgpt.com/backend-api/codex` | `gpt-5-codex` |
 | **智谱AI**（默认） | `https://open.bigmodel.cn/api/paas/v4` | `glm-4.5` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4`, `gpt-4o` |
@@ -133,13 +146,18 @@ gal code --temperature 0.7 "写一个创意故事"
 export GAL_AI_PROVIDER="codex"
 
 # Codex 配置
+# 认证模式可选 apikey / chatgpt（默认 apikey）
+export GAL_CODEX_AUTH_MODE="chatgpt"
+# 当选择 ApiKey 模式时填写 API Key；ChatGPT 模式可留空
 export GAL_CODEX_API_KEY="your-codex-api-key"
-export GAL_CODEX_BASE_URgpt-5-codexpt.com/backend-api/codex"
+export GAL_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex"
 export GAL_CODEX_MODEL="gpt-5-codex"
 export GAL_CODEX_TIMEOUT="60000"
 # 可选：推理参数与输出冗长度控制
 export GAL_CODEX_REASONING='{"effort":"medium"}'
 export GAL_CODEX_TEXT_VERBOSITY="medium"
+# 可选：自定义 OAuth 令牌目录（默认为 ~/.gemini-any-llm/codex）
+export CODEX_HOME="$HOME/.custom-codex"
 
 # OpenAI/兼容服务配置
 export GAL_OPENAI_API_KEY="your-api-key"
@@ -187,6 +205,7 @@ EOF
 ```yaml
 aiProvider: codex
 codex:
+  authMode: ApiKey
   apiKey: "project-codex-key"
   baseURL: "https://chatgpt.com/backend-api/codex"
   model: "gpt-5-codex"
@@ -197,16 +216,32 @@ codex:
   textVerbosity: medium
 ```
 
+如需使用 OAuth 登录，可改为：
+
+```yaml
+aiProvider: codex
+codex:
+  authMode: ChatGPT
+  baseURL: "https://chatgpt.com/backend-api/codex"
+  model: "gpt-5-codex"
+  timeout: 60000
+  reasoning:
+    effort: medium
+    summary: auto
+  textVerbosity: medium
+```
+
 ## 🔧 详细配置说明
 
 ### API 配置项
 
 - **`aiProvider`** - 主提供商类型，可选 `openai` 或 `codex`
+- **`codex.authMode`** - Codex 认证模式，支持 `ApiKey`（静态密钥）或 `ChatGPT`（OAuth 登录，默认自动刷新令牌）
 - **`openai.apiKey`** - OpenAI 或兼容服务的 API 密钥（使用 `openai` 时必需）
 - **`openai.baseURL`** - OpenAI 兼容 API 端点地址（默认：智谱AI）
 - **`openai.model`** - 默认使用的模型名称（默认：`glm-4.5`）
 - **`openai.timeout`** - 请求超时时间，毫秒（默认：30000）
-- **`codex.apiKey`** - Codex 的 API 密钥（使用 `codex` 时必需）
+- **`codex.apiKey`** - Codex 的 API 密钥（仅 `ApiKey` 模式必需，`ChatGPT` 模式可省略）
 - **`codex.baseURL`** - Codex API 端点地址（默认：`https://chatgpt.com/backend-api/codex`）
 - **`codex.model`** - Codex 模型名称（默认：`gpt-5-codex`）
 - **`codex.timeout`** - Codex 请求超时时间，毫秒（默认：60000）
