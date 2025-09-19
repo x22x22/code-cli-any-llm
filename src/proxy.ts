@@ -146,7 +146,8 @@ app.use((req: Request & { id?: string }, _res, next) => {
 
 // 创建代理中间件，包含请求/响应（含 SSE）日志
 // const target = 'https://generativelanguage.googleapis.com';
-const target = 'http://localhost:23062/api';
+// const target = 'http://localhost:23062/api';
+const target = 'https://chatgpt.com/backend-api/codex';
 const exampleProxy = createProxyMiddleware({
   target,
   changeOrigin: true,

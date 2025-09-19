@@ -40,5 +40,6 @@ export interface OpenAIStreamChoice {
 export interface OpenAIStreamDelta {
   role?: 'assistant' | 'user' | 'system';
   content?: string;
+  reasoning_content?: string;
   tool_calls?: any[];
 }
