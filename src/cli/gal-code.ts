@@ -15,6 +15,13 @@ import type {
   CodexReasoningConfig,
 } from '../config/global-config.interface';
 import { ChatGPTAuthManager } from '../providers/codex/chatgpt-auth.manager';
+import { runGalRestart } from './gal-gateway';
+import {
+  buildUpgradeCommand,
+  getVersionPromptContext,
+  persistVersionInfo,
+} from './update-checker';
+import { loadCliVersion, runUpgradeCommand } from './upgrade-utils';
 
 const GEMINI_AUTH_TYPE = 'gemini-api-key';
 
@@ -42,6 +49,96 @@ interface GatewayPidInfo {
   pid: number;
   startedAt?: number;
   entry?: string;
+}
+
+function promptUser(message: string): Promise<string> {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    rl.question(message, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+async function handleUpgradePrompt(): Promise<void> {
+  const currentVersion = loadCliVersion();
+  const context = await getVersionPromptContext(currentVersion);
+
+  if (!context) {
+    return;
+  }
+
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    console.log(
+      `检测到新版本 ${context.info.latestVersion}，当前为非交互环境，默认暂不更新。`,
+    );
+    return;
+  }
+
+  console.log('');
+  console.log(
+    `✨ 检测到新版本！当前 ${currentVersion} → 最新 ${context.info.latestVersion}`,
+  );
+  console.log('请选择操作：y(现在更新) / n(暂不更新) / skip(跳过本次版本) / off(关闭自动检查)');
+
+  while (true) {
+    const answerRaw = await promptUser('[Y/n/skip/off] (默认Y): ');
+    const normalized = (answerRaw || 'y').toLowerCase();
+
+    switch (normalized) {
+      case 'y':
+      case 'yes': {
+        const command = buildUpgradeCommand();
+        console.log(`正在执行升级命令: ${command}`);
+        const succeeded = await runUpgradeCommand(command);
+        if (succeeded) {
+          console.log('升级完成，请重新运行 `gal code` 以使用最新版本。');
+          process.exit(0);
+        } else {
+          console.error('自动升级失败，可稍后手动执行以下命令完成升级:');
+          console.error(`  ${command}`);
+          console.log('将继续使用当前版本启动。');
+        }
+        return;
+      }
+      case 'n':
+      case 'no':
+        console.log('已选择暂不更新，将继续使用当前版本。');
+        return;
+      case 'skip':
+      case 's': {
+        const skipSet = new Set(context.info.skipVersions ?? []);
+        skipSet.add(context.info.latestVersion);
+        context.info.skipVersions = Array.from(skipSet);
+        await persistVersionInfo(context);
+        console.log(
+          `已跳过版本 ${context.info.latestVersion}，后续检测到新版本时会再次提醒。`,
+        );
+        return;
+      }
+      case 'off': {
+        context.info.disableCheck = true;
+        await persistVersionInfo(context);
+        process.env.GAL_DISABLE_UPDATE_CHECK = '1';
+        console.log('已关闭自动更新检查，正在重启网关以应用配置...');
+        try {
+          await runGalRestart();
+          console.log('网关重启完成，请重新运行 `gal code`。');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`重启网关失败: ${message}`);
+        }
+        process.exit(0);
+        return;
+      }
+      default:
+        console.log('无效选项，请输入 y/n/skip/off。');
+    }
+  }
 }
 
 async function prepareGatewayContext(
@@ -120,6 +217,7 @@ async function prepareGatewayContext(
 }
 
 export async function runGalCode(args: string[]): Promise<void> {
+  await handleUpgradePrompt();
   const context = await prepareGatewayContext();
   const { gatewayHost, gatewayPort, geminiApiKey } = context;
 
