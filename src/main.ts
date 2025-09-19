@@ -49,10 +49,32 @@ async function bootstrap() {
     globalConfigResult.config?.gateway?.logLevel || process.env.GAL_LOG_LEVEL;
   const logLevels = resolveLogLevels(configuredLogLevel);
 
+  const parsePort = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.length === 0) {
+        return undefined;
+      }
+      const parsed = Number(trimmed);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  };
+
+  const environmentPort = parsePort(process.env.GAL_PORT);
+  const configuredPort = parsePort(globalConfigResult.config?.gateway?.port);
+  const portForLogger = configuredPort ?? environmentPort ?? 23062;
+
   const gatewayLogger = GatewayLoggerService.create({
     logDir:
       globalConfigResult.config?.gateway?.logDir ||
       process.env.GAL_GATEWAY_LOG_DIR,
+    filePrefix: `gateway-${portForLogger}`,
     logLevels,
   });
   Logger.overrideLogger(gatewayLogger);
@@ -115,7 +137,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // Get port from configuration
-  const port = (configService.get('gateway.port') as number) || 23062;
+  const port = parsePort(configService.get('gateway.port')) ?? portForLogger;
 
   const server = (await app.listen(port)) as {
     close: (callback: () => void) => void;
