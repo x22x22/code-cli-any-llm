@@ -2,9 +2,16 @@ import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
-interface VersionInfo {
+export interface VersionInfo {
   latestVersion: string;
   lastCheckedAt: string; // ISO-8601
+  skipVersions?: string[];
+  disableCheck?: boolean;
+}
+
+export interface VersionPromptContext {
+  info: VersionInfo;
+  versionFile: string;
 }
 
 const VERSION_FILENAME = 'version.json';
@@ -17,24 +24,70 @@ function getVersionFilePath(): string {
   return path.join(homedir(), '.gemini-any-llm', VERSION_FILENAME);
 }
 
+function normalizeVersionInfo(raw: Partial<VersionInfo>): VersionInfo | null {
+  if (typeof raw.latestVersion !== 'string' || raw.latestVersion.length === 0) {
+    return null;
+  }
+  if (typeof raw.lastCheckedAt !== 'string' || raw.lastCheckedAt.length === 0) {
+    return null;
+  }
+
+  const skip = Array.isArray(raw.skipVersions)
+    ? raw.skipVersions.filter((item) => typeof item === 'string')
+    : undefined;
+
+  const disableCheck = raw.disableCheck === true;
+
+  return {
+    latestVersion: raw.latestVersion,
+    lastCheckedAt: raw.lastCheckedAt,
+    skipVersions: skip && skip.length > 0 ? skip : undefined,
+    disableCheck,
+  };
+}
+
 async function readVersionInfo(filePath: string): Promise<VersionInfo | null> {
   try {
     const raw = await fs.readFile(filePath, 'utf8');
     const parsed = JSON.parse(raw) as Partial<VersionInfo>;
-    if (
-      typeof parsed.latestVersion === 'string' &&
-      typeof parsed.lastCheckedAt === 'string'
-    ) {
-      return {
-        latestVersion: parsed.latestVersion,
-        lastCheckedAt: parsed.lastCheckedAt,
-      };
-    }
-    return null;
+    return normalizeVersionInfo(parsed);
   } catch (error) {
     if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
       return null;
     }
+    return null;
+  }
+}
+
+async function writeVersionInfo(
+  filePath: string,
+  info: VersionInfo,
+): Promise<void> {
+  const folder = path.dirname(filePath);
+  await fs.mkdir(folder, { recursive: true });
+  await fs.writeFile(filePath, `${JSON.stringify(info)}\n`, 'utf8');
+}
+
+async function fetchLatestVersionTag(): Promise<string | null> {
+  if (typeof fetch !== 'function') {
+    return null;
+  }
+
+  try {
+    const response = await fetch(LATEST_VERSION_URL, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as { version?: string };
+    return typeof payload.version === 'string' ? payload.version : null;
+  } catch {
     return null;
   }
 }
@@ -64,7 +117,7 @@ function detectPackageManager(): 'pnpm' | 'yarn' | 'npm' | null {
   return 'npm';
 }
 
-function buildUpgradeCommand(): string {
+export function buildUpgradeCommand(): string {
   switch (detectPackageManager()) {
     case 'pnpm':
       return 'pnpm add -g @kdump/gemini-any-llm@latest';
@@ -108,39 +161,52 @@ export function isNewerVersion(latest: string, current: string): boolean {
   return false;
 }
 
-async function refreshVersionInfo(filePath: string): Promise<void> {
-  if (typeof fetch !== 'function') {
-    return;
+function isVersionSkipped(info: VersionInfo): boolean {
+  if (!info.skipVersions || info.skipVersions.length === 0) {
+    return false;
   }
+  return info.skipVersions.includes(info.latestVersion);
+}
 
+async function refreshVersionInfo(filePath: string): Promise<void> {
   try {
-    const response = await fetch(LATEST_VERSION_URL, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        Accept: 'application/json',
-      },
-    });
-
-    if (!response.ok) {
+    const latestTag = await fetchLatestVersionTag();
+    if (!latestTag) {
       return;
     }
 
-    const payload = (await response.json()) as { version?: string };
-    if (typeof payload.version !== 'string') {
-      return;
-    }
-
+    const existing = await readVersionInfo(filePath);
     const info: VersionInfo = {
-      latestVersion: payload.version,
+      latestVersion: latestTag,
       lastCheckedAt: new Date().toISOString(),
+      skipVersions: existing?.skipVersions,
+      disableCheck: existing?.disableCheck,
     };
 
-    const folder = path.dirname(filePath);
-    await fs.mkdir(folder, { recursive: true });
-    await fs.writeFile(filePath, `${JSON.stringify(info)}\n`, 'utf8');
+    await writeVersionInfo(filePath, info);
   } catch {
     // 网络或文件系统错误不应影响 CLI 正常执行，忽略即可
   }
+}
+
+export async function refreshVersionInfoImmediate(): Promise<VersionInfo | null> {
+  const versionFile = getVersionFilePath();
+  const existing = await readVersionInfo(versionFile);
+
+  const latestTag = await fetchLatestVersionTag();
+  if (!latestTag) {
+    return existing;
+  }
+
+  const info: VersionInfo = {
+    latestVersion: latestTag,
+    lastCheckedAt: new Date().toISOString(),
+    skipVersions: existing?.skipVersions,
+    disableCheck: existing?.disableCheck,
+  };
+
+  await writeVersionInfo(versionFile, info);
+  return info;
 }
 
 export async function showUpdateBanner(currentVersion: string): Promise<void> {
@@ -158,7 +224,7 @@ export async function showUpdateBanner(currentVersion: string): Promise<void> {
     void refreshVersionInfo(versionFile);
   }
 
-  if (!info) {
+  if (!info || info.disableCheck || isVersionSkipped(info)) {
     return;
   }
 
@@ -173,4 +239,50 @@ export async function showUpdateBanner(currentVersion: string): Promise<void> {
   );
   console.log(`👉 运行 ${command} 完成升级。`);
   console.log('');
+}
+
+export async function getVersionPromptContext(
+  currentVersion: string,
+): Promise<VersionPromptContext | null> {
+  if (process.env.GAL_DISABLE_UPDATE_CHECK === '1') {
+    return null;
+  }
+  if (!currentVersion || currentVersion === 'unknown') {
+    return null;
+  }
+
+  const versionFile = getVersionFilePath();
+  const info = await readVersionInfo(versionFile);
+  if (!info) {
+    void refreshVersionInfo(versionFile);
+    return null;
+  }
+
+  if (shouldRefresh(info)) {
+    void refreshVersionInfo(versionFile);
+  }
+
+  if (info.disableCheck) {
+    return null;
+  }
+
+  if (!isNewerVersion(info.latestVersion, currentVersion)) {
+    return null;
+  }
+
+  if (isVersionSkipped(info)) {
+    return null;
+  }
+
+  return {
+    info,
+    versionFile,
+  };
+}
+
+export async function persistVersionInfo(
+  context: VersionPromptContext,
+): Promise<void> {
+  const { versionFile, info } = context;
+  await writeVersionInfo(versionFile, info);
 }

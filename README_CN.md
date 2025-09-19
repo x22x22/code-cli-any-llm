@@ -108,8 +108,16 @@ gal code --temperature 0.7 "写一个创意故事"
 - **`gal restart`** - 重启网关服务
 - **`gal status`** - 查看网关运行状态
 - **`gal kill`** - 强制终止异常进程（故障排除）
+- **`gal update`** - 手动检查并安装最新版本
 - **`gal version`** - 查看当前版本
 - **`gal --help`** - 查看帮助信息
+
+### 自动更新
+
+- 每次交互式 `gal` 命令都会检查 `~/.gemini-any-llm/version.json` 中的缓存，后台每隔 20 小时刷新一次，检查失败不会阻塞网关启动。
+- 执行 `gal code` 时若发现新版本，会在启动 Gemini 体验前暂停，并提供 `y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）和 `off`（关闭自动检查并重启网关）四种选项。
+- 随时运行 `gal update` 可以同步刷新缓存并安装最新发布的包。
+- 如需彻底关闭自动检测，可设置 `GAL_DISABLE_UPDATE_CHECK=1`（也可以在提示中选择 `off`）。
 
 ### Codex ChatGPT (OAuth) 模式
 
@@ -174,6 +182,7 @@ export GAL_PORT="23062"
 export GAL_HOST="0.0.0.0"
 export GAL_LOG_LEVEL="info"
 export GAL_GATEWAY_LOG_DIR="~/.gemini-any-llm/logs"
+export GAL_DISABLE_UPDATE_CHECK="1"            # 关闭自动更新提示
 
 # 通用高级配置
 export GAL_RATE_LIMIT_MAX="100"                # API 限流上限（每15分钟）
@@ -459,6 +468,13 @@ gal restart
 - 📋 [开发手册](./DEVELOPMENT.md) - 开发环境设置和构建说明
 - 🧠 [架构文档](./CLAUDE.md) - 详细的技术架构和开发指南
 - 🧪 [测试说明](./CLAUDE.md#testing-architecture) - 测试架构和运行方式
+
+### 自动更新
+
+- 每个交互式 `gal` 命令都会检查 `~/.gemini-any-llm/version.json`，并在后台每隔 20 小时刷新缓存，网络错误不会阻塞网关。
+- 当运行 `gal code` 时，若检测到新版本会在进入 Gemini 体验前提示四个选项：`y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）或 `off`（关闭自动检查并重启网关）。
+- 随时运行 `gal update` 可以同步刷新缓存并安装最新发布的版本。
+- 如需永久关闭自动检测，可设置 `GAL_DISABLE_UPDATE_CHECK=1`（与提示中的 `off` 选项效果相同）。
 
 ## 🙏 致谢
 

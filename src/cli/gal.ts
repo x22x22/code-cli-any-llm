@@ -12,17 +12,8 @@ import {
   runGalKill,
 } from './gal-gateway';
 import { showUpdateBanner } from './update-checker';
-
-function loadVersion(): string {
-  const packageJsonPath = resolve(__dirname, '../../package.json');
-  try {
-    const content = readFileSync(packageJsonPath, 'utf8');
-    const parsed = JSON.parse(content) as { version?: string };
-    return parsed.version ?? 'unknown';
-  } catch {
-    return 'unknown';
-  }
-}
+import { runGalUpdate } from './gal-update';
+import { loadCliVersion } from './upgrade-utils';
 
 function loadHelpText(): string {
   const helpTextPath = resolve(__dirname, 'help-text.txt');
@@ -34,7 +25,7 @@ function loadHelpText(): string {
   }
 }
 
-const version = loadVersion();
+const version = loadCliVersion();
 
 const [, , command, ...restArgs] = process.argv;
 
@@ -48,10 +39,12 @@ function showVersion() {
 
 async function main() {
   const versionCommandAliases = new Set(['-v', '--version', 'version']);
+  const bannerExcludedCommands = new Set(['code']);
   const shouldShowUpdateBanner =
     process.env.GAL_DISABLE_UPDATE_CHECK !== '1' &&
     process.stdout.isTTY &&
-    !versionCommandAliases.has(command ?? '');
+    !versionCommandAliases.has(command ?? '') &&
+    !bannerExcludedCommands.has(command ?? '');
 
   if (shouldShowUpdateBanner) {
     await showUpdateBanner(version);
@@ -87,6 +80,9 @@ async function main() {
       break;
     case 'kill':
       await runGalKill();
+      break;
+    case 'update':
+      await runGalUpdate();
       break;
     case 'auth':
       await runGalAuth();
