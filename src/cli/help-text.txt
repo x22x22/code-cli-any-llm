@@ -8,11 +8,16 @@ Commands:
                     • 自动启动和管理后台网关服务
                     • 支持所有 gemini CLI 原生参数和选项
                     • 首次使用会自动引导配置认证信息
+                    • 若检测到新版本会先提示是否升级
 
   auth              配置 AI 服务认证信息
                     • 交互式设置 API Key、服务地址和默认模型
                     • 配置文件：~/.gemini-any-llm/config.yaml
                     • 首次使用或更换服务商时需要运行
+
+  update            主动检查并安装最新版本
+                    • 同步刷新版本缓存并执行升级命令
+                    • 如果已是最新版本则提示后退出
 
 网关管理命令:
   start             启动后台网关服务
@@ -44,6 +49,7 @@ Commands:
   • 配置文件：~/.gemini-any-llm/config.yaml
   • 默认网关端口：23062（可在配置文件中修改）
   • PID 文件：~/.gemini-any-llm/gateway.pid.json
+  • 关闭自动更新检查：设置环境变量 GAL_DISABLE_UPDATE_CHECK=1
 
 使用示例:
   # 首次使用，配置认证信息

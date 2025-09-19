@@ -108,6 +108,7 @@ gal code --temperature 0.7 "Write a creative story"
 - **`gal restart`** - Restart the gateway service
 - **`gal status`** - Check the gateway status
 - **`gal kill`** - Force-kill stuck processes (for troubleshooting)
+- **`gal update`** - Manually check for a new release and install it
 - **`gal version`** - Display the current version
 - **`gal --help`** - Show help information
 
@@ -174,6 +175,7 @@ export GAL_PORT="23062"
 export GAL_HOST="0.0.0.0"
 export GAL_LOG_LEVEL="info"
 export GAL_GATEWAY_LOG_DIR="~/.gemini-any-llm/logs"
+export GAL_DISABLE_UPDATE_CHECK="1"            # Disable automatic update prompts
 
 # General advanced configuration
 export GAL_RATE_LIMIT_MAX="100"                # API rate limit cap (per 15 minutes)
@@ -459,6 +461,13 @@ gal restart
 - 📋 [Development Guide](./DEVELOPMENT.md) - Development environment setup and build instructions
 - 🧠 [Architecture Guide](./CLAUDE.md) - Detailed technical architecture and development notes
 - 🧪 [Testing Guide](./CLAUDE.md#testing-architecture) - Testing architecture and run instructions
+
+### Automatic updates
+
+- Every interactive `gal` command checks `~/.gemini-any-llm/version.json` and refreshes the cache in the background every 20 hours. Network errors during the check never block the gateway.
+- When you run `gal code`, the CLI pauses before launching the Gemini experience if a newer version exists and offers four options: `y` (update now), `n` (skip for this run), `skip` (ignore this release), or `off` (disable future checks and restart the gateway).
+- Run `gal update` at any time to synchronously refresh the cache and install the latest published package.
+- Set `GAL_DISABLE_UPDATE_CHECK=1` if you need to permanently opt out of automatic checks (also available through the `off` option in the prompt).
 
 ## 🙏 Acknowledgements
 
