@@ -539,7 +539,7 @@ export class GeminiController {
           const isThought = Boolean((part as { thought?: boolean }).thought);
           const text =
             typeof (part as { text?: unknown }).text === 'string'
-              ? ((part as { text: string }).text as string)
+              ? (part as { text: string }).text
               : undefined;
           if (text) {
             return `${isThought ? '[thought]' : '[content]'}${this.sanitizeForLog(
@@ -564,9 +564,7 @@ export class GeminiController {
 
   private sanitizeForLog(value: unknown, maxLength = 500): string {
     if (typeof value === 'string') {
-      return value.length > maxLength
-        ? `${value.slice(0, maxLength)}…`
-        : value;
+      return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
     }
 
     try {

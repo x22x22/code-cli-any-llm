@@ -1,5 +1,11 @@
 import { ConsoleLogger, ConsoleLoggerOptions, LogLevel } from '@nestjs/common';
-import { createWriteStream, mkdirSync, WriteStream } from 'fs';
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  WriteStream,
+} from 'fs';
 import os from 'os';
 import path from 'path';
 import { inspect } from 'util';
@@ -196,18 +202,18 @@ export class GatewayLoggerService extends ConsoleLogger {
     }
 
     mkdirSync(GatewayLoggerService.logDir, { recursive: true });
-    const fileName = `${GatewayLoggerService.filePrefix}-${GatewayLoggerService.buildTimestamp()}.log`;
-    GatewayLoggerService.logFilePath = path.join(
+    const baseFilePath = path.join(
       GatewayLoggerService.logDir,
-      fileName,
+      `${GatewayLoggerService.filePrefix}.log`,
     );
-    GatewayLoggerService.logStream = createWriteStream(
-      GatewayLoggerService.logFilePath,
-      {
-        flags: 'a',
-        encoding: 'utf8',
-      },
-    );
+
+    GatewayLoggerService.rotateExistingLog(baseFilePath);
+
+    GatewayLoggerService.logFilePath = baseFilePath;
+    GatewayLoggerService.logStream = createWriteStream(baseFilePath, {
+      flags: 'a',
+      encoding: 'utf8',
+    });
   }
 
   static getDefaultLogDir(): string {
@@ -262,5 +268,37 @@ export class GatewayLoggerService extends ConsoleLogger {
     const now = new Date();
     const pad = (input: number) => input.toString().padStart(2, '0');
     return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  }
+
+  private static rotateExistingLog(baseFilePath: string): void {
+    if (!existsSync(baseFilePath)) {
+      return;
+    }
+
+    const timestamp = GatewayLoggerService.buildTimestamp();
+    let archivedFilePath = path.join(
+      GatewayLoggerService.logDir,
+      `${GatewayLoggerService.filePrefix}-${timestamp}.log`,
+    );
+
+    if (existsSync(archivedFilePath)) {
+      let suffix = 1;
+      do {
+        archivedFilePath = path.join(
+          GatewayLoggerService.logDir,
+          `${GatewayLoggerService.filePrefix}-${timestamp}-${suffix}.log`,
+        );
+        suffix += 1;
+      } while (existsSync(archivedFilePath));
+    }
+
+    try {
+      renameSync(baseFilePath, archivedFilePath);
+    } catch (error) {
+      // 如果重命名失败，保留旧文件继续写入，避免阻塞网关启动
+      process.stderr.write(
+        `网关日志文件重命名失败，将继续使用原文件: ${(error as Error).message}\n`,
+      );
+    }
   }
 }
