@@ -10,7 +10,7 @@ Gemini Any LLM Gateway 是一个 API 网关服务，让您可以通过 Gemini CL
 
 **核心特性**：
 - 🔌 **即插即用** - 无需修改 Gemini CLI，完全兼容
-- 🌐 **多提供商支持** - 支持 Codex、OpenAI、智谱AI、千问等多种提供商
+- 🌐 **多提供商支持** - 支持 Codex、Claude Code、OpenAI、智谱AI、千问等多种提供商
 - ⚡ **高性能流式响应** - 实时流式输出，体验流畅
 - 🛠️ **智能工具调用** - 完整支持 Function Calling
 - 📁 **灵活配置管理** - 全局配置 + 项目配置，使用便捷
@@ -38,13 +38,19 @@ npm install -g @kdump/gemini-any-llm@latest --registry https://registry.npmmirro
 gal code
 ```
 
-**首次运行流程**：
-- 系统会自动触发配置向导，首先需选择 **AI Provider**（`openai` 或 `codex`）
+- 系统会自动触发配置向导，首先需选择 **AI Provider**（`claudeCode` / `codex` / `openai`）
 - 根据所选提供商填写：
-  - **Base URL**（OpenAI 默认：`https://open.bigmodel.cn/api/paas/v4`，Codex 默认：`https://chatgpt.com/backend-api/codex`）
-  - **默认模型**（OpenAI 默认：`glm-4.5`，Codex 默认：`gpt-5-codex`）
+  - **Base URL**  
+    - OpenAI 默认：`https://open.bigmodel.cn/api/paas/v4`
+    - Codex 默认：`https://chatgpt.com/backend-api/codex`
+    - Claude Code 默认：`https://open.bigmodel.cn/api/anthropic`（也可填自建 relay，如 `https://<host>/api`）
+  - **默认模型**  
+    - OpenAI 默认：`glm-4.5`
+    - Codex 默认：`gpt-5-codex`
+    - Claude Code 默认：`claude-sonnet-4-20250514`
   - **认证模式**（仅 Codex，支持 `ApiKey` 或 `ChatGPT`）
-  - **API Key**（当选择 OpenAI 或 Codex 的 `ApiKey` 模式时必填）
+  - **API Key**（当选择 OpenAI、Codex-ApiKey 或 Claude Code 时必填）
+- 对于 Claude Code，网关会自动同时携带 `x-api-key` 与 `Authorization: Bearer` 请求头，兼容官方和 Relay 服务。
 - 配置将保存到 `~/.gemini-any-llm/config.yaml`
 - 自动生成或更新 `~/.gemini/settings.json`，设置认证类型为 `gemini-api-key`
 - 自动启动后台网关服务并等待就绪
@@ -142,6 +148,7 @@ gal code --temperature 0.7 "写一个创意故事"
 | 提供商 | Base URL | 推荐模型 |
 | --- | --- | --- |
 | Codex | `https://chatgpt.com/backend-api/codex` | `gpt-5-codex` |
+| Claude Code | `https://open.bigmodel.cn/api/anthropic`<br>（或自建 Relay 的 `/api` 根路径） | `claude-sonnet-4-20250514`, `claude-3.5-sonnet-20241022` |
 | **智谱AI**（默认） | `https://open.bigmodel.cn/api/paas/v4` | `glm-4.5` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4`, `gpt-4o` |
 | 千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus`, `qwen-turbo` |
@@ -152,7 +159,7 @@ gal code --temperature 0.7 "写一个创意故事"
 支持通过环境变量进行配置（作为基础配置，优先级最低）：
 
 ```bash
-# 选择主提供商（支持 openai 或 codex）
+# 选择主提供商（支持 claudeCode / codex / openai）
 export GAL_AI_PROVIDER="codex"
 
 # Codex 配置
@@ -168,6 +175,18 @@ export GAL_CODEX_REASONING='{"effort":"medium"}'
 export GAL_CODEX_TEXT_VERBOSITY="medium"
 # 可选：自定义 OAuth 令牌目录（默认为 ~/.gemini-any-llm/codex）
 export CODEX_HOME="$HOME/.custom-codex"
+
+# Claude Code 配置
+export GAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
+export GAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"   # 或自建 relay 的 /api 根路径
+export GAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
+export GAL_CLAUDE_CODE_TIMEOUT="60000"
+export GAL_CLAUDE_CODE_VERSION="2023-06-01"
+export GAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
+export GAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
+export GAL_CLAUDE_CODE_X_APP="cli"
+export GAL_CLAUDE_CODE_DANGEROUS_DIRECT="true"
+export GAL_CLAUDE_CODE_MAX_OUTPUT="64000"
 
 # OpenAI/兼容服务配置
 export GAL_OPENAI_API_KEY="your-api-key"

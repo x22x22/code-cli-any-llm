@@ -99,7 +99,7 @@ providers:
 
   anthropic:
     apiKey: 'sk-ant-...'
-    baseURL: 'https://api.anthropic.com'
+    baseURL: 'https://open.bigmodel.cn/api/anthropic'
     models:
       - 'claude-3-sonnet-20240229'
       - 'claude-3-opus-20240229'

@@ -10,7 +10,7 @@ Gemini Any LLM Gateway is an API gateway service that lets you seamlessly access
 
 **Core Features**:
 - 🔌 **Plug-and-play** - Fully compatible, no Gemini CLI changes required
-- 🌐 **Multi-provider support** - Supports Codex, OpenAI, ZhipuAI, Qwen, and more
+- 🌐 **Multi-provider support** - Supports Codex, Claude Code, OpenAI, ZhipuAI, Qwen, and more
 - ⚡ **High-performance streaming responses** - Real-time streaming output for a smooth experience
 - 🛠️ **Intelligent tool calling** - Complete Function Calling support
 - 📁 **Flexible configuration management** - Global plus project-level configuration for easy use
@@ -39,12 +39,19 @@ gal code
 ```
 
 **First-run flow**:
-- The system automatically launches a setup wizard and asks you to choose an **AI Provider** (`openai` or `codex`)
+- The system automatically launches a setup wizard and asks you to choose an **AI Provider** (`claudeCode`, `codex`, or `openai`)
 - Then fill in the following based on your provider:
-  - **Base URL** (OpenAI default: `https://open.bigmodel.cn/api/paas/v4`, Codex default: `https://chatgpt.com/backend-api/codex`)
-  - **Default model** (OpenAI default: `glm-4.5`, Codex default: `gpt-5-codex`)
-  - **Auth mode** (Codex only, supports `ApiKey` or `ChatGPT`)
-  - **API Key** (required when you pick OpenAI or Codex in `ApiKey` mode)
+  - **Base URL**  
+    - OpenAI default: `https://open.bigmodel.cn/api/paas/v4`  
+    - Codex default: `https://chatgpt.com/backend-api/codex`
+    - Claude Code default: `https://open.bigmodel.cn/api/anthropic`（可替换为你自己的 relay 地址，如 `https://<host>/api`）
+  - **Default model**  
+    - OpenAI default: `glm-4.5`
+    - Codex default: `gpt-5-codex`
+    - Claude Code default: `claude-sonnet-4-20250514`
+  - **Auth mode**（Codex only, supports `ApiKey` or `ChatGPT`）
+  - **API Key**（OpenAI / Codex-ApiKey / Claude Code 模式都需要填写）
+- For Claude Code, the gateway automatically sends both `x-api-key` and `Authorization: Bearer` headers so it works with Anthropic relay services out of the box.
 - Configuration is saved to `~/.gemini-any-llm/config.yaml`
 - Automatically generates or updates `~/.gemini/settings.json`, setting the auth type to `gemini-api-key`
 - Automatically starts the background gateway service and waits for it to become ready
@@ -135,6 +142,7 @@ The system supports a flexible configuration hierarchy. Higher priority values o
 | Provider | Base URL | Recommended models |
 | --- | --- | --- |
 | Codex | `https://chatgpt.com/backend-api/codex` | `gpt-5-codex` |
+| Claude Code | `https://open.bigmodel.cn/api/anthropic`<br>(or a relay endpoint such as `https://<host>/api`) | `claude-sonnet-4-20250514`, `claude-3.5-sonnet-20241022` |
 | **ZhipuAI** (default) | `https://open.bigmodel.cn/api/paas/v4` | `glm-4.5` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4`, `gpt-4o` |
 | Qwen | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus`, `qwen-turbo` |
@@ -145,7 +153,7 @@ The system supports a flexible configuration hierarchy. Higher priority values o
 You can also configure settings with environment variables (baseline settings with the lowest priority):
 
 ```bash
-# Choose the primary provider (supports openai or codex)
+# Choose the primary provider (supports claudeCode / codex / openai)
 export GAL_AI_PROVIDER="codex"
 
 # Codex configuration
@@ -161,6 +169,18 @@ export GAL_CODEX_REASONING='{"effort":"medium"}'
 export GAL_CODEX_TEXT_VERBOSITY="medium"
 # Optional: custom OAuth token directory (defaults to ~/.gemini-any-llm/codex)
 export CODEX_HOME="$HOME/.custom-codex"
+
+# Claude Code configuration
+export GAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
+export GAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"   # 或自建 relay 的 /api 根路径
+export GAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
+export GAL_CLAUDE_CODE_TIMEOUT="60000"
+export GAL_CLAUDE_CODE_VERSION="2023-06-01"
+export GAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
+export GAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
+export GAL_CLAUDE_CODE_X_APP="cli"
+export GAL_CLAUDE_CODE_DANGEROUS_DIRECT="true"
+export GAL_CLAUDE_CODE_MAX_OUTPUT="64000"
 
 # OpenAI / compatible service configuration
 export GAL_OPENAI_API_KEY="your-api-key"
