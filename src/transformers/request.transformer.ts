@@ -6,6 +6,7 @@ import {
   OpenAIRequest,
   OpenAIMessage,
   OpenAITool,
+  OpenAIToolCall,
 } from '../models/openai/openai-request.model';
 
 @Injectable()
@@ -57,6 +58,8 @@ export class RequestTransformer {
         openAIRequest.messages.unshift(systemMessage);
       }
     }
+
+    openAIRequest.messages = this.postProcessMessages(openAIRequest.messages);
 
     return openAIRequest;
   }
@@ -126,6 +129,172 @@ export class RequestTransformer {
         // Filter out empty messages without tool calls
         return message.content || message.tool_calls;
       });
+  }
+
+  private postProcessMessages(messages: OpenAIMessage[]): OpenAIMessage[] {
+    if (!messages || messages.length === 0) {
+      return messages;
+    }
+
+    const cleaned = this.cleanOrphanedToolCalls(messages);
+    const merged = this.mergeConsecutiveAssistantMessages(cleaned);
+    return this.cleanMessages(merged);
+  }
+
+  private cleanOrphanedToolCalls(messages: OpenAIMessage[]): OpenAIMessage[] {
+    const toolCallIds = new Set<string>();
+    const toolResponseIds = new Set<string>();
+
+    for (const message of messages) {
+      if (message.role === 'assistant' && message.tool_calls?.length) {
+        for (const toolCall of message.tool_calls) {
+          if (toolCall.id) {
+            toolCallIds.add(toolCall.id);
+          }
+        }
+      } else if (message.role === 'tool' && message.tool_call_id) {
+        toolResponseIds.add(message.tool_call_id);
+      }
+    }
+
+    const cleaned: OpenAIMessage[] = [];
+
+    for (const message of messages) {
+      if (message.role === 'assistant' && message.tool_calls?.length) {
+        const validToolCalls = message.tool_calls.filter(
+          (toolCall) => toolCall.id && toolResponseIds.has(toolCall.id),
+        );
+
+        if (validToolCalls.length > 0) {
+          cleaned.push({ ...message, tool_calls: validToolCalls });
+        } else if (this.hasMeaningfulTextContent(message)) {
+          const cloned: OpenAIMessage = { ...message };
+          delete (cloned as { tool_calls?: OpenAIToolCall[] }).tool_calls;
+          cleaned.push(cloned);
+        }
+        continue;
+      }
+
+      if (message.role === 'tool') {
+        if (message.tool_call_id && toolCallIds.has(message.tool_call_id)) {
+          cleaned.push({ ...message });
+        }
+        continue;
+      }
+
+      cleaned.push({ ...message });
+    }
+
+    const remainingToolCallIds = new Set<string>();
+    for (const message of cleaned) {
+      if (message.role === 'assistant' && message.tool_calls?.length) {
+        for (const toolCall of message.tool_calls) {
+          if (toolCall.id) {
+            remainingToolCallIds.add(toolCall.id);
+          }
+        }
+      }
+    }
+
+    const remainingToolResponseIds = new Set<string>();
+    for (const message of cleaned) {
+      if (message.role === 'tool' && message.tool_call_id) {
+        if (remainingToolCallIds.has(message.tool_call_id)) {
+          remainingToolResponseIds.add(message.tool_call_id);
+        }
+      }
+    }
+
+    const finalMessages: OpenAIMessage[] = [];
+    for (const message of cleaned) {
+      if (message.role === 'assistant' && message.tool_calls?.length) {
+        const validToolCalls = message.tool_calls.filter(
+          (toolCall) =>
+            toolCall.id && remainingToolResponseIds.has(toolCall.id),
+        );
+
+        if (validToolCalls.length > 0) {
+          finalMessages.push({ ...message, tool_calls: validToolCalls });
+        } else if (this.hasMeaningfulTextContent(message)) {
+          const cloned: OpenAIMessage = { ...message };
+          delete (cloned as { tool_calls?: OpenAIToolCall[] }).tool_calls;
+          finalMessages.push(cloned);
+        }
+        continue;
+      }
+
+      if (message.role === 'tool') {
+        if (message.tool_call_id && remainingToolCallIds.has(message.tool_call_id)) {
+          finalMessages.push({ ...message });
+        }
+        continue;
+      }
+
+      finalMessages.push({ ...message });
+    }
+
+    return finalMessages;
+  }
+
+  private mergeConsecutiveAssistantMessages(
+    messages: OpenAIMessage[],
+  ): OpenAIMessage[] {
+    if (!messages || messages.length === 0) {
+      return messages;
+    }
+
+    const merged: OpenAIMessage[] = [];
+
+    for (const message of messages) {
+      if (message.role === 'assistant' && merged.length > 0) {
+        const last = merged[merged.length - 1];
+        if (last.role === 'assistant') {
+          const combinedContent = this.combineAssistantContent(
+            last.content,
+            message.content,
+          );
+          const combinedToolCalls = [
+            ...(last.tool_calls ?? []),
+            ...(message.tool_calls ?? []),
+          ];
+
+          const updatedLast: OpenAIMessage = {
+            ...last,
+            content: combinedContent,
+          };
+
+          if (combinedToolCalls.length > 0) {
+            updatedLast.tool_calls = combinedToolCalls;
+          } else {
+            delete (updatedLast as { tool_calls?: OpenAIToolCall[] }).tool_calls;
+          }
+
+          merged[merged.length - 1] = updatedLast;
+          continue;
+        }
+      }
+
+      merged.push({ ...message });
+    }
+
+    return merged;
+  }
+
+  private combineAssistantContent(
+    previous?: string | null,
+    current?: string | null,
+  ): string | null {
+    const prevText = typeof previous === 'string' ? previous : '';
+    const currText = typeof current === 'string' ? current : '';
+    const combined = `${prevText}${currText}`;
+    return combined.length > 0 ? combined : null;
+  }
+
+  private hasMeaningfulTextContent(message: OpenAIMessage): boolean {
+    if (typeof message.content === 'string') {
+      return message.content.trim().length > 0;
+    }
+    return false;
   }
 
   /**
