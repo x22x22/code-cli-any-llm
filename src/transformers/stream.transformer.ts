@@ -26,6 +26,19 @@ export class StreamTransformer {
   private lastUsageMetadata: GeminiUsageMetadataDto | null = null;
   private tokenizerModel: string | null = null;
   private apiUsageMetadata: GeminiUsageMetadataDto | null = null;
+  private lastBufferFlushAt = 0;
+
+  private readonly bufferFlushThreshold = 20;
+  private readonly bufferFlushIntervalMs = 500;
+  private readonly bufferFlushEndingTriggers = [
+    '. ',
+    '! ',
+    '? ',
+    '。',
+    '！',
+    '？',
+    '：',
+  ];
 
   // Initialize for specific model type
   constructor(
@@ -43,6 +56,7 @@ export class StreamTransformer {
     this.lastUsageMetadata = null;
     this.tokenizerModel = model;
     this.apiUsageMetadata = null;
+    this.lastBufferFlushAt = Date.now();
   }
 
   // Helper function to remove control characters
@@ -71,6 +85,7 @@ export class StreamTransformer {
     if (this.isGLMModel && this.textBuffer.length > 0) {
       const text = this.textBuffer;
       this.textBuffer = '';
+      this.lastBufferFlushAt = Date.now();
       return text;
     }
     return null;
@@ -181,21 +196,10 @@ export class StreamTransformer {
               // For GLM models, buffer text to avoid formatting issues
               this.textBuffer += safeText;
 
-              // Emit buffered text when we have complete sentences or paragraphs
-              // For Chinese text, also flush on Chinese punctuation marks
-              if (
-                this.textBuffer.includes('\n') ||
-                this.textBuffer.endsWith('. ') ||
-                this.textBuffer.endsWith('! ') ||
-                this.textBuffer.endsWith('? ') ||
-                this.textBuffer.endsWith('。') || // Chinese period
-                this.textBuffer.endsWith('！') || // Chinese exclamation
-                this.textBuffer.endsWith('？') || // Chinese question mark
-                this.textBuffer.endsWith('：') || // Chinese colon
-                this.textBuffer.length > 50 // Reduce buffer size for faster output
-              ) {
-                content.parts.push({ text: this.textBuffer });
-                this.textBuffer = '';
+              if (this.shouldFlushBufferedText()) {
+                this.flushTextBufferIntoParts(
+                  content.parts as Array<Record<string, unknown>>,
+                );
               }
             } else {
               // For other models, emit immediately
@@ -220,8 +224,9 @@ export class StreamTransformer {
           try {
             // For GLM models, flush any remaining buffered text
             if (this.isGLMModel && this.textBuffer.length > 0) {
-              content.parts.push({ text: this.textBuffer });
-              this.textBuffer = '';
+              this.flushTextBufferIntoParts(
+                content.parts as Array<Record<string, unknown>>,
+              );
             }
 
             const toolCallParts = this.handleStreamFinish();
@@ -373,8 +378,46 @@ export class StreamTransformer {
     return toolCallParts;
   }
 
+  private shouldFlushBufferedText(): boolean {
+    if (!this.isGLMModel || this.textBuffer.length === 0) {
+      return false;
+    }
+
+    const now = Date.now();
+
+    if (this.textBuffer.length >= this.bufferFlushThreshold) {
+      return true;
+    }
+
+    if (this.textBuffer.includes('\n')) {
+      return true;
+    }
+
+    if (this.bufferFlushEndingTriggers.some((trigger) => this.textBuffer.endsWith(trigger))) {
+      return true;
+    }
+
+    if (now - this.lastBufferFlushAt >= this.bufferFlushIntervalMs) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private flushTextBufferIntoParts(parts: Array<Record<string, unknown>>): void {
+    if (this.textBuffer.length === 0) {
+      return;
+    }
+
+    parts.push({ text: this.textBuffer });
+    this.textBuffer = '';
+    this.lastBufferFlushAt = Date.now();
+  }
+
   reset(): void {
     this.streamingToolCalls.clear();
+    this.textBuffer = '';
+    this.lastBufferFlushAt = Date.now();
   }
 
   applyUsageMetadata(responseChunk: Record<string, unknown>): void {
