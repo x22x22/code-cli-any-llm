@@ -1,14 +1,24 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TimeoutMiddleware implements NestMiddleware {
   private readonly logger = new Logger(TimeoutMiddleware.name);
-  private readonly timeout = parseInt(
-    process.env.GAL_REQUEST_TIMEOUT || '120000',
-    10,
-  ); // 120 seconds default
+  private readonly timeout: number;
+
+  constructor(private readonly configService: ConfigService) {
+    const configuredTimeout = this.configService.get<number>(
+      'gateway.requestTimeout',
+    );
+    const envTimeout = process.env.GAL_REQUEST_TIMEOUT
+      ? parseInt(process.env.GAL_REQUEST_TIMEOUT, 10)
+      : undefined;
+    const resolved = configuredTimeout ?? envTimeout ?? 3600000;
+    this.timeout =
+      Number.isFinite(resolved) && resolved > 0 ? resolved : 3600000;
+  }
 
   use(req: Request, res: Response, next: NextFunction) {
     const timeoutId = setTimeout(() => {

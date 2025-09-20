@@ -72,9 +72,9 @@ export class OpenAIConfig {
   @IsOptional()
   @IsNumber()
   @Min(1000)
-  @Max(120000)
+  @Max(86400000)
   @Transform(({ value }: { value: string }) =>
-    value ? parseInt(value, 10) : 30000,
+    value ? parseInt(value, 10) : 1800000,
   )
   timeout?: number;
 
@@ -117,9 +117,9 @@ export class CodexConfig {
   @IsOptional()
   @IsNumber()
   @Min(1000)
-  @Max(120000)
+  @Max(86400000)
   @Transform(({ value }: { value: string }) =>
-    value ? parseInt(value, 10) : 60000,
+    value ? parseInt(value, 10) : 1800000,
   )
   timeout?: number;
 
@@ -175,11 +175,11 @@ export class ClaudeCodeConfig {
   @IsOptional()
   @IsNumber()
   @Min(1000)
-  @Max(120000)
+  @Max(86400000)
   @Transform(({ value }: { value: string }) =>
     value
       ? parseInt(value, 10)
-      : Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 60000,
+      : Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 1800000,
   )
   timeout?: number;
 
@@ -261,6 +261,16 @@ export class GatewayConfigSchema {
   @IsString()
   @Transform(({ value }: { value: string }) => normalizeLogDir(value))
   logDir!: string;
+
+  @IsNumber()
+  @Min(1000)
+  @Max(86400000)
+  @Transform(({ value }: { value: string }) =>
+    value
+      ? parseInt(value, 10)
+      : Number(process.env.GAL_REQUEST_TIMEOUT) || 3600000,
+  )
+  requestTimeout!: number;
 }
 
 function parseReasoningConfig(raw: unknown): CodexReasoningConfig | undefined {

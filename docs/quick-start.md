@@ -30,7 +30,7 @@ openai:
   apiKey: 'your-api-key-here'
   baseURL: 'https://api.openai.com/v1'  # 或其他兼容的API地址
   model: 'gpt-3.5-turbo'  # 或其他支持的模型
-  timeout: 30000
+  timeout: 1800000
 
 # Gateway Configuration
 gateway:

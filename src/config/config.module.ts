@@ -120,6 +120,7 @@ export class ConfigModule {
                     host: config.gateway.host,
                     logLevel: config.gateway.logLevel,
                     logDir: resolveLogDir(config.gateway.logDir),
+                    requestTimeout: config.gateway.requestTimeout ?? 3600000,
                   },
                   aiProvider: config.aiProvider,
                 };
@@ -134,7 +135,7 @@ export class ConfigModule {
                     'https://api.openai.com/v1',
                   model: process.env.GAL_OPENAI_MODEL || 'gpt-3.5-turbo',
                   organization: process.env.GAL_OPENAI_ORGANIZATION,
-                  timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 30000,
+                  timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 1800000,
                   extraBody: undefined,
                 },
                 codex: (() => {
@@ -159,7 +160,7 @@ export class ConfigModule {
                       process.env.GAL_CODEX_BASE_URL ||
                       'https://chatgpt.com/backend-api/codex',
                     model: process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
-                    timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 60000,
+                    timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 1800000,
                     reasoning: (() => {
                       const raw = process.env.GAL_CODEX_REASONING;
                       if (!raw) return undefined;
@@ -197,7 +198,7 @@ export class ConfigModule {
                       process.env.GAL_CLAUDE_CODE_MODEL ||
                       'claude-sonnet-4-20250514',
                     timeout:
-                      Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 60000,
+                      Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 1800000,
                     anthropicVersion:
                       process.env.GAL_CLAUDE_CODE_VERSION || '2023-06-01',
                     beta: parseBetaEnv(process.env.GAL_CLAUDE_CODE_BETA),
@@ -220,6 +221,8 @@ export class ConfigModule {
                   host: process.env.GAL_HOST || '0.0.0.0',
                   logLevel: process.env.GAL_LOG_LEVEL || 'info',
                   logDir: resolveLogDir(process.env.GAL_GATEWAY_LOG_DIR),
+                  requestTimeout:
+                    Number(process.env.GAL_REQUEST_TIMEOUT) || 3600000,
                 },
                 aiProvider: (
                   process.env.GAL_AI_PROVIDER || 'openai'

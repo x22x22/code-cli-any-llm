@@ -45,6 +45,7 @@ export interface GatewayConfig {
   host: string;
   logLevel: string;
   logDir: string;
+  requestTimeout: number;
 }
 
 export interface GlobalConfig {

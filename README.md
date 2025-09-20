@@ -163,7 +163,7 @@ export GAL_CODEX_AUTH_MODE="chatgpt"
 export GAL_CODEX_API_KEY="your-codex-api-key"
 export GAL_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex"
 export GAL_CODEX_MODEL="gpt-5-codex"
-export GAL_CODEX_TIMEOUT="60000"
+export GAL_CODEX_TIMEOUT="1800000"
 # Optional: reasoning parameters and output verbosity control
 export GAL_CODEX_REASONING='{"effort":"medium"}'
 export GAL_CODEX_TEXT_VERBOSITY="medium"
@@ -174,7 +174,7 @@ export CODEX_HOME="$HOME/.custom-codex"
 export GAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
 export GAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"   # 或自建 relay 的 /api 根路径
 export GAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
-export GAL_CLAUDE_CODE_TIMEOUT="60000"
+export GAL_CLAUDE_CODE_TIMEOUT="1800000"
 export GAL_CLAUDE_CODE_VERSION="2023-06-01"
 export GAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
 export GAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
@@ -186,7 +186,7 @@ export GAL_CLAUDE_CODE_MAX_OUTPUT="64000"
 export GAL_OPENAI_API_KEY="your-api-key"
 export GAL_OPENAI_BASE_URL="https://api.openai.com/v1"
 export GAL_OPENAI_MODEL="gpt-4"
-export GAL_OPENAI_TIMEOUT="30000"
+export GAL_OPENAI_TIMEOUT="1800000"
 # Optional: OpenAI organization ID
 export GAL_OPENAI_ORGANIZATION="org-xxxxxx"
 
@@ -199,7 +199,7 @@ export GAL_DISABLE_UPDATE_CHECK="1"            # Disable automatic update prompt
 
 # General advanced configuration
 export GAL_RATE_LIMIT_MAX="100"                # API rate limit cap (per 15 minutes)
-export GAL_REQUEST_TIMEOUT="120000"            # Request timeout in milliseconds
+export GAL_REQUEST_TIMEOUT="3600000"           # Request timeout in milliseconds (default 1 hour)
 export GAL_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8080"  # Allowed origins for CORS
 export GAL_LOG_DIR="/custom/log/path"          # Custom log directory
 ```
@@ -215,7 +215,7 @@ openai:
   apiKey: "project-specific-key"
   model: "gpt-4"
   baseURL: "https://api.openai.com/v1"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   port: 23062
   host: "0.0.0.0"
@@ -233,7 +233,7 @@ codex:
   apiKey: "project-codex-key"
   baseURL: "https://chatgpt.com/backend-api/codex"
   model: "gpt-5-codex"
-  timeout: 60000
+  timeout: 1800000
   # Optional: customize reasoning effort and output verbosity
   reasoning:
     effort: medium
@@ -248,7 +248,7 @@ codex:
   authMode: ChatGPT
   baseURL: "https://chatgpt.com/backend-api/codex"
   model: "gpt-5-codex"
-  timeout: 60000
+  timeout: 1800000
   reasoning:
     effort: medium
     summary: auto
@@ -264,11 +264,11 @@ codex:
 - **`openai.apiKey`** - API key for OpenAI or compatible services (required when using `openai`)
 - **`openai.baseURL`** - Endpoint URL for OpenAI-compatible APIs (default: ZhipuAI)
 - **`openai.model`** - Default model name (default: `glm-4.5`)
-- **`openai.timeout`** - Request timeout in milliseconds (default: 30000)
+- **`openai.timeout`** - Request timeout in milliseconds (default: 1800000 ≈ 30 minutes)
 - **`codex.apiKey`** - Codex API key (required only in `ApiKey` mode, optional in `ChatGPT` mode)
 - **`codex.baseURL`** - Codex API endpoint URL (default: `https://chatgpt.com/backend-api/codex`)
 - **`codex.model`** - Codex model name (default: `gpt-5-codex`)
-- **`codex.timeout`** - Codex request timeout in milliseconds (default: 60000)
+- **`codex.timeout`** - Codex request timeout in milliseconds (default: 1800000 ≈ 30 minutes)
 - **`codex.reasoning`** - Codex reasoning configuration, follows the Codex Responses API JSON schema
 - **`codex.textVerbosity`** - Codex text verbosity, supports `low`/`medium`/`high`
 
@@ -378,7 +378,7 @@ chmod 600 ~/.gemini-any-llm/config.yaml
 3. Increase the timeout:
 ```yaml
 openai:
-  timeout: 60000  # 60 seconds
+  timeout: 1800000  # 30 minutes
 ```
 
 ### View logs
@@ -449,7 +449,7 @@ openai:
   apiKey: "project-specific-key"
   model: "gpt-4"
   baseURL: "https://api.openai.com/v1"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   logLevel: "debug"  # Use debug mode during project development
 ```
@@ -468,7 +468,7 @@ gal status
 3. Consider increasing the timeout:
 ```yaml
 openai:
-  timeout: 60000  # 60 seconds
+  timeout: 1800000  # 30 minutes
 ```
 
 4. If the issue persists, restart the service:

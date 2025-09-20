@@ -88,7 +88,7 @@ export class GlobalConfigService {
             process.env.GAL_OPENAI_BASE_URL ||
             'https://open.bigmodel.cn/api/paas/v4',
           model: process.env.GAL_OPENAI_MODEL || 'glm-4.5',
-          timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 30000,
+          timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 1800000,
           extraBody: undefined,
         },
         codex: process.env.GAL_CODEX_API_KEY
@@ -98,7 +98,7 @@ export class GlobalConfigService {
                 process.env.GAL_CODEX_BASE_URL ||
                 'https://chatgpt.com/backend-api/codex',
               model: process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
-              timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 60000,
+              timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 1800000,
               reasoning: (() => {
                 const raw = process.env.GAL_CODEX_REASONING;
                 if (!raw) return undefined;
@@ -133,7 +133,7 @@ export class GlobalConfigService {
               'https://open.bigmodel.cn/api/anthropic',
             model:
               process.env.GAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
-            timeout: Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 60000,
+            timeout: Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 1800000,
             anthropicVersion:
               process.env.GAL_CLAUDE_CODE_VERSION || '2023-06-01',
             beta: parseBetaEnv(process.env.GAL_CLAUDE_CODE_BETA),
@@ -156,6 +156,7 @@ export class GlobalConfigService {
           host: process.env.GAL_HOST || '0.0.0.0',
           logLevel: process.env.GAL_LOG_LEVEL || 'info',
           logDir: process.env.GAL_GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
+          requestTimeout: Number(process.env.GAL_REQUEST_TIMEOUT) || 3600000,
         },
       };
       mergedConfig = this.deepMerge(
@@ -184,7 +185,8 @@ export class GlobalConfigService {
         process.env.GAL_PORT ||
         process.env.GAL_HOST ||
         process.env.GAL_LOG_LEVEL ||
-        process.env.GAL_GATEWAY_LOG_DIR
+        process.env.GAL_GATEWAY_LOG_DIR ||
+        process.env.GAL_REQUEST_TIMEOUT
       ) {
         configSources.push('环境变量');
       }
@@ -312,14 +314,14 @@ openai:
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
   model: "glm-4.5"
-  timeout: 30000
+  timeout: 1800000
 
 # Codex provider (optional)
 codex:
   apiKey: ""
   baseURL: "https://chatgpt.com/backend-api/codex"
   model: "gpt-5-codex"
-  timeout: 60000
+  timeout: 1800000
   reasoning:
     effort: minimal
     summary: auto
@@ -330,7 +332,7 @@ claudeCode:
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/anthropic"
   model: "claude-sonnet-4-20250514"
-  timeout: 60000
+  timeout: 1800000
   anthropicVersion: "2023-06-01"
   beta:
     - claude-code-20250219
@@ -347,6 +349,7 @@ gateway:
   host: "0.0.0.0"
   logLevel: "info"
   logDir: "~/.gemini-any-llm/logs"
+  requestTimeout: 3600000
 `;
 
     return {
@@ -378,7 +381,7 @@ gateway:
         apiKey: '',
         baseURL: 'https://open.bigmodel.cn/api/paas/v4',
         model: 'glm-4.5',
-        timeout: 30000,
+        timeout: 1800000,
         extraBody: undefined,
       };
       config.openai = openaiConfig;
@@ -409,7 +412,7 @@ gateway:
       // 验证timeout
       if (!openaiConfig.timeout) {
         warnings.push('timeout未设置，将使用默认值');
-        openaiConfig.timeout = 30000;
+        openaiConfig.timeout = 1800000;
       }
     }
 
@@ -441,7 +444,7 @@ gateway:
           apiKey: '',
           baseURL: 'https://chatgpt.com/backend-api/codex',
           model: 'gpt-5-codex',
-          timeout: 60000,
+          timeout: 1800000,
           reasoning: {
             effort: 'minimal',
             summary: 'auto',
@@ -488,7 +491,7 @@ gateway:
       }
       if (!codexConfig.timeout) {
         warnings.push('codex.timeout未设置，将使用默认值');
-        codexConfig.timeout = 60000;
+        codexConfig.timeout = 1800000;
       }
       if (!codexConfig.reasoning) {
         codexConfig.reasoning = {
@@ -578,7 +581,7 @@ gateway:
           apiKey: '',
           baseURL: 'https://open.bigmodel.cn/api/anthropic',
           model: 'claude-sonnet-4-20250514',
-          timeout: 60000,
+          timeout: 1800000,
           anthropicVersion: '2023-06-01',
           beta: [
             'claude-code-20250219',
@@ -620,7 +623,7 @@ gateway:
 
       if (!claudeConfig.timeout) {
         warnings.push('claudeCode.timeout未设置，将使用默认值');
-        claudeConfig.timeout = 60000;
+        claudeConfig.timeout = 1800000;
       }
 
       if (!claudeConfig.anthropicVersion) {
@@ -670,6 +673,7 @@ gateway:
         host: '0.0.0.0',
         logLevel: 'info',
         logDir: DEFAULT_GATEWAY_LOG_DIR,
+        requestTimeout: 3600000,
       };
       config.gateway = gatewayConfig;
     }
@@ -680,6 +684,14 @@ gateway:
     }
 
     gatewayConfig.logDir = this.normalizeLogDir(gatewayConfig.logDir);
+
+    const parsedTimeout = Number(gatewayConfig.requestTimeout);
+    if (!Number.isFinite(parsedTimeout) || parsedTimeout <= 0) {
+      warnings.push('gateway.requestTimeout无效，将使用默认值3600000毫秒');
+      gatewayConfig.requestTimeout = 3600000;
+    } else {
+      gatewayConfig.requestTimeout = parsedTimeout;
+    }
 
     const isValid = errors.length === 0;
     const result: ConfigValidationResult = {

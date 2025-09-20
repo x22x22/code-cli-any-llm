@@ -47,6 +47,7 @@ import { Logger } from '@nestjs/common';
     ZhipuOptimizer,
     DoubleEscapeUtils,
     ToolCallProcessor,
+    TimeoutMiddleware,
   ],
 })
 export class AppModule implements OnModuleDestroy {
