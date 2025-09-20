@@ -21,7 +21,7 @@ openai:
   apiKey: 'your-api-key-here'        # API 密钥
   baseURL: 'https://api.openai.com/v1'  # API 基础URL
   model: 'gpt-3.5-turbo'              # 默认模型
-  timeout: 30000                      # 请求超时时间（毫秒）
+  timeout: 1800000                    # 请求超时时间（毫秒，约 30 分钟）
   organization: 'optional-org-id'     # 组织ID（可选）
 ```
 
@@ -62,7 +62,7 @@ security:
 GAL_OPENAI_API_KEY=your-key
 GAL_OPENAI_BASE_URL=https://api.example.com/v1
 GAL_OPENAI_MODEL=gpt-4
-GAL_OPENAI_TIMEOUT=30000
+GAL_OPENAI_TIMEOUT=1800000
 GAL_OPENAI_ORGANIZATION=org-xxxxxx
 
 # 网关配置
@@ -73,7 +73,7 @@ GAL_GATEWAY_LOG_DIR=~/.gemini-any-llm/logs
 
 # 性能和安全配置（可选）
 GAL_RATE_LIMIT_MAX=100
-GAL_REQUEST_TIMEOUT=120000
+GAL_REQUEST_TIMEOUT=3600000
 GAL_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
 
@@ -137,13 +137,14 @@ openai:
   apiKey: 'changeme'
   baseURL: 'https://open.bigmodel.cn/api/paas/v4'
   model: 'glm-4.5'
-  timeout: 120000
+  timeout: 1800000
 
 # Gateway Configuration
 gateway:
   port: 23062
   host: '0.0.0.0'
   logLevel: 'info'
+  requestTimeout: 3600000
 
 # Rate Limiting
 rateLimit:
@@ -160,7 +161,7 @@ security:
 
 # Request Configuration
 request:
-  timeout: 30000
+  timeout: 1800000
   maxRetries: 3
   retryDelay: 1000
 

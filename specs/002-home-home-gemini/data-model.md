@@ -34,7 +34,7 @@ OpenAI API相关配置。
 - apiKey: 非空字符串，必须字段
 - baseURL: 有效URL格式，默认 "https://open.bigmodel.cn/api/paas/v4"
 - model: 非空字符串，默认 "glm-4.5"
-- timeout: 正整数，范围1000-120000，默认30000
+- timeout: 正整数，范围1000-86400000，默认1800000
 
 **Default Values:**
 ```typescript
@@ -42,7 +42,7 @@ OpenAI API相关配置。
   apiKey: "", // 必须用户填写
   baseURL: "https://open.bigmodel.cn/api/paas/v4",
   model: "glm-4.5",
-  timeout: 30000
+  timeout: 1800000
 }
 ```
 
@@ -101,7 +101,7 @@ openai:
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
   model: "glm-4.5"
-  timeout: 30000
+  timeout: 1800000
 
 gateway:
   port: 23062

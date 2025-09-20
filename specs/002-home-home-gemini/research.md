@@ -145,7 +145,7 @@ openai:
   model: "glm-4.5"
 
   # Request timeout in milliseconds
-  timeout: 30000
+  timeout: 1800000
 
 # Gateway Configuration
 gateway:

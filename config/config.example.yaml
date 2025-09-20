@@ -9,7 +9,7 @@ openai:
   apiKey: 'your-api-key-here'
   baseURL: 'https://open.bigmodel.cn/api/paas/v4'  # 智谱AI endpoint
   model: 'glm-4.5'  # Default model
-  timeout: 30000
+  timeout: 1800000
   # Extra body parameters that will be added to the API request
   # Useful for provider-specific parameters like max_input_tokens for qwen models
   extraBody:
@@ -23,7 +23,7 @@ codex:
   apiKey: ''
   baseURL: 'https://chatgpt.com/backend-api/codex'
   model: 'gpt-5-codex'
-  timeout: 60000
+  timeout: 1800000
   # reasoning.effort 控制推理 token 数量，可选 minimal/low/medium/high；默认 medium。
   # 设置为 minimal 可显著降低延迟与推理 token 使用量（参考 OpenAI 最新模型指南）。
   reasoning:
@@ -38,7 +38,7 @@ claudeCode:
   apiKey: ''
   baseURL: 'https://open.bigmodel.cn/api/anthropic'
   model: 'claude-sonnet-4-20250514'
-  timeout: 60000
+  timeout: 1800000
   anthropicVersion: '2023-06-01'
   beta:
     - claude-code-20250219
@@ -57,3 +57,4 @@ gateway:
   host: '0.0.0.0'
   logLevel: 'info'
   logDir: '~/.gemini-any-llm/logs'
+  requestTimeout: 3600000

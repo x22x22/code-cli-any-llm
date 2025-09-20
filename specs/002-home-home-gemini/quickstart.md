@@ -52,7 +52,7 @@ openai:
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
   model: "glm-4.5"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   port: 23062
   host: "0.0.0.0"
@@ -88,7 +88,7 @@ openai:
   apiKey: "sk-test123456789"
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
   model: "glm-4.5"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   port: 23062
   host: "0.0.0.0"
@@ -168,7 +168,7 @@ openai:
   apiKey: "sk-test123"
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
   model: glm-4.5    # 缺少引号，格式错误
-    timeout: 30000        # 缩进错误
+    timeout: 1800000        # 缩进错误
 EOF
 ```
 

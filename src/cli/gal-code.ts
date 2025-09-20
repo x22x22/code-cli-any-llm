@@ -387,8 +387,8 @@ async function configureOpenAI(
 
   const timeout = await askNumber(
     rl,
-    '请求超时时间 (ms, 默认 30000)',
-    existing.timeout ?? 30000,
+    '请求超时时间 (ms, 默认 1800000 ≈ 30 分钟)',
+    existing.timeout ?? 1800000,
   );
 
   return {
@@ -434,8 +434,8 @@ async function configureCodex(
 
   const timeout = await askNumber(
     rl,
-    '请求超时时间 (ms, 默认 60000)',
-    existing.timeout ?? 60000,
+    '请求超时时间 (ms, 默认 1800000 ≈ 30 分钟)',
+    existing.timeout ?? 1800000,
   );
 
   const textVerbosity = await askChoice(
@@ -527,8 +527,8 @@ async function configureClaudeCode(
 
   const timeout = await askNumber(
     rl,
-    '请求超时时间 (ms, 默认 60000)',
-    existing.timeout ?? 60000,
+    '请求超时时间 (ms, 默认 1800000 ≈ 30 分钟)',
+    existing.timeout ?? 1800000,
   );
 
   const maxOutputTokens = await askNumber(

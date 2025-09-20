@@ -161,7 +161,7 @@ openai:
   model: "glm-4.5"
 
   # Request timeout in milliseconds
-  timeout: 30000
+  timeout: 1800000
 
 # Gateway Configuration
 gateway:
@@ -177,7 +177,7 @@ openai:
   apiKey: "project-specific-api-key"
   baseURL: "https://open.bigmodel.cn/api/paas/v4"  # Must specify or uses default
   model: "gpt-4"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   port: 3003
   host: "0.0.0.0"

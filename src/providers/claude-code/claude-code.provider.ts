@@ -323,7 +323,7 @@ export class ClaudeCodeProvider implements OnModuleInit {
       apiKey: rawConfig.apiKey.trim(),
       baseURL: rawConfig.baseURL || 'https://open.bigmodel.cn/api/anthropic',
       model: rawConfig.model || 'claude-sonnet-4-20250514',
-      timeout: rawConfig.timeout || 60000,
+      timeout: rawConfig.timeout ?? 1800000,
       anthropicVersion: rawConfig.anthropicVersion || '2023-06-01',
       beta: rawConfig.beta,
       userAgent: rawConfig.userAgent || 'claude-cli/1.0.119 (external, cli)',
@@ -586,7 +586,9 @@ export class ClaudeCodeProvider implements OnModuleInit {
       'x-stainless-runtime-version': process.version,
       'x-stainless-os': this.normalizeOS(process.platform),
       'x-stainless-arch': process.arch,
-      'x-stainless-timeout': '600',
+      'x-stainless-timeout': String(
+        Math.ceil((config.timeout ?? 1800000) / 1000),
+      ),
       'x-stainless-retry-count': '0',
     };
 

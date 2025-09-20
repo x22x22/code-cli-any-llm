@@ -169,7 +169,7 @@ export GAL_CODEX_AUTH_MODE="chatgpt"
 export GAL_CODEX_API_KEY="your-codex-api-key"
 export GAL_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex"
 export GAL_CODEX_MODEL="gpt-5-codex"
-export GAL_CODEX_TIMEOUT="60000"
+export GAL_CODEX_TIMEOUT="1800000"
 # 可选：推理参数与输出冗长度控制
 export GAL_CODEX_REASONING='{"effort":"medium"}'
 export GAL_CODEX_TEXT_VERBOSITY="medium"
@@ -180,7 +180,7 @@ export CODEX_HOME="$HOME/.custom-codex"
 export GAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
 export GAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"   # 或自建 relay 的 /api 根路径
 export GAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
-export GAL_CLAUDE_CODE_TIMEOUT="60000"
+export GAL_CLAUDE_CODE_TIMEOUT="1800000"
 export GAL_CLAUDE_CODE_VERSION="2023-06-01"
 export GAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
 export GAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
@@ -192,7 +192,7 @@ export GAL_CLAUDE_CODE_MAX_OUTPUT="64000"
 export GAL_OPENAI_API_KEY="your-api-key"
 export GAL_OPENAI_BASE_URL="https://api.openai.com/v1"
 export GAL_OPENAI_MODEL="gpt-4"
-export GAL_OPENAI_TIMEOUT="30000"
+export GAL_OPENAI_TIMEOUT="1800000"
 # 可选：OpenAI 组织 ID
 export GAL_OPENAI_ORGANIZATION="org-xxxxxx"
 
@@ -205,7 +205,7 @@ export GAL_DISABLE_UPDATE_CHECK="1"            # 关闭自动更新提示
 
 # 通用高级配置
 export GAL_RATE_LIMIT_MAX="100"                # API 限流上限（每15分钟）
-export GAL_REQUEST_TIMEOUT="120000"            # 请求超时时间（毫秒）
+export GAL_REQUEST_TIMEOUT="3600000"           # 请求超时时间（毫秒，默认1小时）
 export GAL_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8080"  # CORS 允许的来源
 export GAL_LOG_DIR="/custom/log/path"          # 自定义日志目录
 ```
@@ -221,7 +221,7 @@ openai:
   apiKey: "project-specific-key"
   model: "gpt-4"
   baseURL: "https://api.openai.com/v1"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   port: 23062
   host: "0.0.0.0"
@@ -239,7 +239,7 @@ codex:
   apiKey: "project-codex-key"
   baseURL: "https://chatgpt.com/backend-api/codex"
   model: "gpt-5-codex"
-  timeout: 60000
+  timeout: 1800000
   # 可选：自定义推理强度与输出冗长度
   reasoning:
     effort: medium
@@ -254,7 +254,7 @@ codex:
   authMode: ChatGPT
   baseURL: "https://chatgpt.com/backend-api/codex"
   model: "gpt-5-codex"
-  timeout: 60000
+  timeout: 1800000
   reasoning:
     effort: medium
     summary: auto
@@ -270,11 +270,11 @@ codex:
 - **`openai.apiKey`** - OpenAI 或兼容服务的 API 密钥（使用 `openai` 时必需）
 - **`openai.baseURL`** - OpenAI 兼容 API 端点地址（默认：智谱AI）
 - **`openai.model`** - 默认使用的模型名称（默认：`glm-4.5`）
-- **`openai.timeout`** - 请求超时时间，毫秒（默认：30000）
+- **`openai.timeout`** - 请求超时时间，毫秒（默认：1800000 ≈ 30 分钟）
 - **`codex.apiKey`** - Codex 的 API 密钥（仅 `ApiKey` 模式必需，`ChatGPT` 模式可省略）
 - **`codex.baseURL`** - Codex API 端点地址（默认：`https://chatgpt.com/backend-api/codex`）
 - **`codex.model`** - Codex 模型名称（默认：`gpt-5-codex`）
-- **`codex.timeout`** - Codex 请求超时时间，毫秒（默认：60000）
+- **`codex.timeout`** - Codex 请求超时时间，毫秒（默认：1800000 ≈ 30 分钟）
 - **`codex.reasoning`** - Codex 推理配置，遵循 Codex Responses API 的 JSON 结构
 - **`codex.textVerbosity`** - Codex 文本冗长度，支持 `low`/`medium`/`high`
 
@@ -384,7 +384,7 @@ chmod 600 ~/.gemini-any-llm/config.yaml
 3. 增加超时时间：
 ```yaml
 openai:
-  timeout: 60000  # 60秒
+  timeout: 1800000  # 30 分钟
 ```
 
 ### 查看日志
@@ -455,7 +455,7 @@ openai:
   apiKey: "project-specific-key"
   model: "gpt-4"
   baseURL: "https://api.openai.com/v1"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   logLevel: "debug"  # 项目开发时使用调试模式
 ```
@@ -474,7 +474,7 @@ gal status
 3. 尝试增加超时时间：
 ```yaml
 openai:
-  timeout: 60000  # 60秒
+  timeout: 1800000  # 30 分钟
 ```
 
 4. 如果仍有问题，重启服务：

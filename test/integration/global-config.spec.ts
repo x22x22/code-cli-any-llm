@@ -98,7 +98,7 @@ describe('GlobalConfig Integration Tests', () => {
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
   model: "glm-4.5"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   port: 23062
   host: "0.0.0.0"
@@ -131,7 +131,7 @@ gateway:
   apiKey: "sk-test123456789"
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
   model: "glm-4.5"
-  timeout: 30000
+  timeout: 1800000
 gateway:
   port: 23062
   host: "0.0.0.0"
@@ -196,7 +196,7 @@ gateway:
 
       const projectConfig = `openai:
   model: "gpt-4"  # 覆盖全局配置
-  timeout: 60000  # 新增字段
+  timeout: 1800000  # 新增字段
 gateway:
   port: 3003  # 覆盖全局配置
 `;
@@ -213,7 +213,7 @@ gateway:
         expect(result.config!.openai.baseURL).toBe(
           'https://global.example.com',
         ); // 全局配置值（项目配置中未指定）
-        expect(result.config!.openai.timeout).toBe(60000); // 项目配置值（新增字段）
+        expect(result.config!.openai.timeout).toBe(1800000); // 项目配置值（新增字段）
         expect(result.config!.gateway.port).toBe(3003); // 项目配置值（覆盖全局配置）
         expect(result.config!.gateway.host).toBe('0.0.0.0'); // 全局配置值（项目配置中未指定）
         expect(result.config!.gateway.logLevel).toBe('info'); // 全局配置值（项目配置中未指定）
@@ -319,7 +319,7 @@ gateway:
   apiKey: "sk-test123"
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
   model: glm-4.5    # 缺少引号，格式错误
-    timeout: 30000  # 缩进错误
+    timeout: 1800000  # 缩进错误
 `;
       fs.writeFileSync(testConfigFile, invalidYamlConfig);
 

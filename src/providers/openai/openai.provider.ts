@@ -1,12 +1,37 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { OpenAI } from 'openai';
-import { OpenAIRequest } from '../../models/openai/openai-request.model';
-import { OpenAIResponse } from '../../models/openai/openai-response.model';
+import {
+  OpenAIRequest,
+  OpenAIToolCall,
+} from '../../models/openai/openai-request.model';
+import {
+  OpenAIResponse,
+  OpenAIUsage,
+} from '../../models/openai/openai-response.model';
 import { OpenAIStreamChunk } from '../../models/openai/openai-stream.model';
 import { OpenAIConfig } from '../../config/config.schema';
 import { ConfigService } from '@nestjs/config';
 import { GeminiRequestDto } from '../../models/gemini/gemini-request.dto';
 import { TokenizerService } from '../../services/tokenizer.service';
+
+type AggregatedRole = 'assistant' | 'user' | 'system' | 'tool';
+
+interface ToolCallAggregationState {
+  id?: string;
+  type?: 'function';
+  function: {
+    name?: string;
+    argumentParts: string[];
+  };
+}
+
+interface ChoiceAggregationState {
+  role?: AggregatedRole;
+  contentParts: string[];
+  reasoningParts: string[];
+  toolCalls: Map<number, ToolCallAggregationState>;
+  finishReason?: 'stop' | 'length' | 'tool_calls' | 'content_filter';
+}
 
 @Injectable()
 export class OpenAIProvider implements OnModuleInit {
@@ -46,7 +71,7 @@ export class OpenAIProvider implements OnModuleInit {
       apiKey: config.apiKey,
       baseURL: config.baseURL,
       organization: config.organization,
-      timeout: config.timeout || 30000,
+      timeout: config.timeout ?? 1800000,
       dangerouslyAllowBrowser: false, // Ensure we're not in browser context
     });
 
@@ -78,7 +103,7 @@ export class OpenAIProvider implements OnModuleInit {
           max_tokens: request.max_tokens,
           stop: request.stop,
           user: request.user,
-          stream: false,
+          stream: true,
           ...(config.extraBody || {}),
         };
 
@@ -91,30 +116,25 @@ export class OpenAIProvider implements OnModuleInit {
         this.logger.debug(`Body: ${JSON.stringify(requestBody, null, 2)}`);
         this.logger.debug('================================');
 
-        const response = await client.chat.completions.create({
-          model: request.model,
-          messages:
-            request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-          tools: request.tools,
-          tool_choice: request.tool_choice,
-          temperature: request.temperature,
-          top_p: request.top_p,
-          max_tokens: request.max_tokens,
-          stop: request.stop,
-          user: request.user,
-          stream: false,
-          ...(config.extraBody || {}),
-        });
+        const stream = await this.createChatCompletionStream(
+          request,
+          config,
+          client,
+        );
+        const response = await this.collectStreamToResponse(
+          stream,
+          request.model,
+        );
 
-        // 打印 OpenAI 响应内容
-        this.logger.debug('=== OpenAI Response Details ===');
+        // 打印 OpenAI 聚合响应内容
+        this.logger.debug('=== OpenAI Aggregated Response ===');
         this.logger.debug(
           `Status: ${response.choices?.[0]?.finish_reason || 'unknown'}`,
         );
         this.logger.debug(`Response: ${JSON.stringify(response, null, 2)}`);
         this.logger.debug('=================================');
 
-        return response as OpenAIResponse;
+        return response;
       } catch (error) {
         lastError = this.transformError(error);
 
@@ -167,50 +187,15 @@ export class OpenAIProvider implements OnModuleInit {
         hasTools: !!request.tools,
       });
 
-      // 保持调用方提供的工具定义，不做“简化”处理
-      const processedTools = request.tools;
-
-      let stream;
-      try {
-        const extraBody = { ...(config.extraBody || {}) } as {
-          stream_options?: Record<string, any>;
-        };
-        const extraStreamOptions = extraBody.stream_options;
-        if (extraStreamOptions) {
-          delete extraBody.stream_options;
-        }
-        stream = await client.chat.completions.create({
-          model: request.model,
-          messages:
-            request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-          tools: processedTools,
-          tool_choice: processedTools ? request.tool_choice : undefined,
-          temperature: request.temperature,
-          top_p: request.top_p,
-          max_tokens: request.max_tokens,
-          stop: request.stop,
-          user: request.user,
-          stream: true,
-          stream_options: {
-            include_usage: true,
-            ...(extraStreamOptions || {}),
-          },
-          ...extraBody,
-        });
-      } catch (createError) {
-        this.logger.error('Failed to create OpenAI stream:', {
-          error: (createError as Error).message,
-          status: (createError as { status?: number }).status,
-          type: (createError as { type?: string }).type,
-          code: (createError as { code?: string }).code,
-          stack: (createError as Error).stack,
-        });
-        throw createError;
-      }
+      const stream = await this.createChatCompletionStream(
+        request,
+        config,
+        client,
+      );
 
       try {
         for await (const chunk of stream) {
-          yield chunk as OpenAIStreamChunk;
+          yield chunk;
         }
       } catch (iterationError) {
         this.logger.error(
@@ -345,5 +330,209 @@ export class OpenAIProvider implements OnModuleInit {
       throw new Error('OpenAI provider is not enabled.');
     }
     return { config: this.config, client: this.openai };
+  }
+
+  private async createChatCompletionStream(
+    request: OpenAIRequest,
+    config: OpenAIConfig,
+    client: OpenAI,
+  ): Promise<AsyncIterable<OpenAIStreamChunk>> {
+    const processedTools = request.tools;
+    const extraBody = { ...(config.extraBody || {}) } as {
+      stream_options?: Record<string, any>;
+    };
+    const extraStreamOptions = extraBody.stream_options;
+    if (extraStreamOptions) {
+      delete extraBody.stream_options;
+    }
+
+    try {
+      const stream = await client.chat.completions.create({
+        model: request.model,
+        messages:
+          request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+        tools: processedTools,
+        tool_choice: processedTools ? request.tool_choice : undefined,
+        temperature: request.temperature,
+        top_p: request.top_p,
+        max_tokens: request.max_tokens,
+        stop: request.stop,
+        user: request.user,
+        stream: true,
+        stream_options: {
+          include_usage: true,
+          ...(extraStreamOptions || {}),
+        },
+        ...extraBody,
+      });
+      return stream as unknown as AsyncIterable<OpenAIStreamChunk>;
+    } catch (createError) {
+      this.logger.error('Failed to create OpenAI stream:', {
+        error: (createError as Error).message,
+        status: (createError as { status?: number }).status,
+        type: (createError as { type?: string }).type,
+        code: (createError as { code?: string }).code,
+        stack: (createError as Error).stack,
+      });
+      throw createError;
+    }
+  }
+
+  private async collectStreamToResponse(
+    stream: AsyncIterable<OpenAIStreamChunk>,
+    fallbackModel: string,
+  ): Promise<OpenAIResponse> {
+    const choicesState = new Map<number, ChoiceAggregationState>();
+    let responseId: string | undefined;
+    let created: number | undefined;
+    let model: string | undefined;
+    let usage: OpenAIUsage | undefined;
+
+    for await (const chunk of stream) {
+      if (!responseId) {
+        responseId = chunk.id;
+        created = chunk.created;
+        model = chunk.model;
+      }
+
+      if (chunk.usage) {
+        const { prompt_tokens, completion_tokens, total_tokens } = chunk.usage;
+        if (
+          prompt_tokens !== undefined &&
+          completion_tokens !== undefined &&
+          total_tokens !== undefined
+        ) {
+          usage = {
+            prompt_tokens,
+            completion_tokens,
+            total_tokens,
+          };
+        }
+      }
+
+      for (const choice of chunk.choices) {
+        const state = this.getChoiceState(choicesState, choice.index);
+        if (choice.delta.role) {
+          state.role = choice.delta.role as AggregatedRole;
+        }
+        if (choice.delta.content) {
+          state.contentParts.push(choice.delta.content);
+        }
+        if (choice.delta.reasoning_content) {
+          state.reasoningParts.push(choice.delta.reasoning_content);
+        }
+        if (choice.delta.tool_calls?.length) {
+          for (const toolCallDelta of choice.delta.tool_calls) {
+            const callState = this.getToolCallState(
+              state.toolCalls,
+              toolCallDelta,
+            );
+            if (toolCallDelta.id) {
+              callState.id = toolCallDelta.id;
+            }
+            if (toolCallDelta.type) {
+              callState.type = toolCallDelta.type;
+            }
+            if (toolCallDelta.function?.name) {
+              callState.function.name = toolCallDelta.function.name;
+            }
+            if (toolCallDelta.function?.arguments) {
+              callState.function.argumentParts.push(
+                toolCallDelta.function.arguments,
+              );
+            }
+          }
+        }
+        if (choice.finish_reason) {
+          state.finishReason =
+            choice.finish_reason as ChoiceAggregationState['finishReason'];
+        }
+      }
+    }
+
+    if (!responseId) {
+      throw new Error('No stream chunks received from OpenAI');
+    }
+
+    const choices = Array.from(choicesState.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([index, state]) => {
+        const toolCalls: OpenAIToolCall[] | undefined =
+          state.toolCalls.size > 0
+            ? Array.from(state.toolCalls.entries())
+                .sort(([a], [b]) => a - b)
+                .map(([, call]) => {
+                  if (!call.id || !call.function.name) {
+                    return null;
+                  }
+                  return {
+                    id: call.id,
+                    type: call.type || 'function',
+                    function: {
+                      name: call.function.name,
+                      arguments: call.function.argumentParts.join(''),
+                    },
+                  } satisfies OpenAIToolCall;
+                })
+                .filter((call): call is OpenAIToolCall => call !== null)
+            : undefined;
+
+        const reasoningText = state.reasoningParts.join('');
+        const contentText = state.contentParts.join('');
+
+        return {
+          index,
+          message: {
+            role: state.role ?? 'assistant',
+            content: contentText,
+            reasoning_content: reasoningText || undefined,
+            tool_calls: toolCalls,
+          },
+          finish_reason: state.finishReason ?? 'stop',
+        };
+      });
+
+    return {
+      id: responseId,
+      object: 'chat.completion',
+      created: created ?? Math.floor(Date.now() / 1000),
+      model: model ?? fallbackModel,
+      choices,
+      usage,
+    };
+  }
+
+  private getChoiceState(
+    store: Map<number, ChoiceAggregationState>,
+    index: number,
+  ): ChoiceAggregationState {
+    const existing = store.get(index);
+    if (existing) {
+      return existing;
+    }
+    const initial: ChoiceAggregationState = {
+      contentParts: [],
+      reasoningParts: [],
+      toolCalls: new Map(),
+    };
+    store.set(index, initial);
+    return initial;
+  }
+
+  private getToolCallState(
+    store: Map<number, ToolCallAggregationState>,
+    delta: { index: number },
+  ): ToolCallAggregationState {
+    const existing = store.get(delta.index);
+    if (existing) {
+      return existing;
+    }
+    const initial: ToolCallAggregationState = {
+      function: {
+        argumentParts: [],
+      },
+    };
+    store.set(delta.index, initial);
+    return initial;
   }
 }

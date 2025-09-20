@@ -107,7 +107,7 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:4200
 LOG_LEVEL=info
 
 # 请求超时（毫秒）
-REQUEST_TIMEOUT=30000
+REQUEST_TIMEOUT=1800000
 
 # 速率限制
 RATE_LIMIT_MAX=100

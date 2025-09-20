@@ -126,7 +126,7 @@ export class CodexProvider implements OnModuleInit {
       authMode,
       baseURL: config.baseURL || 'https://chatgpt.com/backend-api',
       model: config.model || 'gpt-5-codex',
-      timeout: config.timeout || 60000,
+      timeout: config.timeout ?? 1800000,
       textVerbosity: config.textVerbosity,
     };
     if (config.reasoning) {
@@ -299,7 +299,7 @@ export class CodexProvider implements OnModuleInit {
       apiKey: this.config.apiKey,
       baseURL: this.config.baseURL || 'https://chatgpt.com/backend-api',
       model: this.config.model || 'gpt-5-codex',
-      timeout: this.config.timeout || 60000,
+      timeout: this.config.timeout ?? 1800000,
       textVerbosity: this.config.textVerbosity,
     };
 
