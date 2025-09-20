@@ -1,4 +1,9 @@
-import { Controller, Get, Optional } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Optional,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { OpenAIProvider } from '../providers/openai/openai.provider';
 import { CodexProvider } from '../providers/codex/codex.provider';
 import { ClaudeCodeProvider } from '../providers/claude-code/claude-code.provider';
@@ -17,22 +22,29 @@ interface HealthResponse {
 }
 
 @Controller()
-export class HealthController {
+export class HealthController implements OnApplicationBootstrap {
   private readonly startTime = Date.now();
-  private readonly aiProvider: 'openai' | 'codex' | 'claudeCode';
-  private readonly useCodexProvider: boolean;
-  private readonly useClaudeCodeProvider: boolean;
-  private readonly provider:
-    | OpenAIProvider
-    | CodexProvider
-    | ClaudeCodeProvider;
+  private aiProvider: 'openai' | 'codex' | 'claudeCode' = 'openai';
+  private useCodexProvider = false;
+  private useClaudeCodeProvider = false;
+  private provider!: OpenAIProvider | CodexProvider | ClaudeCodeProvider;
+  private initialized = false;
 
   constructor(
     private readonly configService: ConfigService,
     @Optional() private readonly openAIProvider?: OpenAIProvider,
     @Optional() private readonly codexProvider?: CodexProvider,
     @Optional() private readonly claudeCodeProvider?: ClaudeCodeProvider,
-  ) {
+  ) {}
+
+  onApplicationBootstrap(): void {
+    this.initializeProvider();
+  }
+
+  private initializeProvider(): void {
+    if (this.initialized) {
+      return;
+    }
     const providerInput =
       this.configService.get<string>('aiProvider') || 'claudeCode';
     const normalizedProvider = providerInput.trim().toLowerCase();
@@ -71,10 +83,12 @@ export class HealthController {
       }
       this.provider = this.openAIProvider;
     }
+    this.initialized = true;
   }
 
   @Get('health')
   async healthCheck(): Promise<HealthResponse> {
+    this.initializeProvider();
     const response: HealthResponse = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
