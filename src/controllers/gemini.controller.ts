@@ -7,6 +7,7 @@ import {
   Logger,
   Query,
   Optional,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
@@ -23,16 +24,14 @@ import { EnhancedResponseTransformer } from '../transformers/enhanced-response.t
 import { TokenizerService } from '../services/tokenizer.service';
 
 @Controller('')
-export class GeminiController {
+export class GeminiController implements OnApplicationBootstrap {
   private readonly logger = new Logger(GeminiController.name);
-  private readonly isUsingZhipuModel: boolean;
-  private readonly useCodexProvider: boolean;
-  private readonly useClaudeCodeProvider: boolean;
-  private readonly llmProvider:
-    | OpenAIProvider
-    | CodexProvider
-    | ClaudeCodeProvider;
-  private readonly aiProvider: 'openai' | 'codex' | 'claudeCode';
+  private isUsingZhipuModel = false;
+  private useCodexProvider = false;
+  private useClaudeCodeProvider = false;
+  private llmProvider!: OpenAIProvider | CodexProvider | ClaudeCodeProvider;
+  private aiProvider!: 'openai' | 'codex' | 'claudeCode';
+  private initialized = false;
 
   constructor(
     private readonly requestTransformer: RequestTransformer,
@@ -45,7 +44,16 @@ export class GeminiController {
     @Optional() private readonly openaiProvider?: OpenAIProvider,
     @Optional() private readonly codexProvider?: CodexProvider,
     @Optional() private readonly claudeCodeProvider?: ClaudeCodeProvider,
-  ) {
+  ) {}
+
+  onApplicationBootstrap(): void {
+    this.initializeProvider();
+  }
+
+  private initializeProvider(): void {
+    if (this.initialized) {
+      return;
+    }
     const providerInput =
       this.configService.get<string>('aiProvider') || 'claudeCode';
     const normalizedProvider = providerInput.trim().toLowerCase();
@@ -139,6 +147,7 @@ export class GeminiController {
       `Using Enhanced Transformers: ${this.isUsingZhipuModel ? 'YES' : 'NO'}`,
     );
     this.logger.log('===========================');
+    this.initialized = true;
   }
 
   /**
@@ -207,6 +216,7 @@ export class GeminiController {
     @Body() request: GeminiRequestDto,
     @Res() response: Response,
   ) {
+    this.initializeProvider();
     try {
       // Determine request type based on alt parameter or model suffix
       const isStreamRequest =
