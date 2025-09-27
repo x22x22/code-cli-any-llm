@@ -254,7 +254,8 @@ export class GlobalConfigService {
           {
             field: 'config',
             message: `Failed to load configuration file: ${error.message}`,
-            suggestion: 'Please verify that the configuration file format is valid.',
+            suggestion:
+              'Please verify that the configuration file format is valid.',
             required: true,
           },
         ],
@@ -508,7 +509,9 @@ gateway:
         }
       } else {
         if (trimmedCodexKey) {
-          warnings.push('codex.apiKey is ignored when ChatGPT mode is enabled.');
+          warnings.push(
+            'codex.apiKey is ignored when ChatGPT mode is enabled.',
+          );
         }
         codexConfig.apiKey = undefined;
       }
@@ -543,7 +546,9 @@ gateway:
             | 'high';
         } else {
           codexConfig.reasoning.effort = 'minimal';
-          warnings.push('codex.reasoning.effort is invalid; defaulting to minimal.');
+          warnings.push(
+            'codex.reasoning.effort is invalid; defaulting to minimal.',
+          );
         }
 
         const summaryRaw = codexConfig.reasoning.summary;
@@ -556,7 +561,9 @@ gateway:
               | 'auto';
           } else {
             codexConfig.reasoning.summary = 'auto';
-            warnings.push('codex.reasoning.summary is invalid; defaulting to auto.');
+            warnings.push(
+              'codex.reasoning.summary is invalid; defaulting to auto.',
+            );
           }
         } else {
           codexConfig.reasoning.summary = 'auto';
@@ -643,7 +650,9 @@ gateway:
       }
 
       if (!claudeConfig.baseURL) {
-        warnings.push('claudeCode.baseURL is not set; using the default value.');
+        warnings.push(
+          'claudeCode.baseURL is not set; using the default value.',
+        );
         claudeConfig.baseURL = 'https://open.bigmodel.cn/api/anthropic';
       }
 
@@ -653,7 +662,9 @@ gateway:
       }
 
       if (!claudeConfig.timeout) {
-        warnings.push('claudeCode.timeout is not set; using the default value.');
+        warnings.push(
+          'claudeCode.timeout is not set; using the default value.',
+        );
         claudeConfig.timeout = 1800000;
       }
 
@@ -721,7 +732,9 @@ gateway:
 
     const parsedTimeout = Number(gatewayConfig.requestTimeout);
     if (!Number.isFinite(parsedTimeout) || parsedTimeout <= 0) {
-      warnings.push('gateway.requestTimeout is invalid; defaulting to 3600000 milliseconds.');
+      warnings.push(
+        'gateway.requestTimeout is invalid; defaulting to 3600000 milliseconds.',
+      );
       gatewayConfig.requestTimeout = 3600000;
     } else {
       gatewayConfig.requestTimeout = parsedTimeout;

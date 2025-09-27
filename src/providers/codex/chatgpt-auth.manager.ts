@@ -254,7 +254,9 @@ export class ChatGPTAuthManager {
       state,
     );
 
-    this.logger.log('Open the following link in your browser to finish ChatGPT sign-in:');
+    this.logger.log(
+      'Open the following link in your browser to finish ChatGPT sign-in:',
+    );
     this.logger.log(authorizeUrl);
 
     const tokens = await new Promise<ChatGPTTokens>((resolve, reject) => {
@@ -362,7 +364,9 @@ export class ChatGPTAuthManager {
 
         const address = server.address() as AddressInfo | null;
         if (!address || typeof address.port !== 'number') {
-          throw new Error('Unable to determine the authentication callback port');
+          throw new Error(
+            'Unable to determine the authentication callback port',
+          );
         }
 
         return { server, port: address.port };
@@ -382,7 +386,9 @@ export class ChatGPTAuthManager {
       }
     }
 
-    throw new Error('Unable to start the local authentication service; verify port availability.');
+    throw new Error(
+      'Unable to start the local authentication service; verify port availability.',
+    );
   }
 
   private async sendCancelRequest(port: number): Promise<void> {

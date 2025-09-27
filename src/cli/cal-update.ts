@@ -12,7 +12,9 @@ export async function runGalUpdate(): Promise<void> {
   const info = await refreshVersionInfoImmediate();
 
   if (!info) {
-    console.error('Unable to retrieve the latest version information. Please try again later.');
+    console.error(
+      'Unable to retrieve the latest version information. Please try again later.',
+    );
     process.exitCode = 1;
     return;
   }
@@ -30,7 +32,9 @@ export async function runGalUpdate(): Promise<void> {
 
   const succeeded = await runUpgradeCommand(command);
   if (succeeded) {
-    console.log('Upgrade completed. Re-run the command to load the latest version.');
+    console.log(
+      'Upgrade completed. Re-run the command to load the latest version.',
+    );
   } else {
     console.error('Upgrade command failed. Please rerun the command manually.');
     process.exitCode = 1;

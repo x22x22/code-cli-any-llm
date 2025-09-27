@@ -202,10 +202,14 @@ async function handleUpgradePrompt(): Promise<void> {
         console.log(`Running upgrade command: ${command}`);
         const succeeded = await runUpgradeCommand(command);
         if (succeeded) {
-          console.log('Upgrade complete. Restart `cal code` to use the latest version.');
+          console.log(
+            'Upgrade complete. Restart `cal code` to use the latest version.',
+          );
           process.exit(0);
         } else {
-          console.error('Automatic upgrade failed. Run the command manually to finish updating:');
+          console.error(
+            'Automatic upgrade failed. Run the command manually to finish updating:',
+          );
           console.error(`  ${command}`);
           console.log('Continuing with the current version.');
         }
@@ -213,7 +217,9 @@ async function handleUpgradePrompt(): Promise<void> {
       }
       case 'n':
       case 'no':
-        console.log('Skipping the update for now; continuing with the current version.');
+        console.log(
+          'Skipping the update for now; continuing with the current version.',
+        );
         return;
       case 'skip':
       case 's': {
@@ -230,7 +236,9 @@ async function handleUpgradePrompt(): Promise<void> {
         context.info.disableCheck = true;
         await persistVersionInfo(context);
         process.env.CAL_DISABLE_UPDATE_CHECK = '1';
-        console.log('Automatic update checks disabled. Restarting the gateway to apply the setting...');
+        console.log(
+          'Automatic update checks disabled. Restarting the gateway to apply the setting...',
+        );
         try {
           await runGalRestart();
           console.log('Gateway restart complete. Run `cal code` again.');
@@ -273,13 +281,17 @@ async function prepareGatewayContext(
     configWasUpdated = true;
 
     if (!configResult.isValid) {
-      console.error('Configuration is still invalid. Check ~/.code-cli-any-llm/config.yaml.');
+      console.error(
+        'Configuration is still invalid. Check ~/.code-cli-any-llm/config.yaml.',
+      );
       process.exit(1);
     }
   }
 
   if (!configResult.config) {
-    console.error('Unable to load the global configuration. Verify read/write permissions.');
+    console.error(
+      'Unable to load the global configuration. Verify read/write permissions.',
+    );
     process.exit(1);
   }
 
@@ -326,7 +338,9 @@ async function prepareGatewayContext(
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         console.error(`Failed to initialize ChatGPT credentials: ${reason}`);
-        console.error('Run `pnpm run cal auth` again and complete the browser sign-in.');
+        console.error(
+          'Run `pnpm run cal auth` again and complete the browser sign-in.',
+        );
         process.exit(1);
       }
     } else {
@@ -392,7 +406,9 @@ function extractCliModeFromArgs(args: string[]): CliModeParseResult {
       const next = args[i + 1];
       const parsed = parseCliModeValue(next);
       if (!parsed) {
-        console.error('Invalid value for --cli-mode. Use gemini / opencode / crush.');
+        console.error(
+          'Invalid value for --cli-mode. Use gemini / opencode / crush.',
+        );
         process.exit(1);
       }
       override = parsed;
@@ -404,7 +420,9 @@ function extractCliModeFromArgs(args: string[]): CliModeParseResult {
       const value = arg.split('=')[1];
       const parsed = parseCliModeValue(value);
       if (!parsed) {
-        console.error('Invalid value for --cli-mode. Use gemini / opencode / crush.');
+        console.error(
+          'Invalid value for --cli-mode. Use gemini / opencode / crush.',
+        );
         process.exit(1);
       }
       override = parsed;
@@ -454,7 +472,9 @@ export async function runGalCode(args: string[]): Promise<void> {
   }
 
   if (!(await isGatewayHealthy(clientHost, gatewayPort))) {
-    console.log('Gateway appears offline; starting the service in the background...');
+    console.log(
+      'Gateway appears offline; starting the service in the background...',
+    );
     startGatewayProcess(context);
 
     const { ready, lastStatus } = await waitForGatewayHealthy(
@@ -463,7 +483,9 @@ export async function runGalCode(args: string[]): Promise<void> {
     );
     if (!ready) {
       logGatewayFailure(lastStatus);
-      console.error('The gateway did not become ready in time. Verify the deployment status and try again.');
+      console.error(
+        'The gateway did not become ready in time. Verify the deployment status and try again.',
+      );
       process.exit(1);
     }
   }
@@ -557,7 +579,9 @@ export async function runConfigWizard(configFile: string): Promise<void> {
         existingConfig = parsed as Partial<GlobalConfig>;
       }
     } catch {
-      console.warn('Failed to read the existing configuration; writing a fresh configuration.');
+      console.warn(
+        'Failed to read the existing configuration; writing a fresh configuration.',
+      );
       existingConfig = {};
     }
   }
@@ -678,7 +702,9 @@ async function configureCodex(
   if (authMode === 'ApiKey') {
     apiKey = await askRequired(rl, 'Codex API Key', existing.apiKey);
   } else {
-    console.log('ChatGPT mode selected; you will be prompted to sign in on first use.');
+    console.log(
+      'ChatGPT mode selected; you will be prompted to sign in on first use.',
+    );
     apiKey = undefined;
   }
 
@@ -793,7 +819,11 @@ async function configureClaudeCode(
     existing.userAgent ?? 'claude-cli/1.0.119 (external, cli)',
   );
 
-  const xApp = await ask(rl, 'X-App header (default cli)', existing.xApp ?? 'cli');
+  const xApp = await ask(
+    rl,
+    'X-App header (default cli)',
+    existing.xApp ?? 'cli',
+  );
 
   const dangerousChoice = await askChoice(
     rl,
@@ -899,7 +929,9 @@ function startGatewayProcess(context: GatewayContext): number | undefined {
   const entry = path.join(context.projectRoot, 'dist', 'main.js');
 
   if (!fs.existsSync(entry)) {
-    console.error('dist/main.js not found. Confirm the server build has completed before retrying.');
+    console.error(
+      'dist/main.js not found. Confirm the server build has completed before retrying.',
+    );
     process.exit(1);
   }
 
@@ -1187,7 +1219,9 @@ function logGatewayFailure(status?: GatewayHealthStatus): void {
   if (status.message) {
     console.error(`Gateway response: ${status.message}`);
   } else if (status.statusCode) {
-    console.error(`Gateway health check failed with HTTP status ${status.statusCode}`);
+    console.error(
+      `Gateway health check failed with HTTP status ${status.statusCode}`,
+    );
   } else {
     console.error('Gateway health check failed with no additional details.');
   }

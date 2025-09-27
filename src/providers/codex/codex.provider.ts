@@ -109,7 +109,9 @@ export class CodexProvider implements OnModuleInit {
     const config = this.configService.get<CodexConfig>('codex');
 
     if (!config) {
-      this.logger.log('Codex provider configuration missing; disabling provider.');
+      this.logger.log(
+        'Codex provider configuration missing; disabling provider.',
+      );
       this.enabled = false;
       this.config = undefined;
       this.chatgptAuth = undefined;
@@ -136,7 +138,9 @@ export class CodexProvider implements OnModuleInit {
     if (authMode === 'ApiKey') {
       const apiKey = config.apiKey?.trim();
       if (!apiKey) {
-        this.logger.log('Codex provider is missing an API key; disabling provider.');
+        this.logger.log(
+          'Codex provider is missing an API key; disabling provider.',
+        );
         this.enabled = false;
         this.config = undefined;
         this.chatgptAuth = undefined;

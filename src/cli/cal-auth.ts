@@ -14,17 +14,22 @@ async function askRestartGateway(): Promise<boolean> {
   console.log(
     '\n⚠️  Warning: Restarting the gateway will interrupt all ongoing Gemini CLI conversations!',
   );
-  console.log('   Restarting the gateway will not stop active Gemini CLI processes.');
+  console.log(
+    '   Restarting the gateway will not stop active Gemini CLI processes.',
+  );
   console.log(
     '   If you are using Gemini CLI right now, wait for sessions to finish before restarting.',
   );
 
   return new Promise((resolve) => {
-    rl.question('\nRestart the gateway to apply the configuration? (y/N): ', (answer) => {
-      rl.close();
-      const normalized = answer.trim().toLowerCase();
-      resolve(normalized === 'y' || normalized === 'yes');
-    });
+    rl.question(
+      '\nRestart the gateway to apply the configuration? (y/N): ',
+      (answer) => {
+        rl.close();
+        const normalized = answer.trim().toLowerCase();
+        resolve(normalized === 'y' || normalized === 'yes');
+      },
+    );
   });
 }
 
@@ -38,7 +43,9 @@ export async function runGalAuth(): Promise<void> {
   const configService = new GlobalConfigService();
   const result = configService.loadGlobalConfig();
   if (!result.isValid) {
-    console.error('Configuration validation failed. Check ~/.code-cli-any-llm/config.yaml.');
+    console.error(
+      'Configuration validation failed. Check ~/.code-cli-any-llm/config.yaml.',
+    );
     result.errors?.forEach((error) => {
       if (error?.message) {
         console.error(`- ${error.message}`);

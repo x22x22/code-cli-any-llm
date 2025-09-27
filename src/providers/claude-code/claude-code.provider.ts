@@ -379,7 +379,9 @@ export class ClaudeCodeProvider implements OnModuleInit {
       this.configService.get<ResolvedClaudeCodeConfig>('claudeCode');
 
     if (!rawConfig) {
-      this.logger.error('Claude Code provider configuration missing; disabling provider.');
+      this.logger.error(
+        'Claude Code provider configuration missing; disabling provider.',
+      );
       this.enabled = false;
       this.config = undefined;
       this.initialized = true;
@@ -387,7 +389,9 @@ export class ClaudeCodeProvider implements OnModuleInit {
     }
 
     if (!rawConfig.apiKey || !rawConfig.apiKey.trim()) {
-      this.logger.error('Claude Code provider is missing an API key; disabling provider.');
+      this.logger.error(
+        'Claude Code provider is missing an API key; disabling provider.',
+      );
       this.enabled = false;
       this.config = undefined;
       this.initialized = true;

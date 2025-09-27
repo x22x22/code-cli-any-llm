@@ -88,14 +88,18 @@ async function bootstrap() {
       logger.error(`    Suggestion: ${error.suggestion}`);
     });
     logger.error(`\nConfiguration file path: ~/.code-cli-any-llm/config.yaml`);
-    logger.error('Please resolve the configuration issues and restart the application');
+    logger.error(
+      'Please resolve the configuration issues and restart the application',
+    );
     logger.error(`Gateway log file: ${GatewayLoggerService.getLogFilePath()}`);
     GatewayLoggerService.close();
     process.exit(1);
   }
 
   // 3. 配置有效 - 显示配置来源信息
-  logger.log(`Global configuration loaded from: ${globalConfigResult.config!.configSource}`);
+  logger.log(
+    `Global configuration loaded from: ${globalConfigResult.config!.configSource}`,
+  );
   logger.log(`Gateway log file: ${GatewayLoggerService.getLogFilePath()}`);
   if (globalConfigResult.warnings.length > 0) {
     globalConfigResult.warnings.forEach((warning) => {

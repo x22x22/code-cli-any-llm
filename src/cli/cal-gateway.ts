@@ -99,13 +99,17 @@ async function prepareGatewayContext(
     configResult = configService.loadGlobalConfig();
 
     if (!configResult.isValid) {
-      console.error('Configuration is still invalid. Check ~/.code-cli-any-llm/config.yaml.');
+      console.error(
+        'Configuration is still invalid. Check ~/.code-cli-any-llm/config.yaml.',
+      );
       process.exit(1);
     }
   }
 
   if (!configResult.config) {
-    console.error('Unable to load the global configuration. Verify read/write permissions.');
+    console.error(
+      'Unable to load the global configuration. Verify read/write permissions.',
+    );
     process.exit(1);
   }
 
@@ -124,7 +128,9 @@ async function prepareGatewayContext(
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         console.error(`Failed to initialize ChatGPT credentials: ${reason}`);
-        console.error('Run `pnpm run cal auth` again and complete the browser sign-in.');
+        console.error(
+          'Run `pnpm run cal auth` again and complete the browser sign-in.',
+        );
         process.exit(1);
       }
     } else {
@@ -180,7 +186,9 @@ export async function runGalStart(): Promise<void> {
   console.log('Starting gateway components...');
   const pid = startGatewayProcess(context);
   if (pid && pid > 0) {
-    console.log(`Gateway process started (PID ${pid}); waiting for health check...`);
+    console.log(
+      `Gateway process started (PID ${pid}); waiting for health check...`,
+    );
   }
 
   const { ready, lastStatus } = await waitForGatewayHealthy(
@@ -190,11 +198,15 @@ export async function runGalStart(): Promise<void> {
 
   if (!ready) {
     logGatewayFailure(lastStatus);
-    console.error('The gateway did not become ready in time. Verify the deployment status and try again.');
+    console.error(
+      'The gateway did not become ready in time. Verify the deployment status and try again.',
+    );
     process.exit(1);
   }
 
-  console.log(`Gateway is ready and listening at http://${gatewayHost}:${gatewayPort}`);
+  console.log(
+    `Gateway is ready and listening at http://${gatewayHost}:${gatewayPort}`,
+  );
   if (lastStatus) {
     outputGatewayStatus('Startup result', context, lastStatus);
   }
@@ -214,14 +226,18 @@ export async function runGalStop(): Promise<void> {
       console.log(`Gateway process stopped (PID ${result.pid}).`);
       break;
     case 'already_stopped':
-      console.log(`Recorded gateway process (PID ${result.pid}) has already exited.`);
+      console.log(
+        `Recorded gateway process (PID ${result.pid}) has already exited.`,
+      );
       break;
     case 'not_found':
       console.log('No gateway process record found; nothing to stop.');
       break;
     case 'failed':
     default:
-      console.error(`Failed to stop the gateway process: ${result.error?.message ?? 'unknown error'}`);
+      console.error(
+        `Failed to stop the gateway process: ${result.error?.message ?? 'unknown error'}`,
+      );
       process.exit(1);
   }
 }
@@ -243,10 +259,14 @@ export async function runGalRestart(): Promise<void> {
       console.log(`Gateway process stopped (PID ${stopResult.pid}).`);
       break;
     case 'already_stopped':
-      console.log(`Recorded gateway process (PID ${stopResult.pid}) has already exited.`);
+      console.log(
+        `Recorded gateway process (PID ${stopResult.pid}) has already exited.`,
+      );
       break;
     case 'not_found':
-      console.log('No gateway process record found; scanning ports to kill lingering processes...');
+      console.log(
+        'No gateway process record found; scanning ports to kill lingering processes...',
+      );
       await forceKillProcesses({
         usePortFallback: true,
         silent: true,
@@ -280,7 +300,9 @@ export async function runGalRestart(): Promise<void> {
   console.log('Starting gateway components...');
   const pid = startGatewayProcess(startContext);
   if (pid && pid > 0) {
-    console.log(`Gateway process started (PID ${pid}); waiting for health check...`);
+    console.log(
+      `Gateway process started (PID ${pid}); waiting for health check...`,
+    );
   }
 
   // Wait for the gateway to become healthy
@@ -290,11 +312,15 @@ export async function runGalRestart(): Promise<void> {
   );
 
   if (!ready) {
-    console.error('The gateway did not become ready in time. Verify the deployment status and try again.');
+    console.error(
+      'The gateway did not become ready in time. Verify the deployment status and try again.',
+    );
     process.exit(1);
   }
 
-  console.log(`Gateway is ready and listening at http://${gatewayHost}:${gatewayPort}`);
+  console.log(
+    `Gateway is ready and listening at http://${gatewayHost}:${gatewayPort}`,
+  );
   if (lastStatus) {
     outputGatewayStatus('Restart result', startContext, lastStatus);
   }
@@ -468,7 +494,9 @@ async function killProcess(pid: number): Promise<void> {
         try {
           // Check if process is still running
           process.kill(pid, 0); // This throws if process doesn't exist
-          console.log(`Process ${pid} is still running; forcing termination...`);
+          console.log(
+            `Process ${pid} is still running; forcing termination...`,
+          );
           process.kill(pid, 'SIGKILL');
           console.log(`Process ${pid} terminated forcibly.`);
         } catch {
@@ -550,7 +578,9 @@ export async function runConfigWizard(configFile: string): Promise<void> {
       const content = fs.readFileSync(configFile, 'utf8');
       existingConfig = yaml.load(content) ?? {};
     } catch {
-      console.warn('Failed to read the existing configuration; writing a fresh configuration.');
+      console.warn(
+        'Failed to read the existing configuration; writing a fresh configuration.',
+      );
       existingConfig = {};
     }
   }
@@ -568,7 +598,9 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     output: process.stdout,
   });
 
-  console.log('First-time setup: provide the required OpenAI configuration values.');
+  console.log(
+    'First-time setup: provide the required OpenAI configuration values.',
+  );
 
   let baseURL = await ask(
     rl,
@@ -702,7 +734,9 @@ function startGatewayProcess(context: GatewayContext): number | undefined {
   const entry = path.join(context.projectRoot, 'dist', 'main.js');
 
   if (!fs.existsSync(entry)) {
-    console.error('dist/main.js not found. Confirm the server build has completed before retrying.');
+    console.error(
+      'dist/main.js not found. Confirm the server build has completed before retrying.',
+    );
     process.exit(1);
   }
 
@@ -1181,7 +1215,9 @@ function logGatewayFailure(status?: GatewayHealthStatus): void {
   if (status.message) {
     console.error(`Gateway response: ${status.message}`);
   } else if (status.statusCode) {
-    console.error(`Gateway health check failed with HTTP status ${status.statusCode}`);
+    console.error(
+      `Gateway health check failed with HTTP status ${status.statusCode}`,
+    );
   } else {
     console.error('Gateway health check failed with no additional details.');
   }
