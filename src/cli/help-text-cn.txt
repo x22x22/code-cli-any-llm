@@ -9,6 +9,7 @@ Commands:
                     • 支持所有 gemini CLI 原生参数和选项
                     • 首次使用会自动引导配置认证信息
                     • 若检测到新版本会先提示是否升级
+                    • 支持通过 `--cli-mode opencode|crush|gemini` 切换不同 CLI 外观
 
   auth              配置 AI 服务认证信息
                     • 支持 claudeCode / codex / openai 提供商

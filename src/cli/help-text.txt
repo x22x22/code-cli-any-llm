@@ -9,6 +9,7 @@ Commands:
                     • Supports all native options and flags from the gemini CLI
                     • Guides you through configuring credentials on first use
                     • Alerts you about new versions before upgrading
+                    • Use `--cli-mode opencode|crush|gemini` to switch CLI AI Code CLI Tool
 
   auth              Configure AI service credentials
                     • Supports providers claudeCode / codex / openai

@@ -39,7 +39,7 @@ gateway:
   logLevel: 'info'
   apiMode: openai      # gemini / openai
   cliMode: gemini      # gemini / opencode / crush
-  apiKey: ''           # 可选：面向 façade 的共享密钥
+  apiKey: ''           # 可选：面向 AI Code CLI Tool 的共享密钥
 ```
 
 4. **启动服务**
@@ -84,7 +84,7 @@ curl -X POST http://localhost:23062/api/v1/gemini/models/gemini-2.5-pro:streamGe
   }'
 ```
 
-### OpenAI façade 测试
+### OpenAI AI Code CLI Tool 测试
 确保 `gateway.apiMode=openai` 后，可以验证 OpenAI 兼容接口：
 ```bash
 curl -X POST http://localhost:23062/api/v1/openai/v1/chat/completions \

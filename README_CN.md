@@ -12,7 +12,7 @@ Code CLI Any LLM（简称 CAL）是一个多面向网关，既可以冒充 Gemin
 - 🔄 **多AI Code CLI 工具网关** —— 保持 `cal code` 体验，也可通过 `--cli-mode opencode/crush` 切换其它 CLI
 - 🔌 **提供商无关** —— 一次配置即可代理 Claude Code、Codex、OpenAI、智谱AI、千问等任何兼容服务
 - ⚡ **流式与工具** —— 保留原生 SSE 流式输出、工具调用、思维链等扩展能力
-- 🧩 **自动配置** —— 自动生成 façade 配置、刷新 `gateway.apiMode/cliMode` 并在变更后重启网关
+- 🧩 **自动配置** —— 自动生成 AI Code CLI Tool 配置、刷新 `gateway.apiMode/cliMode` 并在变更后重启网关
 - 🛡️ **运维助力** —— 内置 restart/kill、健康检查与 PID 自动恢复，便于部署与排障
 
 ## 🚀 快速开始
@@ -48,7 +48,7 @@ cal code
 ```
 
 - 向导会要求选择主要 Provider（`claudeCode` / `codex` / `openai`），并填写 Base URL、默认模型、认证方式和 API Key 等信息
-- 若使用 `--cli-mode opencode` / `--cli-mode crush`，会自动生成对应 façade 配置并写入 `~/.config/opencode` / `~/.config/crush`
+- 若使用 `--cli-mode opencode` / `--cli-mode crush`，会自动生成对应 AI Code CLI Tool 配置并写入 `~/.config/opencode` / `~/.config/crush`
 - 配置保存后，CLI 会自动执行 `cal restart` 重启网关，使 `gateway.apiMode / gateway.cliMode` 与所选AI Code CLI 工具保持一致
 - 网关健康检查通过后会启动目标 CLI AI Code CLI 工具（默认 Gemini，可随时利用 `--cli-mode` 切换）
 
