@@ -12,8 +12,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { OpenAIRequest } from '../models/openai/openai-request.model';
-import { OpenAIResponse, OpenAIUsage } from '../models/openai/openai-response.model';
-import { OpenAIStreamChunk, OpenAIStreamUsage } from '../models/openai/openai-stream.model';
+import {
+  OpenAIResponse,
+  OpenAIUsage,
+} from '../models/openai/openai-response.model';
+import {
+  OpenAIStreamChunk,
+  OpenAIStreamUsage,
+} from '../models/openai/openai-stream.model';
 import {
   ActiveProviderContext,
   LlmProviderResolverService,

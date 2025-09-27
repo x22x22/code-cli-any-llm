@@ -124,7 +124,7 @@ async function prepareGatewayContext(
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         console.error(`初始化 ChatGPT 凭据失败: ${reason}`);
-        console.error('请重新运行 `pnpm run gal auth` 并完成浏览器登录。');
+        console.error('请重新运行 `pnpm run cal auth` 并完成浏览器登录。');
         process.exit(1);
       }
     } else {
@@ -319,7 +319,7 @@ export async function runGalStatus(): Promise<void> {
 
 /**
  * Force kill utility for zombie processes
- * Migrated from gal-kill.ts
+ * Migrated from cal-kill.ts
  */
 export async function runGalKill(): Promise<void> {
   await forceKillProcesses();
@@ -798,7 +798,8 @@ function outputGatewayStatus(
 ): void {
   const healthUrl = `http://${context.gatewayHost}:${context.gatewayPort}${GATEWAY_HEALTH_PATH}`;
   let pidInfo = readGatewayPidInfo(context.configDir);
-  let runningPid = pidInfo && isPidRunning(pidInfo.pid) ? pidInfo.pid : undefined;
+  let runningPid =
+    pidInfo && isPidRunning(pidInfo.pid) ? pidInfo.pid : undefined;
 
   if (!runningPid) {
     const detectedPid = detectGatewayPid(context.gatewayPort);
@@ -939,10 +940,13 @@ function detectGatewayPid(port: number): number | undefined {
   }
 
   try {
-    const psOutput = execSync('ps aux | grep "node.*dist/main.js" | grep -v grep', {
-      encoding: 'utf8',
-      timeout: 3000,
-    })
+    const psOutput = execSync(
+      'ps aux | grep "node.*dist/main.js" | grep -v grep',
+      {
+        encoding: 'utf8',
+        timeout: 3000,
+      },
+    )
       .trim()
       .split('\n')
       .filter(Boolean);

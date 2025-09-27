@@ -2,17 +2,17 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { runGalCode } from './gal-code';
-import { runGalAuth } from './gal-auth';
+import { runGalCode } from './cal-code';
+import { runGalAuth } from './cal-auth';
 import {
   runGalStart,
   runGalRestart,
   runGalStatus,
   runGalStop,
   runGalKill,
-} from './gal-gateway';
+} from './cal-gateway';
 import { showUpdateBanner } from './update-checker';
-import { runGalUpdate } from './gal-update';
+import { runGalUpdate } from './cal-update';
 import { loadCliVersion } from './upgrade-utils';
 
 type HelpLanguage = 'en' | 'zh';
@@ -116,6 +116,6 @@ main().catch((error) => {
 
   const message = error instanceof Error ? error.message : String(error);
 
-  console.error('执行 gal 命令失败:', message);
+  console.error('执行 cal 命令失败:', message);
   process.exit(exitCode);
 });

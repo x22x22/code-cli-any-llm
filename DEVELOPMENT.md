@@ -8,7 +8,7 @@ cd code-cli-any-llm
 pnpm install
 ```
 
-开发调试时建议提前全局安装 Gemini CLI 相关工具，便于验证 `gal code`：
+开发调试时建议提前全局安装 Gemini CLI 相关工具，便于验证 `cal code`：
 
 ```bash
 npm install -g @google/gemini-cli --registry https://registry.npmmirror.com
@@ -30,11 +30,11 @@ pnpm run start:prod
 pnpm run build
 ```
 
-本地调试 `gal` CLI 时，可在项目根目录执行：
+本地调试 `cal` CLI 时，可在项目根目录执行：
 
 ```bash
 pnpm run build
-node dist/cli/gal.js code "你好，请介绍一下自己"
+node dist/cli/cal.js code "你好，请介绍一下自己"
 ```
 
 首次运行会引导填写 API Key / Base URL / 模型，并写入 `~/.code-cli-any-llm/config.yaml`，同时自动确保 `~/.gemini/settings.json` 的 `selectedAuthType` 为 `gemini-api-key`。

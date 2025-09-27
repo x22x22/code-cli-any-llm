@@ -2,8 +2,8 @@ import * as os from 'os';
 import * as path from 'path';
 import * as readline from 'readline';
 import { GlobalConfigService } from '../config/global-config.service';
-import { ensureGeminiSettings, runConfigWizard } from './gal-code';
-import { runGalRestart } from './gal-gateway';
+import { ensureGeminiSettings, runConfigWizard } from './cal-code';
+import { runGalRestart } from './cal-gateway';
 
 /**
  * 询问用户是否重启网关
@@ -59,11 +59,11 @@ export async function runGalAuth(): Promise<void> {
       await runGalRestart();
     } else {
       console.log('\n提示：配置修改后需要重启网关才会生效。');
-      console.log('请手动执行：gal restart');
+      console.log('请手动执行：cal restart');
     }
   } catch (error) {
     console.error('重启网关时发生错误:', error);
     console.log('\n提示：配置修改后需要重启网关才会生效。');
-    console.log('请手动执行：gal restart');
+    console.log('请手动执行：cal restart');
   }
 }

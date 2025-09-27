@@ -278,16 +278,16 @@ export class ClaudeCodeProvider implements OnModuleInit {
     }
   }
 
-  async listModels(): Promise<unknown> {
+  listModels(): Promise<unknown> {
     const config = this.ensureEnabledConfig();
-    return [
+    return Promise.resolve([
       {
         id: config.model,
         object: 'model',
         created: Math.floor(Date.now() / 1000),
         owned_by: 'claude-code',
       },
-    ];
+    ]);
   }
 
   async healthCheck(): Promise<{

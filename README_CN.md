@@ -35,7 +35,7 @@ npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmir
 直接运行以下命令开始使用：
 
 ```bash
-gal code
+cal code
 ```
 
 - 系统会自动触发配置向导，首先需选择 **AI Provider**（`claudeCode` / `codex` / `openai`）
@@ -63,7 +63,7 @@ gal code
 如需重新配置或切换AI提供商：
 
 ```bash
-gal auth
+cal auth
 ```
 
 ## 💡 使用示例
@@ -72,67 +72,67 @@ gal auth
 
 ```bash
 # 开始对话
-gal code "请用TypeScript写一个HTTP服务"
+cal code "请用TypeScript写一个HTTP服务"
 
 # 解释代码
-gal code "解释一下这段代码的作用"
+cal code "解释一下这段代码的作用"
 
 # 优化建议
-gal code "帮我优化这个算法"
+cal code "帮我优化这个算法"
 ```
 
 ### 传递文件内容
 
 ```bash
 # 分析当前目录下的代码文件
-gal code "请帮我分析这个项目的架构"
+cal code "请帮我分析这个项目的架构"
 
 # 请求代码审查
-gal code "请审查一下我的代码并提出改进建议"
+cal code "请审查一下我的代码并提出改进建议"
 ```
 
 ### 查看更多选项
 
 ```bash
 # 查看 gemini CLI 的所有选项
-gal code --help
+cal code --help
 
 # 使用其他 gemini CLI 参数
-gal code --temperature 0.7 "写一个创意故事"
+cal code --temperature 0.7 "写一个创意故事"
 
 # 切换为其他 CLI 体验
-gal code --cli-mode opencode
-gal code --cli-mode crush
+cal code --cli-mode opencode
+cal code --cli-mode crush
 ```
 
 ## 📖 使用指南
 
 ### 命令概述
 
-`gal` 提供以下主要命令：
+`cal` 提供以下主要命令：
 
-- **`gal code [prompt]`** - 与 AI 助手对话（主要功能）
-- **`gal auth`** - 配置 AI 服务认证信息
-- **`gal start`** - 手动启动后台网关服务
-- **`gal stop`** - 停止后台网关服务
-- **`gal restart`** - 重启网关服务
-- **`gal status`** - 查看网关运行状态
-- **`gal kill`** - 强制终止异常进程（故障排除）
-- **`gal update`** - 手动检查并安装最新版本
-- **`gal version`** - 查看当前版本
-- **`gal --help`** - 查看帮助信息
+- **`cal code [prompt]`** - 与 AI 助手对话（主要功能）
+- **`cal auth`** - 配置 AI 服务认证信息
+- **`cal start`** - 手动启动后台网关服务
+- **`cal stop`** - 停止后台网关服务
+- **`cal restart`** - 重启网关服务
+- **`cal status`** - 查看网关运行状态
+- **`cal kill`** - 强制终止异常进程（故障排除）
+- **`cal update`** - 手动检查并安装最新版本
+- **`cal version`** - 查看当前版本
+- **`cal --help`** - 查看帮助信息
 
 ### 自动更新
 
-- 每次交互式 `gal` 命令都会检查 `~/.code-cli-any-llm/version.json` 中的缓存，后台每隔 20 小时刷新一次，检查失败不会阻塞网关启动。
-- 执行 `gal code` 时若发现新版本，会在启动 Gemini 体验前暂停，并提供 `y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）和 `off`（关闭自动检查并重启网关）四种选项。
-- 随时运行 `gal update` 可以同步刷新缓存并安装最新发布的包。
+- 每次交互式 `cal` 命令都会检查 `~/.code-cli-any-llm/version.json` 中的缓存，后台每隔 20 小时刷新一次，检查失败不会阻塞网关启动。
+- 执行 `cal code` 时若发现新版本，会在启动 Gemini 体验前暂停，并提供 `y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）和 `off`（关闭自动检查并重启网关）四种选项。
+- 随时运行 `cal update` 可以同步刷新缓存并安装最新发布的包。
 - 如需彻底关闭自动检测，可设置 `GAL_DISABLE_UPDATE_CHECK=1`（也可以在提示中选择 `off`）。
 
 ### Codex ChatGPT (OAuth) 模式
 
-1. 运行 `gal auth`，在向导中选择 **Codex** 作为提供商，并将认证模式设为 **ChatGPT**。
-2. 首次执行 `gal code` 或 `gal start` 等命令时，终端会打印一条 `https://auth.openai.com/oauth/authorize?...` 的链接，请复制到浏览器完成登录。
+1. 运行 `cal auth`，在向导中选择 **Codex** 作为提供商，并将认证模式设为 **ChatGPT**。
+2. 首次执行 `cal code` 或 `cal start` 等命令时，终端会打印一条 `https://auth.openai.com/oauth/authorize?...` 的链接，请复制到浏览器完成登录。
 3. 登录过程中 CLI 会在本地 `127.0.0.1:1455` 启动临时回调服务；若端口被占用，可先释放端口或再次尝试（CLI 会自动重试并提示失败原因）。
 4. 授权成功后窗口会提示“登录成功，可以返回终端”，令牌将写入 `~/.code-cli-any-llm/codex/auth.json`，包含 `access_token`、`refresh_token`、`id_token` 以及刷新时间戳。
 5. 之后网关会自动刷新令牌，不需要重复登录；若手动清理或移动 `auth.json`，再次发起请求时会重新触发浏览器登录。
@@ -150,7 +150,7 @@ gal code --cli-mode crush
 ### 网关模式
 
 - `gateway.apiMode`：决定网关对外暴露的 API 形态（`gemini` 或 `openai`）。设置为 `openai` 时会开启 `/api/v1/openai/v1/...` 兼容接口。
-- `gateway.cliMode`：控制 `gal code` 默认启动的 CLI（`gemini` / `opencode` / `crush`），可通过 `--cli-mode` 临时覆盖。
+- `gateway.cliMode`：控制 `cal code` 默认启动的 CLI（`gemini` / `opencode` / `crush`），可通过 `--cli-mode` 临时覆盖。
 - `gateway.apiKey`：可选的访问密钥，用于 OpenAI 兼容伪装层，可通过环境变量（如 `CODE_CLI_API_KEY`）传递给 opencode/crush。
 
 当 `gateway.apiMode=openai` 时，网关会提供：
@@ -304,15 +304,15 @@ codex:
 
 ### AI 助手无响应
 
-**现象**：执行 `gal code` 后无响应或长时间卡住
+**现象**：执行 `cal code` 后无响应或长时间卡住
 
 **解决方案**：
 ```bash
 # 1. 清理异常进程
-gal kill
+cal kill
 
 # 2. 重新尝试对话
-gal code "你好"
+cal code "你好"
 ```
 
 ### 认证失败
@@ -322,7 +322,7 @@ gal code "你好"
 **解决方案**：
 ```bash
 # 重新配置认证信息
-gal auth
+cal auth
 ```
 
 **检查项**：
@@ -337,14 +337,14 @@ gal auth
 **解决方案**：
 ```bash
 # 1. 检查服务状态
-gal status
+cal status
 
 # 2. 手动重启服务
-gal restart
+cal restart
 
 # 3. 如果仍有问题，强制清理
-gal kill
-gal start
+cal kill
+cal start
 ```
 
 **检查项**：
@@ -412,7 +412,7 @@ tail -n 300 -f ~/.code-cli-any-llm/logs/gateway-{日期-时间}.log
 
 # 启用调试模式
 export LOG_LEVEL=debug
-gal restart
+cal restart
 ```
 
 ## ❓ 常见问题 (FAQ)
@@ -450,7 +450,7 @@ openai:
 **解决方案**：
 ```bash
 # 重新配置认证信息
-gal auth
+cal auth
 ```
 
 在向导中选择想要使用的提供商，也可以通过环境变量 `GAL_AI_PROVIDER`（取值 `openai` 或 `codex`）提前指定。
@@ -482,7 +482,7 @@ gateway:
 **解决方案**：
 1. 检查服务状态：
 ```bash
-gal status
+cal status
 ```
 
 2. 检查网络连接到 AI 提供商
@@ -494,7 +494,7 @@ openai:
 
 4. 如果仍有问题，重启服务：
 ```bash
-gal restart
+cal restart
 ```
 
 ## 📚 更多资源
@@ -505,9 +505,9 @@ gal restart
 
 ### 自动更新
 
-- 每个交互式 `gal` 命令都会检查 `~/.code-cli-any-llm/version.json`，并在后台每隔 20 小时刷新缓存，网络错误不会阻塞网关。
-- 当运行 `gal code` 时，若检测到新版本会在进入 Gemini 体验前提示四个选项：`y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）或 `off`（关闭自动检查并重启网关）。
-- 随时运行 `gal update` 可以同步刷新缓存并安装最新发布的版本。
+- 每个交互式 `cal` 命令都会检查 `~/.code-cli-any-llm/version.json`，并在后台每隔 20 小时刷新缓存，网络错误不会阻塞网关。
+- 当运行 `cal code` 时，若检测到新版本会在进入 Gemini 体验前提示四个选项：`y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）或 `off`（关闭自动检查并重启网关）。
+- 随时运行 `cal update` 可以同步刷新缓存并安装最新发布的版本。
 - 如需永久关闭自动检测，可设置 `GAL_DISABLE_UPDATE_CHECK=1`（与提示中的 `off` 选项效果相同）。
 
 ## 🙏 致谢

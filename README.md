@@ -35,7 +35,7 @@ npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmir
 Run the following command to get started:
 
 ```bash
-gal code
+cal code
 ```
 
 **First-run flow**:
@@ -64,7 +64,7 @@ gal code
 Run this when you need to reconfigure or switch providers:
 
 ```bash
-gal auth
+cal auth
 ```
 
 ## 💡 Usage Examples
@@ -73,60 +73,60 @@ gal auth
 
 ```bash
 # Start a conversation
-gal code "Write an HTTP service in TypeScript"
+cal code "Write an HTTP service in TypeScript"
 
 # Explain code
-gal code "Explain what this code does"
+cal code "Explain what this code does"
 
 # Optimization tips
-gal code "Help me optimize this algorithm"
+cal code "Help me optimize this algorithm"
 ```
 
 ### Pass file content
 
 ```bash
 # Analyze the code files in the current directory
-gal code "Please analyze the architecture of this project"
+cal code "Please analyze the architecture of this project"
 
 # Request a code review
-gal code "Please review my code and suggest improvements"
+cal code "Please review my code and suggest improvements"
 ```
 
 ### More options
 
 ```bash
 # View all Gemini CLI options
-gal code --help
+cal code --help
 
 # Use other Gemini CLI parameters
-gal code --temperature 0.7 "Write a creative story"
+cal code --temperature 0.7 "Write a creative story"
 
 # Launch alternative CLI experiences
-gal code --cli-mode opencode
-gal code --cli-mode crush
+cal code --cli-mode opencode
+cal code --cli-mode crush
 ```
 
 ## 📖 User Guide
 
 ### Command overview
 
-`gal` provides the following primary commands:
+`cal` provides the following primary commands:
 
-- **`gal code [prompt]`** - Chat with the AI assistant (main feature)
-- **`gal auth`** - Configure AI service credentials
-- **`gal start`** - Manually start the background gateway service
-- **`gal stop`** - Stop the gateway service
-- **`gal restart`** - Restart the gateway service
-- **`gal status`** - Check the gateway status
-- **`gal kill`** - Force-kill stuck processes (for troubleshooting)
-- **`gal update`** - Manually check for a new release and install it
-- **`gal version`** - Display the current version
-- **`gal --help`** - Show help information
+- **`cal code [prompt]`** - Chat with the AI assistant (main feature)
+- **`cal auth`** - Configure AI service credentials
+- **`cal start`** - Manually start the background gateway service
+- **`cal stop`** - Stop the gateway service
+- **`cal restart`** - Restart the gateway service
+- **`cal status`** - Check the gateway status
+- **`cal kill`** - Force-kill stuck processes (for troubleshooting)
+- **`cal update`** - Manually check for a new release and install it
+- **`cal version`** - Display the current version
+- **`cal --help`** - Show help information
 
 ### Codex ChatGPT (OAuth) mode
 
-1. Run `gal auth`, choose **Codex** as the provider, and set the auth mode to **ChatGPT** in the wizard.
-2. The first time you run `gal code` or `gal start`, the terminal prints a `https://auth.openai.com/oauth/authorize?...` link. Copy it into a browser to complete the login.
+1. Run `cal auth`, choose **Codex** as the provider, and set the auth mode to **ChatGPT** in the wizard.
+2. The first time you run `cal code` or `cal start`, the terminal prints a `https://auth.openai.com/oauth/authorize?...` link. Copy it into a browser to complete the login.
 3. During login the CLI spins up a temporary callback service on `127.0.0.1:1455`. If the port is taken, free it or try again (the CLI retries automatically and shows error reasons).
 4. After the authorization succeeds you’ll see “Login successful, you may return to the terminal.” Tokens are saved to `~/.code-cli-any-llm/codex/auth.json`, including `access_token`, `refresh_token`, `id_token`, and the refresh timestamp.
 5. The gateway refreshes tokens automatically afterwards, so you don’t need to log in again. If you delete or move `auth.json`, the browser login will be triggered the next time you send a request.
@@ -144,7 +144,7 @@ The system supports a flexible configuration hierarchy. Higher priority values o
 ### Gateway modes
 
 - `gateway.apiMode`: selects which API surface the gateway exposes (`gemini` or `openai`). Set to `openai` to enable `/api/v1/openai/v1/...` endpoints.
-- `gateway.cliMode`: controls which CLI the `gal code` command launches by default (`gemini`, `opencode`, or `crush`). You can override per run with `--cli-mode`.
+- `gateway.cliMode`: controls which CLI the `cal code` command launches by default (`gemini`, `opencode`, or `crush`). You can override per run with `--cli-mode`.
 - `gateway.apiKey`: optional shared key forwarded to the OpenAI-compatible façade. Inject it into opencode/crush configs or expose it via environment variables such as `CODE_CLI_API_KEY`.
 
 When `gateway.apiMode` is set to `openai`, the gateway serves:
@@ -298,15 +298,15 @@ codex:
 
 ### AI assistant not responding
 
-**Symptom**: `gal code` hangs or shows no response
+**Symptom**: `cal code` hangs or shows no response
 
 **Solution**:
 ```bash
 # 1. Clean up stuck processes
-gal kill
+cal kill
 
 # 2. Try the conversation again
-gal code "Hello"
+cal code "Hello"
 ```
 
 ### Authentication failure
@@ -316,7 +316,7 @@ gal code "Hello"
 **Solution**:
 ```bash
 # Reconfigure credentials
-gal auth
+cal auth
 ```
 
 **Checklist**:
@@ -331,14 +331,14 @@ gal auth
 **Solution**:
 ```bash
 # 1. Check service status
-gal status
+cal status
 
 # 2. Restart the service manually
-gal restart
+cal restart
 
 # 3. If issues persist, force clean up
-gal kill
-gal start
+cal kill
+cal start
 ```
 
 **Checklist**:
@@ -406,7 +406,7 @@ tail -n 300 -f ~/.code-cli-any-llm/logs/gateway-{date-time}.log
 
 # Enable debug mode
 export LOG_LEVEL=debug
-gal restart
+cal restart
 ```
 
 ## ❓ FAQ
@@ -444,7 +444,7 @@ openai:
 **Solution**:
 ```bash
 # Reconfigure credentials
-gal auth
+cal auth
 ```
 
 In the wizard, choose the provider you need. You can also preselect it with the environment variable `GAL_AI_PROVIDER` (`openai` or `codex`).
@@ -476,7 +476,7 @@ Project configuration has the highest priority and overrides global settings.
 **Solution**:
 1. Check the service status:
 ```bash
-gal status
+cal status
 ```
 
 2. Verify the network connection to the AI provider
@@ -488,7 +488,7 @@ openai:
 
 4. If the issue persists, restart the service:
 ```bash
-gal restart
+cal restart
 ```
 
 ## 📚 More Resources
@@ -499,9 +499,9 @@ gal restart
 
 ### Automatic updates
 
-- Every interactive `gal` command checks `~/.code-cli-any-llm/version.json` and refreshes the cache in the background every 20 hours. Network errors during the check never block the gateway.
-- When you run `gal code`, the CLI pauses before launching the Gemini experience if a newer version exists and offers four options: `y` (update now), `n` (skip for this run), `skip` (ignore this release), or `off` (disable future checks and restart the gateway).
-- Run `gal update` at any time to synchronously refresh the cache and install the latest published package.
+- Every interactive `cal` command checks `~/.code-cli-any-llm/version.json` and refreshes the cache in the background every 20 hours. Network errors during the check never block the gateway.
+- When you run `cal code`, the CLI pauses before launching the Gemini experience if a newer version exists and offers four options: `y` (update now), `n` (skip for this run), `skip` (ignore this release), or `off` (disable future checks and restart the gateway).
+- Run `cal update` at any time to synchronously refresh the cache and install the latest published package.
 - Set `GAL_DISABLE_UPDATE_CHECK=1` if you need to permanently opt out of automatic checks (also available through the `off` option in the prompt).
 
 ## 🙏 Acknowledgements

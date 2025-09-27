@@ -130,9 +130,8 @@ export class HealthController implements OnApplicationBootstrap {
       };
     }
 
-    const gatewayConfig = this.configService.get<Record<string, unknown>>(
-      'gateway',
-    );
+    const gatewayConfig =
+      this.configService.get<Record<string, unknown>>('gateway');
     const apiModeValue = (gatewayConfig?.apiMode as string | undefined)
       ?.trim()
       .toLowerCase();

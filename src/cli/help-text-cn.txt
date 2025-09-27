@@ -1,4 +1,4 @@
-Usage: gal [command]
+Usage: cal [command]
 
 Gemini Any LLM AI 助手工具 - 通过本地网关提供优化的 AI 对话体验
 
@@ -20,10 +20,10 @@ Commands:
                     • 同步刷新版本缓存并执行升级命令
                     • 如果已是最新版本则提示后退出
 
-  version           查看当前 gal 版本
+  version           查看当前 cal 版本
   help              显示英文帮助（别名：-h, --help）
   help-cn           显示中文帮助（别名：--help-cn）
-  -v, --version     查看当前 gal 版本（同 version）
+  -v, --version     查看当前 cal 版本（同 version）
 
 网关管理命令:
   start             启动后台网关服务
@@ -55,24 +55,24 @@ Commands:
 
 使用示例:
   # 首次使用，配置认证信息
-  gal auth
+  cal auth
 
   # 与 AI 助手对话（主要使用方式）
-  gal code "请用TypeScript写一个HTTP服务"
-  gal code "解释一下这段代码的作用"
-  gal code "帮我优化这个算法"
+  cal code "请用TypeScript写一个HTTP服务"
+  cal code "解释一下这段代码的作用"
+  cal code "帮我优化这个算法"
   
   # 查看 gemini CLI 的更多选项
-  gal code --help
+  cal code --help
   
   # 高级管理（通常不需要）
-  gal status          # 查看服务状态
-  gal restart         # 配置更改后重启
-  gal kill           # 故障排除
+  cal status          # 查看服务状态
+  cal restart         # 配置更改后重启
+  cal kill           # 故障排除
 
 故障排除:
-  • AI 助手无响应：使用 'gal kill' 清理进程后重试
-  • 认证失败：运行 'gal auth' 重新配置 API Key
+  • AI 助手无响应：使用 'cal kill' 清理进程后重试
+  • 认证失败：运行 'cal auth' 重新配置 API Key
   • 服务启动失败：检查网络连接和端口占用情况
   • 配置问题：检查 ~/.code-cli-any-llm/config.yaml 文件
   • 权限问题：确保有读写 ~/.code-cli-any-llm/ 目录的权限

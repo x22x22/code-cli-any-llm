@@ -16,7 +16,7 @@ import type {
   ClaudeCodeConfig,
 } from '../config/global-config.interface';
 import { ChatGPTAuthManager } from '../providers/codex/chatgpt-auth.manager';
-import { runGalRestart } from './gal-gateway';
+import { runGalRestart } from './cal-gateway';
 import {
   buildUpgradeCommand,
   getVersionPromptContext,
@@ -202,7 +202,7 @@ async function handleUpgradePrompt(): Promise<void> {
         console.log(`正在执行升级命令: ${command}`);
         const succeeded = await runUpgradeCommand(command);
         if (succeeded) {
-          console.log('升级完成，请重新运行 `gal code` 以使用最新版本。');
+          console.log('升级完成，请重新运行 `cal code` 以使用最新版本。');
           process.exit(0);
         } else {
           console.error('自动升级失败，可稍后手动执行以下命令完成升级:');
@@ -233,7 +233,7 @@ async function handleUpgradePrompt(): Promise<void> {
         console.log('已关闭自动更新检查，正在重启网关以应用配置...');
         try {
           await runGalRestart();
-          console.log('网关重启完成，请重新运行 `gal code`。');
+          console.log('网关重启完成，请重新运行 `cal code`。');
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
@@ -295,7 +295,10 @@ async function prepareGatewayContext(
 
   if (cliMode === 'opencode' || cliMode === 'crush') {
     apiModeValue = 'openai';
-    if (config.gateway.apiMode !== 'openai' || config.gateway.cliMode !== cliMode) {
+    if (
+      config.gateway.apiMode !== 'openai' ||
+      config.gateway.cliMode !== cliMode
+    ) {
       config.gateway.apiMode = 'openai';
       config.gateway.cliMode = cliMode;
       configService.saveConfig(config);
@@ -323,7 +326,7 @@ async function prepareGatewayContext(
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         console.error(`初始化 ChatGPT 凭据失败: ${reason}`);
-        console.error('请重新运行 `pnpm run gal auth` 并完成浏览器登录。');
+        console.error('请重新运行 `pnpm run cal auth` 并完成浏览器登录。');
         process.exit(1);
       }
     } else {
@@ -438,7 +441,7 @@ export async function runGalCode(args: string[]): Promise<void> {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`重启网关失败: ${message}`);
-      console.error('请手动运行 `pnpm run gal restart` 后重试。');
+      console.error('请手动运行 `pnpm run cal restart` 后重试。');
       process.exit(1);
     }
   }
@@ -449,7 +452,6 @@ export async function runGalCode(args: string[]): Promise<void> {
     );
     process.exit(1);
   }
-
 
   if (!(await isGatewayHealthy(clientHost, gatewayPort))) {
     console.log('检测到网关未运行，正在后台启动服务...');

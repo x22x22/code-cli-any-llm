@@ -1,4 +1,4 @@
-Usage: gal [command]
+Usage: cal [command]
 
 Gemini Any LLM assistant tool - provides an optimized AI chat experience through the local gateway
 
@@ -20,10 +20,10 @@ Commands:
                     • Refreshes the version cache and runs the upgrade command
                     • Exits after informing you if you already have the latest version
 
-  version           Show the current gal version
+  version           Show the current cal version
   help              Show this help in English (aliases: -h, --help)
   help-cn           Show this help in Chinese (alias: --help-cn)
-  -v, --version     Show the current gal version (alias of version)
+  -v, --version     Show the current cal version (alias of version)
 
 Gateway management commands:
   start             Start the background gateway service
@@ -55,24 +55,24 @@ Configuration & environment:
 
 Usage examples:
   # First run: configure credentials
-  gal auth
+  cal auth
 
   # Chat with the AI assistant (primary usage)
-  gal code "Write an HTTP server in TypeScript"
-  gal code "Explain what this code does"
-  gal code "Help me optimize this algorithm"
+  cal code "Write an HTTP server in TypeScript"
+  cal code "Explain what this code does"
+  cal code "Help me optimize this algorithm"
   
   # View additional gemini CLI options
-  gal code --help
+  cal code --help
   
   # Advanced operations (rarely needed)
-  gal status         # Check gateway status
-  gal restart        # Restart after config changes
-  gal kill           # Troubleshoot stuck processes
+  cal status         # Check gateway status
+  cal restart        # Restart after config changes
+  cal kill           # Troubleshoot stuck processes
 
 Troubleshooting:
-  • Assistant not responding: run 'gal kill' to clean up and try again
-  • Authentication failure: run 'gal auth' to reconfigure the API key
+  • Assistant not responding: run 'cal kill' to clean up and try again
+  • Authentication failure: run 'cal auth' to reconfigure the API key
   • Service fails to start: check network connectivity and port usage
   • Configuration issues: inspect ~/.code-cli-any-llm/config.yaml
   • Permission issues: ensure read/write access to ~/.code-cli-any-llm/

@@ -15,7 +15,7 @@
 ## 架构与配置调整
 - **新增 `gateway.apiMode`**：
   - 类型：`'gemini' | 'openai'`，默认 `'gemini'`。
-  - 在 `src/config/global-config.interface.ts`、`config.schema.ts`、`global-config.service.ts` 中声明、校验、落盘，并更新 `config/config.yaml` 模板及 CLI 向导（`gal-gateway`）。
+  - 在 `src/config/global-config.interface.ts`、`config.schema.ts`、`global-config.service.ts` 中声明、校验、落盘，并更新 `config/config.yaml` 模板及 CLI 向导（`cal-gateway`）。
   - 健康检查与日志输出中加入当前 `apiMode`，方便运维识别。
 - **启动流程适配**：
   - 在 `main.ts` 引入一个 `ApiModeService`（或直接从 `ConfigService` 读取）用于决定注册哪些控制器路由。
