@@ -6,7 +6,7 @@ import { GlobalConfigService } from './global-config.service';
 
 const DEFAULT_GATEWAY_LOG_DIR = path.join(
   os.homedir(),
-  '.gemini-any-llm',
+  '.code-cli-any-llm',
   'logs',
 );
 

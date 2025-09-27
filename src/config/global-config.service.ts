@@ -16,7 +16,7 @@ import type {
 
 const DEFAULT_GATEWAY_LOG_DIR = path.join(
   os.homedir(),
-  '.gemini-any-llm',
+  '.code-cli-any-llm',
   'logs',
 );
 
@@ -60,7 +60,7 @@ export class GlobalConfigService {
   private readonly configFile: string;
 
   constructor() {
-    this.configDir = path.join(os.homedir(), '.gemini-any-llm');
+    this.configDir = path.join(os.homedir(), '.code-cli-any-llm');
     this.configFile = path.join(this.configDir, 'config.yaml');
   }
 
@@ -304,7 +304,7 @@ export class GlobalConfigService {
   }
 
   private getDefaultTemplate(): DefaultConfigTemplate {
-    const template = `# Global configuration for gemini-any-llm
+    const template = `# Global configuration for code-cli-any-llm
 # Edit this file to configure your default API settings
 
 aiProvider: openai
@@ -348,7 +348,7 @@ gateway:
   port: 23062
   host: "0.0.0.0"
   logLevel: "info"
-  logDir: "~/.gemini-any-llm/logs"
+  logDir: "~/.code-cli-any-llm/logs"
   requestTimeout: 3600000
 `;
 

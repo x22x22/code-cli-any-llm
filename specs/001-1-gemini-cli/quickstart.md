@@ -18,7 +18,7 @@
 ```bash
 # 克隆项目
 git clone <repository-url>
-cd gemini-any-llm
+cd code-cli-any-llm
 
 # 安装依赖
 pnpm install

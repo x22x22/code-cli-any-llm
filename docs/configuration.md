@@ -69,7 +69,7 @@ GAL_OPENAI_ORGANIZATION=org-xxxxxx
 GAL_PORT=8080
 GAL_HOST=0.0.0.0
 GAL_LOG_LEVEL=debug
-GAL_GATEWAY_LOG_DIR=~/.gemini-any-llm/logs
+GAL_GATEWAY_LOG_DIR=~/.code-cli-any-llm/logs
 
 # 性能和安全配置（可选）
 GAL_RATE_LIMIT_MAX=100
@@ -80,7 +80,7 @@ GAL_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 ## 配置优先级
 
 1. 项目配置文件 (`./config/config.yaml`) - 最高优先级
-2. 全局配置文件 (`~/.gemini-any-llm/config.yaml`) - 中等优先级
+2. 全局配置文件 (`~/.code-cli-any-llm/config.yaml`) - 中等优先级
 3. 环境变量（GAL_ 前缀）- 最低优先级，作为基础配置
 3. 默认值（最低优先级）
 

@@ -10,7 +10,7 @@
 1. **克隆项目**
 ```bash
 git clone <repository-url>
-cd gemini-any-llm
+cd code-cli-any-llm
 ```
 
 2. **安装依赖**

@@ -1,5 +1,5 @@
 {
-  "name": "@kdump/gemini-any-llm",
+  "name": "@kdump/code-cli-any-llm",
   "version": "0.0.26",
   "author": "x22x22",
   "private": false,
@@ -9,7 +9,7 @@
   "license": "Apache License 2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/x22x22/gemini-any-llm.git"
+    "url": "git+https://github.com/x22x22/code-cli-any-llm.git"
   },
   "scripts": {
     "build": "nest build",

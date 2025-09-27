@@ -9,7 +9,7 @@ jest.mock('os');
 
 describe('GlobalConfig Integration Tests', () => {
   const mockHomedir = '/tmp/test-home';
-  const testConfigDir = path.join(mockHomedir, '.gemini-any-llm');
+  const testConfigDir = path.join(mockHomedir, '.code-cli-any-llm');
   const testConfigFile = path.join(testConfigDir, 'config.yaml');
   let originalEnv: any;
 
@@ -154,7 +154,7 @@ gateway:
       );
       expect(result.config!.openai.model).toBe('glm-4.5');
       expect(result.config!.configSource).toContain(
-        '.gemini-any-llm/config.yaml',
+        '.code-cli-any-llm/config.yaml',
       );
       expect(result.config!.isValid).toBe(true);
     });
@@ -265,7 +265,7 @@ gateway:
       expect(result.config!.openai.model).toBe('glm-4.5');
       expect(result.config!.gateway.port).toBe(23062);
       expect(result.config!.configSource).toContain(
-        '.gemini-any-llm/config.yaml',
+        '.code-cli-any-llm/config.yaml',
       );
     });
 
@@ -302,7 +302,7 @@ gateway:
         expect(result.config!.gateway.port).toBe(23062); // 全局配置覆盖环境变量
         expect(result.config!.gateway.logLevel).toBe('debug'); // 环境变量值（全局配置中未指定）
         expect(result.config!.configSource).toContain(
-          '.gemini-any-llm/config.yaml',
+          '.code-cli-any-llm/config.yaml',
         );
       } finally {
         // 恢复环境变量

@@ -3,8 +3,8 @@
 ## 本地环境准备
 
 ```bash
-git clone https://github.com/your-repo/gemini-any-llm.git
-cd gemini-any-llm
+git clone https://github.com/your-repo/code-cli-any-llm.git
+cd code-cli-any-llm
 pnpm install
 ```
 
@@ -15,7 +15,7 @@ npm install -g @google/gemini-cli --registry https://registry.npmmirror.com
 npm install -g @google/gemini-cli-core --registry https://registry.npmmirror.com
 ```
 
-> 若需验证全量发布流程，可使用 `npm install -g @kdump/gemini-any-llm --registry https://registry.npmmirror.com` 安装最近一次构建产物。
+> 若需验证全量发布流程，可使用 `npm install -g @kdump/code-cli-any-llm --registry https://registry.npmmirror.com` 安装最近一次构建产物。
 
 ## 构建与运行
 
@@ -37,7 +37,7 @@ pnpm run build
 node dist/cli/gal.js code "你好，请介绍一下自己"
 ```
 
-首次运行会引导填写 API Key / Base URL / 模型，并写入 `~/.gemini-any-llm/config.yaml`，同时自动确保 `~/.gemini/settings.json` 的 `selectedAuthType` 为 `gemini-api-key`。
+首次运行会引导填写 API Key / Base URL / 模型，并写入 `~/.code-cli-any-llm/config.yaml`，同时自动确保 `~/.gemini/settings.json` 的 `selectedAuthType` 为 `gemini-api-key`。
 
 ## 测试与质量
 

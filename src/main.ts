@@ -87,7 +87,7 @@ async function bootstrap() {
       logger.error(`  - ${error.field}: ${error.message}`);
       logger.error(`    建议: ${error.suggestion}`);
     });
-    logger.error(`\n配置文件位置: ~/.gemini-any-llm/config.yaml`);
+    logger.error(`\n配置文件位置: ~/.code-cli-any-llm/config.yaml`);
     logger.error('请修复配置问题后重新启动应用');
     logger.error(`网关日志文件: ${GatewayLoggerService.getLogFilePath()}`);
     GatewayLoggerService.close();

@@ -27,7 +27,7 @@ npm install -g @google/gemini-cli-core@latest --registry https://registry.npmmir
 
 2. **安装本工具**：
 ```bash
-npm install -g @kdump/gemini-any-llm@latest --registry https://registry.npmmirror.com
+npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmirror.com
 ```
 
 ### 首次使用
@@ -51,12 +51,12 @@ gal code
   - **认证模式**（仅 Codex，支持 `ApiKey` 或 `ChatGPT`）
   - **API Key**（当选择 OpenAI、Codex-ApiKey 或 Claude Code 时必填）
 - 对于 Claude Code，网关会自动同时携带 `x-api-key` 与 `Authorization: Bearer` 请求头，兼容官方和 Relay 服务。
-- 配置将保存到 `~/.gemini-any-llm/config.yaml`
+- 配置将保存到 `~/.code-cli-any-llm/config.yaml`
 - 自动生成或更新 `~/.gemini/settings.json`，设置认证类型为 `gemini-api-key`
 - 自动启动后台网关服务并等待就绪
 - 启动 Gemini CLI 进行对话
 
-> 💡 **Codex ChatGPT 模式**：若在向导中选择 `Codex + ChatGPT`，首次请求时会提示在浏览器完成 OAuth 登录，登录链接将在终端显示。认证成功后令牌将保存到 `~/.gemini-any-llm/codex/auth.json`，后续请求会自动刷新，无需重复登录。
+> 💡 **Codex ChatGPT 模式**：若在向导中选择 `Codex + ChatGPT`，首次请求时会提示在浏览器完成 OAuth 登录，登录链接将在终端显示。认证成功后令牌将保存到 `~/.code-cli-any-llm/codex/auth.json`，后续请求会自动刷新，无需重复登录。
 
 ### 重新配置
 
@@ -120,7 +120,7 @@ gal code --temperature 0.7 "写一个创意故事"
 
 ### 自动更新
 
-- 每次交互式 `gal` 命令都会检查 `~/.gemini-any-llm/version.json` 中的缓存，后台每隔 20 小时刷新一次，检查失败不会阻塞网关启动。
+- 每次交互式 `gal` 命令都会检查 `~/.code-cli-any-llm/version.json` 中的缓存，后台每隔 20 小时刷新一次，检查失败不会阻塞网关启动。
 - 执行 `gal code` 时若发现新版本，会在启动 Gemini 体验前暂停，并提供 `y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）和 `off`（关闭自动检查并重启网关）四种选项。
 - 随时运行 `gal update` 可以同步刷新缓存并安装最新发布的包。
 - 如需彻底关闭自动检测，可设置 `GAL_DISABLE_UPDATE_CHECK=1`（也可以在提示中选择 `off`）。
@@ -130,17 +130,17 @@ gal code --temperature 0.7 "写一个创意故事"
 1. 运行 `gal auth`，在向导中选择 **Codex** 作为提供商，并将认证模式设为 **ChatGPT**。
 2. 首次执行 `gal code` 或 `gal start` 等命令时，终端会打印一条 `https://auth.openai.com/oauth/authorize?...` 的链接，请复制到浏览器完成登录。
 3. 登录过程中 CLI 会在本地 `127.0.0.1:1455` 启动临时回调服务；若端口被占用，可先释放端口或再次尝试（CLI 会自动重试并提示失败原因）。
-4. 授权成功后窗口会提示“登录成功，可以返回终端”，令牌将写入 `~/.gemini-any-llm/codex/auth.json`，包含 `access_token`、`refresh_token`、`id_token` 以及刷新时间戳。
+4. 授权成功后窗口会提示“登录成功，可以返回终端”，令牌将写入 `~/.code-cli-any-llm/codex/auth.json`，包含 `access_token`、`refresh_token`、`id_token` 以及刷新时间戳。
 5. 之后网关会自动刷新令牌，不需要重复登录；若手动清理或移动 `auth.json`，再次发起请求时会重新触发浏览器登录。
 
-> 如需自定义令牌目录，可设置环境变量 `CODEX_HOME` 指向目标路径（默认为 `~/.gemini-any-llm/codex`）。
+> 如需自定义令牌目录，可设置环境变量 `CODEX_HOME` 指向目标路径（默认为 `~/.code-cli-any-llm/codex`）。
 
 ### 配置管理
 
 系统支持灵活的配置层次结构，优先级如下（高优先级覆盖低优先级）：
 
 1. **项目配置** (`./config/config.yaml`) - 最高优先级，项目特定配置
-2. **全局配置** (`~/.gemini-any-llm/config.yaml`) - 中等优先级，用户默认配置  
+2. **全局配置** (`~/.code-cli-any-llm/config.yaml`) - 中等优先级，用户默认配置  
 3. **环境变量** - 最低优先级，作为基础配置
 
 ### 支持的提供商
@@ -173,7 +173,7 @@ export GAL_CODEX_TIMEOUT="1800000"
 # 可选：推理参数与输出冗长度控制
 export GAL_CODEX_REASONING='{"effort":"medium"}'
 export GAL_CODEX_TEXT_VERBOSITY="medium"
-# 可选：自定义 OAuth 令牌目录（默认为 ~/.gemini-any-llm/codex）
+# 可选：自定义 OAuth 令牌目录（默认为 ~/.code-cli-any-llm/codex）
 export CODEX_HOME="$HOME/.custom-codex"
 
 # Claude Code 配置
@@ -200,7 +200,7 @@ export GAL_OPENAI_ORGANIZATION="org-xxxxxx"
 export GAL_PORT="23062"
 export GAL_HOST="0.0.0.0"
 export GAL_LOG_LEVEL="info"
-export GAL_GATEWAY_LOG_DIR="~/.gemini-any-llm/logs"
+export GAL_GATEWAY_LOG_DIR="~/.code-cli-any-llm/logs"
 export GAL_DISABLE_UPDATE_CHECK="1"            # 关闭自动更新提示
 
 # 通用高级配置
@@ -283,7 +283,7 @@ codex:
 - **`gateway.port`** - 服务端口（默认：23062）
 - **`gateway.host`** - 绑定地址（默认：0.0.0.0）
 - **`gateway.logLevel`** - 日志级别：`debug`/`info`/`warn`/`error`（默认：info）
-- **`gateway.logDir`** - 日志目录（默认：`~/.gemini-any-llm/logs`）
+- **`gateway.logDir`** - 日志目录（默认：`~/.code-cli-any-llm/logs`）
 
 ## 🛠️ 故障排除
 
@@ -344,7 +344,7 @@ gal start
 **解决方案**：
 1. 修改配置文件中的端口：
 ```yaml
-# ~/.gemini-any-llm/config.yaml
+# ~/.code-cli-any-llm/config.yaml
 gateway:
   port: 23063  # 改为其他可用端口
 ```
@@ -359,7 +359,7 @@ export PORT=23063
 **现象**：配置校验失败
 
 **解决方案**：
-1. 检查配置文件语法：`~/.gemini-any-llm/config.yaml`
+1. 检查配置文件语法：`~/.code-cli-any-llm/config.yaml`
 2. 确保所有必需字段已填写
 3. 验证文件权限（应为 600）
 
@@ -370,8 +370,8 @@ export PORT=23063
 **解决方案**：
 ```bash
 # 确保目录权限正确
-chmod 700 ~/.gemini-any-llm
-chmod 600 ~/.gemini-any-llm/config.yaml
+chmod 700 ~/.code-cli-any-llm
+chmod 600 ~/.code-cli-any-llm/config.yaml
 ```
 
 ### 网络连接问题
@@ -393,7 +393,7 @@ openai:
 
 ```bash
 # 查看网关日志
-tail -n 300 -f ~/.gemini-any-llm/logs/gateway-{日期-时间}.log
+tail -n 300 -f ~/.code-cli-any-llm/logs/gateway-{日期-时间}.log
 
 # 启用调试模式
 export LOG_LEVEL=debug
@@ -406,7 +406,7 @@ gal restart
 
 **现象**：
 - 在 Gemini CLI 中显示："Model stream ended with an invalid chunk or missing finish reason."
-- 在网关日志(~/.gemini-any-llm/logs/)中可见详细错误，例如：
+- 在网关日志(~/.code-cli-any-llm/logs/)中可见详细错误，例如：
 ```
 InternalError.Algo.InvalidParameter: Range of input length should be [1, 98304]
 ```
@@ -416,7 +416,7 @@ InternalError.Algo.InvalidParameter: Range of input length should be [1, 98304]
 **解决方案**：
 1. 通过配置 `extraBody.max_input_tokens` 增加输入限制：
 ```yaml
-# ~/.gemini-any-llm/config.yaml 或项目配置文件
+# ~/.code-cli-any-llm/config.yaml 或项目配置文件
 openai:
   apiKey: "your-api-key"
   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -490,7 +490,7 @@ gal restart
 
 ### 自动更新
 
-- 每个交互式 `gal` 命令都会检查 `~/.gemini-any-llm/version.json`，并在后台每隔 20 小时刷新缓存，网络错误不会阻塞网关。
+- 每个交互式 `gal` 命令都会检查 `~/.code-cli-any-llm/version.json`，并在后台每隔 20 小时刷新缓存，网络错误不会阻塞网关。
 - 当运行 `gal code` 时，若检测到新版本会在进入 Gemini 体验前提示四个选项：`y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）或 `off`（关闭自动检查并重启网关）。
 - 随时运行 `gal update` 可以同步刷新缓存并安装最新发布的版本。
 - 如需永久关闭自动检测，可设置 `GAL_DISABLE_UPDATE_CHECK=1`（与提示中的 `off` 选项效果相同）。

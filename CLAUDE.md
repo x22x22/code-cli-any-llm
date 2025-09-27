@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a NestJS TypeScript project called "gemini-any-llm" - a Gemini API Gateway that enables Gemini CLI to access non-Gemini LLM providers. The project implements a translation gateway service that allows seamless, non-intrusive connectivity to various LLM providers (OpenAI, Anthropic, Qwen, etc.) through Gemini API compatibility.
+This is a NestJS TypeScript project called "code-cli-any-llm" - a Gemini API Gateway that enables Gemini CLI to access non-Gemini LLM providers. The project implements a translation gateway service that allows seamless, non-intrusive connectivity to various LLM providers (OpenAI, Anthropic, Qwen, etc.) through Gemini API compatibility.
 
 **Key Design Principles**:
 - 100% Gemini API compatibility - no modifications needed to Gemini CLI
@@ -39,10 +39,10 @@ pnpm install  # Install dependencies
 
 # First run - global config will be auto-created
 pnpm run start:dev
-# This will create ~/.gemini-any-llm/config.yaml and show you what to configure
+# This will create ~/.code-cli-any-llm/config.yaml and show you what to configure
 
 # Edit the global config with your API key
-# ~/.gemini-any-llm/config.yaml - set your apiKey
+# ~/.code-cli-any-llm/config.yaml - set your apiKey
 
 # Optional: Create project-specific overrides
 cp config/config.example.yaml config/config.yaml  # Copy configuration
@@ -127,7 +127,7 @@ The project follows a layered architecture with clear separation of concerns:
 
 The project uses a hierarchical YAML configuration system with multiple levels:
 
-- **Global Config**: `~/.gemini-any-llm/config.yaml` (auto-created on first run)
+- **Global Config**: `~/.code-cli-any-llm/config.yaml` (auto-created on first run)
 - **Project Config**: `config/config.yaml` (optional, overrides global config)
 - **Example Config**: `config/config.example.yaml`
 - **Environment Override**: Any config value can be overridden with environment variables
@@ -136,17 +136,17 @@ The project uses a hierarchical YAML configuration system with multiple levels:
 
 **Important Priority Behavior**:
 - If `./config/config.yaml` exists, **only** the project config is used (global config is ignored)
-- If `./config/config.yaml` doesn't exist, global config `~/.gemini-any-llm/config.yaml` is used
+- If `./config/config.yaml` doesn't exist, global config `~/.code-cli-any-llm/config.yaml` is used
 - Missing fields in the active config file are filled with default values (no merging between files)
 
 **First Run Experience**:
-- When starting the application for the first time, a global configuration file is automatically created at `~/.gemini-any-llm/config.yaml`
+- When starting the application for the first time, a global configuration file is automatically created at `~/.code-cli-any-llm/config.yaml`
 - The application will fail to start with a helpful error message if the `apiKey` is not configured
 - Clear guidance is provided for configuring the required API key and optional settings
 
-Example global configuration (`~/.gemini-any-llm/config.yaml`):
+Example global configuration (`~/.code-cli-any-llm/config.yaml`):
 ```yaml
-# Global configuration for gemini-any-llm
+# Global configuration for code-cli-any-llm
 # Edit this file to configure your default API settings
 
 # API Configuration (REQUIRED)
@@ -336,9 +336,9 @@ pnpm test -- test/integration/gemini-cli-integration.spec.ts --coverage
 3. **CORS errors**: Update allowed origins in configuration
 4. **API timeouts**: Adjust timeout values in provider configuration
 5. **API Key not configured**:
-   - Check `~/.gemini-any-llm/config.yaml` and ensure `openai.apiKey` is set
+   - Check `~/.code-cli-any-llm/config.yaml` and ensure `openai.apiKey` is set
    - Application will show clear error message with config file location
 6. **Configuration not loading**:
-   - Verify file permissions on `~/.gemini-any-llm/` directory
+   - Verify file permissions on `~/.code-cli-any-llm/` directory
    - Check YAML syntax in config files
    - Use project config to override global settings if needed

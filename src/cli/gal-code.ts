@@ -155,7 +155,7 @@ async function prepareGatewayContext(
   } = options;
 
   const projectRoot = locateProjectRoot(__dirname);
-  const configDir = path.join(os.homedir(), '.gemini-any-llm');
+  const configDir = path.join(os.homedir(), '.code-cli-any-llm');
   const configFile = path.join(configDir, 'config.yaml');
 
   const configService = new GlobalConfigService();
@@ -167,7 +167,7 @@ async function prepareGatewayContext(
     configResult = configService.loadGlobalConfig();
 
     if (!configResult.isValid) {
-      console.error('配置仍然无效，请检查 ~/.gemini-any-llm/config.yaml');
+      console.error('配置仍然无效，请检查 ~/.code-cli-any-llm/config.yaml');
       process.exit(1);
     }
   }
@@ -199,7 +199,7 @@ async function prepareGatewayContext(
       geminiApiKey = readGlobalApiKey(configFile);
       if (!geminiApiKey) {
         console.error(
-          '未能在 ~/.gemini-any-llm/config.yaml 中找到有效的 apikey',
+          '未能在 ~/.code-cli-any-llm/config.yaml 中找到有效的 apikey',
         );
         process.exit(1);
       }

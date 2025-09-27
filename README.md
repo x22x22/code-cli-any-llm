@@ -27,7 +27,7 @@ npm install -g @google/gemini-cli-core@latest --registry https://registry.npmmir
 
 2. **Install this gateway**:
 ```bash
-npm install -g @kdump/gemini-any-llm@latest --registry https://registry.npmmirror.com
+npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmirror.com
 ```
 
 ### First Run
@@ -52,12 +52,12 @@ gal code
   - **Auth mode**（Codex only, supports `ApiKey` or `ChatGPT`）
   - **API Key**（OpenAI / Codex-ApiKey / Claude Code 模式都需要填写）
 - For Claude Code, the gateway automatically sends both `x-api-key` and `Authorization: Bearer` headers so it works with Anthropic relay services out of the box.
-- Configuration is saved to `~/.gemini-any-llm/config.yaml`
+- Configuration is saved to `~/.code-cli-any-llm/config.yaml`
 - Automatically generates or updates `~/.gemini/settings.json`, setting the auth type to `gemini-api-key`
 - Automatically starts the background gateway service and waits for it to become ready
 - Launches the Gemini CLI for conversation
 
-> 💡 **Codex ChatGPT mode**: If you choose `Codex + ChatGPT` in the wizard, the first request will prompt you to finish OAuth login in a browser. The login link appears in the terminal. After a successful login, the token is stored in `~/.gemini-any-llm/codex/auth.json`. Tokens refresh automatically so you don’t need to log in again.
+> 💡 **Codex ChatGPT mode**: If you choose `Codex + ChatGPT` in the wizard, the first request will prompt you to finish OAuth login in a browser. The login link appears in the terminal. After a successful login, the token is stored in `~/.code-cli-any-llm/codex/auth.json`. Tokens refresh automatically so you don’t need to log in again.
 
 ### Reconfigure
 
@@ -124,17 +124,17 @@ gal code --temperature 0.7 "Write a creative story"
 1. Run `gal auth`, choose **Codex** as the provider, and set the auth mode to **ChatGPT** in the wizard.
 2. The first time you run `gal code` or `gal start`, the terminal prints a `https://auth.openai.com/oauth/authorize?...` link. Copy it into a browser to complete the login.
 3. During login the CLI spins up a temporary callback service on `127.0.0.1:1455`. If the port is taken, free it or try again (the CLI retries automatically and shows error reasons).
-4. After the authorization succeeds you’ll see “Login successful, you may return to the terminal.” Tokens are saved to `~/.gemini-any-llm/codex/auth.json`, including `access_token`, `refresh_token`, `id_token`, and the refresh timestamp.
+4. After the authorization succeeds you’ll see “Login successful, you may return to the terminal.” Tokens are saved to `~/.code-cli-any-llm/codex/auth.json`, including `access_token`, `refresh_token`, `id_token`, and the refresh timestamp.
 5. The gateway refreshes tokens automatically afterwards, so you don’t need to log in again. If you delete or move `auth.json`, the browser login will be triggered the next time you send a request.
 
-> To customize the token directory, set the `CODEX_HOME` environment variable (defaults to `~/.gemini-any-llm/codex`).
+> To customize the token directory, set the `CODEX_HOME` environment variable (defaults to `~/.code-cli-any-llm/codex`).
 
 ### Configuration management
 
 The system supports a flexible configuration hierarchy. Higher priority values override lower ones:
 
 1. **Project configuration** (`./config/config.yaml`) - Highest priority, project-specific
-2. **Global configuration** (`~/.gemini-any-llm/config.yaml`) - Medium priority, user defaults  
+2. **Global configuration** (`~/.code-cli-any-llm/config.yaml`) - Medium priority, user defaults  
 3. **Environment variables** - Lowest priority, baseline settings
 
 ### Supported providers
@@ -167,7 +167,7 @@ export GAL_CODEX_TIMEOUT="1800000"
 # Optional: reasoning parameters and output verbosity control
 export GAL_CODEX_REASONING='{"effort":"medium"}'
 export GAL_CODEX_TEXT_VERBOSITY="medium"
-# Optional: custom OAuth token directory (defaults to ~/.gemini-any-llm/codex)
+# Optional: custom OAuth token directory (defaults to ~/.code-cli-any-llm/codex)
 export CODEX_HOME="$HOME/.custom-codex"
 
 # Claude Code configuration
@@ -194,7 +194,7 @@ export GAL_OPENAI_ORGANIZATION="org-xxxxxx"
 export GAL_PORT="23062"
 export GAL_HOST="0.0.0.0"
 export GAL_LOG_LEVEL="info"
-export GAL_GATEWAY_LOG_DIR="~/.gemini-any-llm/logs"
+export GAL_GATEWAY_LOG_DIR="~/.code-cli-any-llm/logs"
 export GAL_DISABLE_UPDATE_CHECK="1"            # Disable automatic update prompts
 
 # General advanced configuration
@@ -277,7 +277,7 @@ codex:
 - **`gateway.port`** - Service port (default: 23062)
 - **`gateway.host`** - Bind address (default: 0.0.0.0)
 - **`gateway.logLevel`** - Log level: `debug`/`info`/`warn`/`error` (default: info)
-- **`gateway.logDir`** - Log directory (default: `~/.gemini-any-llm/logs`)
+- **`gateway.logDir`** - Log directory (default: `~/.code-cli-any-llm/logs`)
 
 ## 🛠️ Troubleshooting
 
@@ -338,7 +338,7 @@ gal start
 **Solution**:
 1. Change the port in the configuration file:
 ```yaml
-# ~/.gemini-any-llm/config.yaml
+# ~/.code-cli-any-llm/config.yaml
 gateway:
   port: 23063  # Switch to another available port
 ```
@@ -353,7 +353,7 @@ export PORT=23063
 **Symptom**: Configuration validation fails
 
 **Solution**:
-1. Check the syntax in `~/.gemini-any-llm/config.yaml`
+1. Check the syntax in `~/.code-cli-any-llm/config.yaml`
 2. Make sure all required fields are filled in
 3. Validate file permissions (should be 600)
 
@@ -364,8 +364,8 @@ export PORT=23063
 **Solution**:
 ```bash
 # Ensure the directory permissions are correct
-chmod 700 ~/.gemini-any-llm
-chmod 600 ~/.gemini-any-llm/config.yaml
+chmod 700 ~/.code-cli-any-llm
+chmod 600 ~/.code-cli-any-llm/config.yaml
 ```
 
 ### Network connectivity issues
@@ -387,7 +387,7 @@ To debug, inspect detailed logs:
 
 ```bash
 # Tail gateway logs
-tail -n 300 -f ~/.gemini-any-llm/logs/gateway-{date-time}.log
+tail -n 300 -f ~/.code-cli-any-llm/logs/gateway-{date-time}.log
 
 # Enable debug mode
 export LOG_LEVEL=debug
@@ -400,7 +400,7 @@ gal restart
 
 **Symptom**:
 - Gemini CLI shows: "Model stream ended with an invalid chunk or missing finish reason."
-- Gateway logs (`~/.gemini-any-llm/logs/`) contain errors such as:
+- Gateway logs (`~/.code-cli-any-llm/logs/`) contain errors such as:
 ```
 InternalError.Algo.InvalidParameter: Range of input length should be [1, 98304]
 ```
@@ -410,7 +410,7 @@ InternalError.Algo.InvalidParameter: Range of input length should be [1, 98304]
 **Solution**:
 1. Increase the input limit via `extraBody.max_input_tokens`:
 ```yaml
-# ~/.gemini-any-llm/config.yaml or a project configuration file
+# ~/.code-cli-any-llm/config.yaml or a project configuration file
 openai:
   apiKey: "your-api-key"
   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -484,7 +484,7 @@ gal restart
 
 ### Automatic updates
 
-- Every interactive `gal` command checks `~/.gemini-any-llm/version.json` and refreshes the cache in the background every 20 hours. Network errors during the check never block the gateway.
+- Every interactive `gal` command checks `~/.code-cli-any-llm/version.json` and refreshes the cache in the background every 20 hours. Network errors during the check never block the gateway.
 - When you run `gal code`, the CLI pauses before launching the Gemini experience if a newer version exists and offers four options: `y` (update now), `n` (skip for this run), `skip` (ignore this release), or `off` (disable future checks and restart the gateway).
 - Run `gal update` at any time to synchronously refresh the cache and install the latest published package.
 - Set `GAL_DISABLE_UPDATE_CHECK=1` if you need to permanently opt out of automatic checks (also available through the `off` option in the prompt).

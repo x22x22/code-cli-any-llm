@@ -5,7 +5,7 @@
 
 ## 研究目标
 
-分析 llxprt-code 项目中的核心报文转换逻辑，确定移植到 gemini-any-llm 项目的最佳方案，特别关注智谱GLM模型的优化处理。
+分析 llxprt-code 项目中的核心报文转换逻辑，确定移植到 code-cli-any-llm 项目的最佳方案，特别关注智谱GLM模型的优化处理。
 
 ## 关键发现
 

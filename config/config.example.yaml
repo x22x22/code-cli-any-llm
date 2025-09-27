@@ -1,4 +1,4 @@
-# Example configuration for gemini-any-llm
+# Example configuration for code-cli-any-llm
 # Copy this file to config.yaml and modify as needed for project-specific settings
 
 # Active provider: 'openai', 'codex' 或 'claudeCode'
@@ -56,5 +56,5 @@ gateway:
   port: 23062
   host: '0.0.0.0'
   logLevel: 'info'
-  logDir: '~/.gemini-any-llm/logs'
+  logDir: '~/.code-cli-any-llm/logs'
   requestTimeout: 3600000

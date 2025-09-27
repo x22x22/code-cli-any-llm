@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-本报告专注于详细分析了 `/home/kdump/llm/project/llxprt-code/` 项目中的报文转换相关代码，特别是工具调用、tool call、function call的处理逻辑，并与 `/home/kdump/llm/project/gemini-any-llm/` 项目进行对比，识别可能遗漏的关键转换逻辑。经过深入的代码分析，发现了多个重要的缺失功能和优化机会。
+本报告专注于详细分析了 `/home/kdump/llm/project/llxprt-code/` 项目中的报文转换相关代码，特别是工具调用、tool call、function call的处理逻辑，并与 `/home/kdump/llm/project/code-cli-any-llm/` 项目进行对比，识别可能遗漏的关键转换逻辑。经过深入的代码分析，发现了多个重要的缺失功能和优化机会。
 
 ## 1. 核心转换文件搜索结果
 

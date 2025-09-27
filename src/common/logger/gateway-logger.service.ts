@@ -15,7 +15,7 @@ export interface GatewayLoggerOptions extends ConsoleLoggerOptions {
   filePrefix?: string;
 }
 
-const DEFAULT_LOG_DIR = path.join(os.homedir(), '.gemini-any-llm', 'logs');
+const DEFAULT_LOG_DIR = path.join(os.homedir(), '.code-cli-any-llm', 'logs');
 const DEFAULT_FILE_PREFIX = 'gateway';
 
 export class GatewayLoggerService extends ConsoleLogger {

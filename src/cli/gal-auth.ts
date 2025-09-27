@@ -30,7 +30,7 @@ async function askRestartGateway(): Promise<boolean> {
 }
 
 export async function runGalAuth(): Promise<void> {
-  const configDir = path.join(os.homedir(), '.gemini-any-llm');
+  const configDir = path.join(os.homedir(), '.code-cli-any-llm');
   const configFile = path.join(configDir, 'config.yaml');
 
   ensureGeminiSettings();
@@ -39,7 +39,7 @@ export async function runGalAuth(): Promise<void> {
   const configService = new GlobalConfigService();
   const result = configService.loadGlobalConfig();
   if (!result.isValid) {
-    console.error('配置校验失败，请检查 ~/.gemini-any-llm/config.yaml。');
+    console.error('配置校验失败，请检查 ~/.code-cli-any-llm/config.yaml。');
     result.errors?.forEach((error) => {
       if (error?.message) {
         console.error(`- ${error.message}`);

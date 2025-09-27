@@ -13,7 +13,7 @@ Commands:
   auth              配置 AI 服务认证信息
                     • 支持 claudeCode / codex / openai 提供商
                     • 交互式设置 API Key、服务地址和默认模型
-                    • 配置文件：~/.gemini-any-llm/config.yaml
+                    • 配置文件：~/.code-cli-any-llm/config.yaml
                     • 首次使用或更换服务商时需要运行
 
   update            主动检查并安装最新版本
@@ -48,9 +48,9 @@ Commands:
                     • 仅在网关无响应时使用
 
 配置与环境:
-  • 配置文件：~/.gemini-any-llm/config.yaml
+  • 配置文件：~/.code-cli-any-llm/config.yaml
   • 默认网关端口：23062（可在配置文件中修改）
-  • PID 文件：~/.gemini-any-llm/gateway.pid.json
+  • PID 文件：~/.code-cli-any-llm/gateway.pid.json
   • 关闭自动更新检查：设置环境变量 GAL_DISABLE_UPDATE_CHECK=1
 
 使用示例:
@@ -74,5 +74,5 @@ Commands:
   • AI 助手无响应：使用 'gal kill' 清理进程后重试
   • 认证失败：运行 'gal auth' 重新配置 API Key
   • 服务启动失败：检查网络连接和端口占用情况
-  • 配置问题：检查 ~/.gemini-any-llm/config.yaml 文件
-  • 权限问题：确保有读写 ~/.gemini-any-llm/ 目录的权限
+  • 配置问题：检查 ~/.code-cli-any-llm/config.yaml 文件
+  • 权限问题：确保有读写 ~/.code-cli-any-llm/ 目录的权限

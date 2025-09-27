@@ -96,7 +96,7 @@ OpenAI API相关配置。
 
 **Template Content:**
 ```yaml
-# Global configuration for gemini-any-llm
+# Global configuration for code-cli-any-llm
 openai:
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
@@ -113,7 +113,7 @@ gateway:
 
 ### Loading Priority:
 1. **项目配置** (`./config/config.yaml`) - 最高优先级
-2. **全局配置** (`~/.gemini-any-llm/config.yaml`) - 默认配置
+2. **全局配置** (`~/.code-cli-any-llm/config.yaml`) - 默认配置
 3. **内置默认值** - 兜底配置
 
 ### Merge Strategy:
@@ -126,7 +126,7 @@ gateway:
 
 ### Global Config Directory:
 ```
-~/.gemini-any-llm/
+~/.code-cli-any-llm/
 ├── config.yaml          # 主配置文件
 └── .gitignore           # 忽略临时文件(可选)
 ```
@@ -140,7 +140,7 @@ gateway:
 ```typescript
 // 全局配置路径解析
 const homeDir = os.homedir();
-const configDir = path.join(homeDir, '.gemini-any-llm');
+const configDir = path.join(homeDir, '.code-cli-any-llm');
 const configFile = path.join(configDir, 'config.yaml');
 
 // 项目配置路径解析

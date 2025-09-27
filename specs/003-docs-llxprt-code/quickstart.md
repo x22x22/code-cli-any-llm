@@ -5,7 +5,7 @@
 ## 前置条件
 
 - ✅ Node.js 18+ 和 pnpm 已安装
-- ✅ gemini-any-llm 项目开发环境正常运行
+- ✅ code-cli-any-llm 项目开发环境正常运行
 - ✅ llxprt-code 项目可访问 (`/home/kdump/llm/project/llxprt-code`)
 - ✅ 有效的智谱 API 密钥配置
 
@@ -15,7 +15,7 @@
 
 ```bash
 # 1. 确认当前项目能正常启动
-cd /home/kdump/llm/project/gemini-any-llm
+cd /home/kdump/llm/project/code-cli-any-llm
 pnpm run start:dev
 
 # 2. 验证健康检查

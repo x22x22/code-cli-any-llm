@@ -47,7 +47,7 @@
 ## 5. 本项目 Provider 规范回顾
 
 - 配置管道：
-  - `ConfigModule.forRoot()` 读取环境变量 → `~/.gemini-any-llm/config.yaml` → `config/config.yaml`，定义字段在 `src/config/config.schema.ts`，当前包含 `openai`, `codex` 两块配置，对应 `aiProvider` 选择哪个实现。
+  - `ConfigModule.forRoot()` 读取环境变量 → `~/.code-cli-any-llm/config.yaml` → `config/config.yaml`，定义字段在 `src/config/config.schema.ts`，当前包含 `openai`, `codex` 两块配置，对应 `aiProvider` 选择哪个实现。
   - 新增 provider 需更新 `config.schema.ts`、`config/config.example.yaml`、`README` 等以暴露可配置项。
 - Provider 架构：
   - `OpenAIProvider`、`CodexProvider` 均实现 `OnModuleInit`，在 `src/app.module.ts` 注入，并通过 `GeminiController` 根据 `aiProvider` 路由调用。

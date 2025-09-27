@@ -13,7 +13,7 @@ Commands:
   auth              Configure AI service credentials
                     • Supports providers claudeCode / codex / openai
                     • Interactively sets API keys, base URLs, and default models
-                    • Configuration file: ~/.gemini-any-llm/config.yaml
+                    • Configuration file: ~/.code-cli-any-llm/config.yaml
                     • Run this the first time or when switching providers
 
   update            Check for and install the latest version
@@ -48,9 +48,9 @@ Gateway management commands:
                     • Use only when the gateway becomes unresponsive
 
 Configuration & environment:
-  • Config file: ~/.gemini-any-llm/config.yaml
+  • Config file: ~/.code-cli-any-llm/config.yaml
   • Default gateway port: 23062 (changeable in the config file)
-  • PID file: ~/.gemini-any-llm/gateway.pid.json
+  • PID file: ~/.code-cli-any-llm/gateway.pid.json
   • Disable automatic update checks: set GAL_DISABLE_UPDATE_CHECK=1
 
 Usage examples:
@@ -74,5 +74,5 @@ Troubleshooting:
   • Assistant not responding: run 'gal kill' to clean up and try again
   • Authentication failure: run 'gal auth' to reconfigure the API key
   • Service fails to start: check network connectivity and port usage
-  • Configuration issues: inspect ~/.gemini-any-llm/config.yaml
-  • Permission issues: ensure read/write access to ~/.gemini-any-llm/
+  • Configuration issues: inspect ~/.code-cli-any-llm/config.yaml
+  • Permission issues: ensure read/write access to ~/.code-cli-any-llm/

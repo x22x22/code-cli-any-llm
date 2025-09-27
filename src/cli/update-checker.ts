@@ -18,10 +18,10 @@ const VERSION_FILENAME = 'version.json';
 const VERSION_CHECK_INTERVAL_MS = 20 * 60 * 60 * 1000; // 20 小时
 const LATEST_VERSION_URL =
   'https://registry.npmjs.org/@kdump%2fgemini-any-llm/latest';
-const USER_AGENT = 'gemini-any-llm-cli';
+const USER_AGENT = 'code-cli-any-llm-cli';
 
 function getVersionFilePath(): string {
-  return path.join(homedir(), '.gemini-any-llm', VERSION_FILENAME);
+  return path.join(homedir(), '.code-cli-any-llm', VERSION_FILENAME);
 }
 
 function normalizeVersionInfo(raw: Partial<VersionInfo>): VersionInfo | null {
@@ -120,12 +120,12 @@ function detectPackageManager(): 'pnpm' | 'yarn' | 'npm' | null {
 export function buildUpgradeCommand(): string {
   switch (detectPackageManager()) {
     case 'pnpm':
-      return 'pnpm add -g @kdump/gemini-any-llm@latest';
+      return 'pnpm add -g @kdump/code-cli-any-llm@latest';
     case 'yarn':
-      return 'yarn global add @kdump/gemini-any-llm@latest';
+      return 'yarn global add @kdump/code-cli-any-llm@latest';
     case 'npm':
     default:
-      return 'npm install -g @kdump/gemini-any-llm@latest';
+      return 'npm install -g @kdump/code-cli-any-llm@latest';
   }
 }
 

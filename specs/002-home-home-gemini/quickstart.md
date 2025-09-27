@@ -8,18 +8,18 @@
 **前置条件**:
 ```bash
 # 确保全局配置文件不存在
-rm -rf ~/.gemini-any-llm/
+rm -rf ~/.code-cli-any-llm/
 ```
 
 **执行步骤**:
 ```bash
-1. cd /path/to/gemini-any-llm
+1. cd /path/to/code-cli-any-llm
 2. pnpm run start:dev
 ```
 
 **预期结果**:
 - 应用启动失败并显示友好提示信息
-- 自动创建 `~/.gemini-any-llm/config.yaml` 文件
+- 自动创建 `~/.code-cli-any-llm/config.yaml` 文件
 - 提示信息包含:
   - 配置文件位置
   - 需要配置的字段(apiKey)
@@ -28,10 +28,10 @@ rm -rf ~/.gemini-any-llm/
 **验证命令**:
 ```bash
 # 检查配置文件是否创建
-ls -la ~/.gemini-any-llm/config.yaml
+ls -la ~/.code-cli-any-llm/config.yaml
 
 # 查看配置文件内容
-cat ~/.gemini-any-llm/config.yaml
+cat ~/.code-cli-any-llm/config.yaml
 ```
 
 **成功标准**:
@@ -47,7 +47,7 @@ cat ~/.gemini-any-llm/config.yaml
 **前置条件**:
 ```bash
 # 确保配置文件存在但apiKey为空
-cat > ~/.gemini-any-llm/config.yaml << EOF
+cat > ~/.code-cli-any-llm/config.yaml << EOF
 openai:
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
@@ -83,7 +83,7 @@ pnpm run start:dev
 **前置条件**:
 ```bash
 # 设置有效的配置文件
-cat > ~/.gemini-any-llm/config.yaml << EOF
+cat > ~/.code-cli-any-llm/config.yaml << EOF
 openai:
   apiKey: "sk-test123456789"
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
@@ -124,7 +124,7 @@ curl http://localhost:23062/api/v1/health
 **前置条件**:
 ```bash
 # 全局配置
-cat > ~/.gemini-any-llm/config.yaml << EOF
+cat > ~/.code-cli-any-llm/config.yaml << EOF
 openai:
   apiKey: "sk-global123"
   model: "glm-4.5"
@@ -163,7 +163,7 @@ pnpm run start:dev
 **前置条件**:
 ```bash
 # 创建格式错误的配置文件
-cat > ~/.gemini-any-llm/config.yaml << EOF
+cat > ~/.code-cli-any-llm/config.yaml << EOF
 openai:
   apiKey: "sk-test123"
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
@@ -236,7 +236,7 @@ time pnpm run start:dev --timeout 10s
 ### 配置文件大小测试
 ```bash
 # 测试较大配置文件的处理
-dd if=/dev/zero bs=1024 count=10 >> ~/.gemini-any-llm/config.yaml
+dd if=/dev/zero bs=1024 count=10 >> ~/.code-cli-any-llm/config.yaml
 pnpm run start:dev
 ```
 
@@ -249,7 +249,7 @@ pnpm run start:dev
 ### 环境清理
 ```bash
 # 清理测试环境
-rm -rf ~/.gemini-any-llm/
+rm -rf ~/.code-cli-any-llm/
 rm -f ./config/config.yaml
 ```
 
@@ -264,7 +264,7 @@ git checkout -- config/config.yaml
 ### 常见问题检查清单
 1. **权限问题**:
    ```bash
-   ls -la ~/.gemini-any-llm/
+   ls -la ~/.code-cli-any-llm/
    whoami
    ```
 
@@ -276,7 +276,7 @@ git checkout -- config/config.yaml
 
 3. **YAML语法检查**:
    ```bash
-   python -c "import yaml; yaml.safe_load(open('~/.gemini-any-llm/config.yaml'))"
+   python -c "import yaml; yaml.safe_load(open('~/.code-cli-any-llm/config.yaml'))"
    ```
 
 4. **进程检查**:

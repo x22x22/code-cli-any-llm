@@ -4,7 +4,7 @@
 **Input**: Feature specification from `/specs/002-home-home-gemini/spec.md`
 
 ## Summary
-实现一个在用户home目录下自动读取和管理全局配置文件的功能。系统启动时检查 `~/.gemini-any-llm/config.yaml` 配置文件，如不存在则自动创建带默认值的模板，并验证apiKey字段的有效性，确保系统能够可靠启动并使用统一的全局配置。
+实现一个在用户home目录下自动读取和管理全局配置文件的功能。系统启动时检查 `~/.code-cli-any-llm/config.yaml` 配置文件，如不存在则自动创建带默认值的模板，并验证apiKey字段的有效性，确保系统能够可靠启动并使用统一的全局配置。
 
 ## Technical Context
 **Language/Version**: TypeScript with Node.js 18+

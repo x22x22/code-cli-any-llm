@@ -88,7 +88,7 @@ async function bootstrap() {
 
 ### File Structure:
 ```
-~/.gemini-any-llm/
+~/.code-cli-any-llm/
 └── config.yaml          # 用户全局配置文件
 
 项目/config/
@@ -130,7 +130,7 @@ async function bootstrap() {
 
 ### 默认配置模板:
 ```yaml
-# Global configuration for gemini-any-llm
+# Global configuration for code-cli-any-llm
 # Edit this file to configure your default API settings
 
 # API Configuration (REQUIRED)
