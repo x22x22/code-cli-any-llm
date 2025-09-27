@@ -44,7 +44,9 @@ npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmir
 直接运行以下命令开始使用：
 
 ```bash
-cal code
+cal code --cli-mode opencode
+# cal code --cli-mode crush
+# cal code # 默认是gemini
 ```
 
 - 向导会要求选择主要 Provider（`claudeCode` / `codex` / `openai`），并填写 Base URL、默认模型、认证方式和 API Key 等信息

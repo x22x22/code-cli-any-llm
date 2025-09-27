@@ -188,7 +188,7 @@ export class GlobalConfigService {
         process.env.CAL_GATEWAY_LOG_DIR ||
         process.env.CAL_REQUEST_TIMEOUT
       ) {
-        configSources.push('环境变量');
+        configSources.push('Environment variables');
       }
 
       // 2. 全局配置覆盖环境变量（中等优先级）
@@ -234,7 +234,7 @@ export class GlobalConfigService {
       const result = this.validateConfig(mergedConfig);
       if (result.config) {
         // 确定主要配置来源：优先使用配置文件而不是环境变量
-        let primarySource = '默认配置';
+        let primarySource = 'Default configuration';
         if (configSources.length > 0) {
           // 查找第一个文件配置来源
           const fileSource = configSources.find((source) =>
@@ -253,8 +253,8 @@ export class GlobalConfigService {
         errors: [
           {
             field: 'config',
-            message: `配置文件加载失败: ${error.message}`,
-            suggestion: '请检查配置文件格式是否正确',
+            message: `Failed to load configuration file: ${error.message}`,
+            suggestion: 'Please verify that the configuration file format is valid.',
             required: true,
           },
         ],
@@ -399,8 +399,8 @@ gateway:
       if (requireOpenAIKey) {
         errors.push({
           field: 'openai',
-          message: 'OpenAI配置缺失',
-          suggestion: '请添加openai配置节',
+          message: 'OpenAI configuration is missing',
+          suggestion: 'Add an openai configuration section.',
           required: true,
         });
       }
@@ -412,8 +412,8 @@ gateway:
       if (!trimmedApiKey && requireOpenAIKey) {
         errors.push({
           field: 'openai.apiKey',
-          message: 'API密钥为空',
-          suggestion: '请在配置文件中设置有效的API密钥',
+          message: 'API key is empty',
+          suggestion: 'Set a valid API key in the configuration file.',
           required: true,
         });
       }
@@ -421,19 +421,19 @@ gateway:
 
       // 验证baseURL
       if (!openaiConfig.baseURL) {
-        warnings.push('baseURL未设置，将使用默认值');
+        warnings.push('baseURL is not set; using the default value.');
         openaiConfig.baseURL = 'https://open.bigmodel.cn/api/paas/v4';
       }
 
       // 验证model
       if (!openaiConfig.model) {
-        warnings.push('model未设置，将使用默认值');
+        warnings.push('model is not set; using the default value.');
         openaiConfig.model = 'glm-4.5';
       }
 
       // 验证timeout
       if (!openaiConfig.timeout) {
-        warnings.push('timeout未设置，将使用默认值');
+        warnings.push('timeout is not set; using the default value.');
         openaiConfig.timeout = 1800000;
       }
     }
@@ -451,8 +451,8 @@ gateway:
     } else {
       errors.push({
         field: 'aiProvider',
-        message: `不支持的 aiProvider: ${aiProviderRaw}`,
-        suggestion: '仅支持 openai、codex 或 claudeCode',
+        message: `Unsupported aiProvider: ${aiProviderRaw}`,
+        suggestion: 'Only openai, codex, or claudeCode are supported.',
         required: true,
       });
       aiProvider = 'openai';
@@ -498,8 +498,8 @@ gateway:
           } else {
             errors.push({
               field: 'codex.apiKey',
-              message: 'Codex API密钥为空',
-              suggestion: '请在配置文件中设置 codex.apiKey',
+              message: 'Codex API key is empty',
+              suggestion: 'Set codex.apiKey in the configuration file.',
               required: true,
             });
           }
@@ -508,20 +508,20 @@ gateway:
         }
       } else {
         if (trimmedCodexKey) {
-          warnings.push('codex.apiKey 在 ChatGPT 模式下将被忽略');
+          warnings.push('codex.apiKey is ignored when ChatGPT mode is enabled.');
         }
         codexConfig.apiKey = undefined;
       }
       if (!codexConfig.baseURL) {
-        warnings.push('codex.baseURL未设置，将使用默认值');
+        warnings.push('codex.baseURL is not set; using the default value.');
         codexConfig.baseURL = 'https://chatgpt.com/backend-api/codex';
       }
       if (!codexConfig.model) {
-        warnings.push('codex.model未设置，将使用默认值');
+        warnings.push('codex.model is not set; using the default value.');
         codexConfig.model = 'gpt-5-codex';
       }
       if (!codexConfig.timeout) {
-        warnings.push('codex.timeout未设置，将使用默认值');
+        warnings.push('codex.timeout is not set; using the default value.');
         codexConfig.timeout = 1800000;
       }
       if (!codexConfig.reasoning) {
@@ -543,7 +543,7 @@ gateway:
             | 'high';
         } else {
           codexConfig.reasoning.effort = 'minimal';
-          warnings.push('codex.reasoning.effort无效，将使用默认值 minimal');
+          warnings.push('codex.reasoning.effort is invalid; defaulting to minimal.');
         }
 
         const summaryRaw = codexConfig.reasoning.summary;
@@ -556,7 +556,7 @@ gateway:
               | 'auto';
           } else {
             codexConfig.reasoning.summary = 'auto';
-            warnings.push('codex.reasoning.summary无效，将使用默认值 auto');
+            warnings.push('codex.reasoning.summary is invalid; defaulting to auto.');
           }
         } else {
           codexConfig.reasoning.summary = 'auto';
@@ -634,8 +634,8 @@ gateway:
       if (!trimmedKey) {
         errors.push({
           field: 'claudeCode.apiKey',
-          message: 'Claude Code API密钥为空',
-          suggestion: '请在配置文件中设置 claudeCode.apiKey',
+          message: 'Claude Code API key is empty',
+          suggestion: 'Set claudeCode.apiKey in the configuration file.',
           required: true,
         });
       } else {
@@ -643,17 +643,17 @@ gateway:
       }
 
       if (!claudeConfig.baseURL) {
-        warnings.push('claudeCode.baseURL未设置，将使用默认值');
+        warnings.push('claudeCode.baseURL is not set; using the default value.');
         claudeConfig.baseURL = 'https://open.bigmodel.cn/api/anthropic';
       }
 
       if (!claudeConfig.model) {
-        warnings.push('claudeCode.model未设置，将使用默认值');
+        warnings.push('claudeCode.model is not set; using the default value.');
         claudeConfig.model = 'claude-sonnet-4-20250514';
       }
 
       if (!claudeConfig.timeout) {
-        warnings.push('claudeCode.timeout未设置，将使用默认值');
+        warnings.push('claudeCode.timeout is not set; using the default value.');
         claudeConfig.timeout = 1800000;
       }
 
@@ -698,7 +698,7 @@ gateway:
     // 验证gateway配置
     let gatewayConfig: GatewayConfig | undefined = config.gateway;
     if (!gatewayConfig) {
-      warnings.push('gateway配置缺失，将使用默认值');
+      warnings.push('gateway configuration is missing; using default values.');
       gatewayConfig = {
         port: 23062,
         host: '0.0.0.0',
@@ -713,7 +713,7 @@ gateway:
     }
 
     if (!gatewayConfig.logDir) {
-      warnings.push('gateway.logDir未设置，将使用默认值');
+      warnings.push('gateway.logDir is not set; using the default value.');
       gatewayConfig.logDir = DEFAULT_GATEWAY_LOG_DIR;
     }
 
@@ -721,7 +721,7 @@ gateway:
 
     const parsedTimeout = Number(gatewayConfig.requestTimeout);
     if (!Number.isFinite(parsedTimeout) || parsedTimeout <= 0) {
-      warnings.push('gateway.requestTimeout无效，将使用默认值3600000毫秒');
+      warnings.push('gateway.requestTimeout is invalid; defaulting to 3600000 milliseconds.');
       gatewayConfig.requestTimeout = 3600000;
     } else {
       gatewayConfig.requestTimeout = parsedTimeout;

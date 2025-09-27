@@ -15,7 +15,7 @@ export interface VersionPromptContext {
 }
 
 const VERSION_FILENAME = 'version.json';
-const VERSION_CHECK_INTERVAL_MS = 20 * 60 * 60 * 1000; // 20 小时
+const VERSION_CHECK_INTERVAL_MS = 20 * 60 * 60 * 1000; // 20 hours
 const LATEST_VERSION_URL =
   'https://registry.npmjs.org/@kdump%2fgemini-any-llm/latest';
 const USER_AGENT = 'code-cli-any-llm-cli';
@@ -185,7 +185,7 @@ async function refreshVersionInfo(filePath: string): Promise<void> {
 
     await writeVersionInfo(filePath, info);
   } catch {
-    // 网络或文件系统错误不应影响 CLI 正常执行，忽略即可
+    // Network or filesystem issues should not block CLI execution; ignore.
   }
 }
 
@@ -235,9 +235,9 @@ export async function showUpdateBanner(currentVersion: string): Promise<void> {
   const command = buildUpgradeCommand();
   console.log('');
   console.log(
-    `✨ 检测到新版本！当前 ${currentVersion} → 最新 ${info.latestVersion}`,
+    `✨ New version available! Current ${currentVersion} → Latest ${info.latestVersion}`,
   );
-  console.log(`👉 运行 ${command} 完成升级。`);
+  console.log(`👉 Run ${command} to upgrade.`);
   console.log('');
 }
 

@@ -109,7 +109,7 @@ export class CodexProvider implements OnModuleInit {
     const config = this.configService.get<CodexConfig>('codex');
 
     if (!config) {
-      this.logger.log('Codex provider配置缺失，已禁用。');
+      this.logger.log('Codex provider configuration missing; disabling provider.');
       this.enabled = false;
       this.config = undefined;
       this.chatgptAuth = undefined;
@@ -136,7 +136,7 @@ export class CodexProvider implements OnModuleInit {
     if (authMode === 'ApiKey') {
       const apiKey = config.apiKey?.trim();
       if (!apiKey) {
-        this.logger.log('Codex provider 缺少 API Key，已禁用。');
+        this.logger.log('Codex provider is missing an API key; disabling provider.');
         this.enabled = false;
         this.config = undefined;
         this.chatgptAuth = undefined;
@@ -146,12 +146,12 @@ export class CodexProvider implements OnModuleInit {
       resolved.apiKey = apiKey;
       this.chatgptAuth = undefined;
       this.logger.log(
-        `Codex provider 以 ApiKey 模式初始化，模型：${resolved.model} (${resolved.baseURL})`,
+        `Codex provider initialized in ApiKey mode, model: ${resolved.model} (${resolved.baseURL})`,
       );
     } else {
       this.chatgptAuth = new ChatGPTAuthManager(this.logger);
       this.logger.log(
-        `Codex provider 以 ChatGPT 模式初始化，模型：${resolved.model} (${resolved.baseURL})`,
+        `Codex provider initialized in ChatGPT mode, model: ${resolved.model} (${resolved.baseURL})`,
       );
     }
 
@@ -291,7 +291,7 @@ export class CodexProvider implements OnModuleInit {
       this.config.authMode === 'ApiKey' &&
       (!this.config.apiKey || !this.config.apiKey.trim())
     ) {
-      throw new Error('Codex provider ApiKey 模式缺少 API Key。');
+      throw new Error('Codex provider ApiKey mode is missing an API key.');
     }
 
     const resolved: ResolvedCodexConfig = {
@@ -1196,14 +1196,14 @@ export class CodexProvider implements OnModuleInit {
 
     if (config.authMode === 'ApiKey') {
       if (!config.apiKey) {
-        throw new Error('Codex ApiKey 模式缺少 API Key');
+        throw new Error('Codex ApiKey mode is missing an API key');
       }
       headers.Authorization = `Bearer ${config.apiKey}`;
       return headers;
     }
 
     if (!this.chatgptAuth) {
-      throw new Error('ChatGPT 认证未初始化');
+      throw new Error('ChatGPT authentication is not initialized');
     }
 
     const { authorization, accountId } =

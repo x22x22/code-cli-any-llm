@@ -5,23 +5,22 @@ import { GlobalConfigService } from '../config/global-config.service';
 import { ensureGeminiSettings, runConfigWizard } from './cal-code';
 import { runGalRestart } from './cal-gateway';
 
-/**
- * 询问用户是否重启网关
- */
 async function askRestartGateway(): Promise<boolean> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  console.log('\n⚠️  警告：重启网关会导致所有正在进行的 Gemini CLI 对话中断！');
-  console.log('   重启网关不会停止正在运行的 Gemini CLI 进程。');
   console.log(
-    '   如果当前正在使用 Gemini CLI，请等待对话完全结束后再进行重启。',
+    '\n⚠️  Warning: Restarting the gateway will interrupt all ongoing Gemini CLI conversations!',
+  );
+  console.log('   Restarting the gateway will not stop active Gemini CLI processes.');
+  console.log(
+    '   If you are using Gemini CLI right now, wait for sessions to finish before restarting.',
   );
 
   return new Promise((resolve) => {
-    rl.question('\n是否重启网关以使配置生效？(y/N): ', (answer) => {
+    rl.question('\nRestart the gateway to apply the configuration? (y/N): ', (answer) => {
       rl.close();
       const normalized = answer.trim().toLowerCase();
       resolve(normalized === 'y' || normalized === 'yes');
@@ -39,7 +38,7 @@ export async function runGalAuth(): Promise<void> {
   const configService = new GlobalConfigService();
   const result = configService.loadGlobalConfig();
   if (!result.isValid) {
-    console.error('配置校验失败，请检查 ~/.code-cli-any-llm/config.yaml。');
+    console.error('Configuration validation failed. Check ~/.code-cli-any-llm/config.yaml.');
     result.errors?.forEach((error) => {
       if (error?.message) {
         console.error(`- ${error.message}`);
@@ -49,21 +48,25 @@ export async function runGalAuth(): Promise<void> {
     return;
   }
 
-  console.log('认证配置已更新。');
+  console.log('Authentication configuration updated.');
 
-  // 询问用户是否重启网关
+  // Ask the user whether to restart the gateway
   try {
     const shouldRestart = await askRestartGateway();
     if (shouldRestart) {
-      console.log('正在重启网关...');
+      console.log('Restarting the gateway...');
       await runGalRestart();
     } else {
-      console.log('\n提示：配置修改后需要重启网关才会生效。');
-      console.log('请手动执行：cal restart');
+      console.log(
+        '\nHeads-up: Restart the gateway for configuration changes to take effect.',
+      );
+      console.log('Please run: cal restart');
     }
   } catch (error) {
-    console.error('重启网关时发生错误:', error);
-    console.log('\n提示：配置修改后需要重启网关才会生效。');
-    console.log('请手动执行：cal restart');
+    console.error('An error occurred while restarting the gateway:', error);
+    console.log(
+      '\nHeads-up: Restart the gateway for configuration changes to take effect.',
+    );
+    console.log('Please run: cal restart');
   }
 }

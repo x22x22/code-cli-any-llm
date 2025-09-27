@@ -25,7 +25,7 @@ function loadHelpText(language: HelpLanguage = 'en'): string {
     return `\n${content}\n`;
   } catch {
     if (language === 'zh') {
-      return '\n帮助文档加载失败\n';
+      return '\nFailed to load help content\n';
     }
     return '\nFailed to load help content\n';
   }
@@ -99,7 +99,7 @@ async function main() {
       await runGalAuth();
       break;
     default:
-      console.log(`未知命令: ${command}`);
+      console.log(`Unknown command: ${command}`);
       showHelp('en');
       process.exitCode = 1;
   }
@@ -116,6 +116,6 @@ main().catch((error) => {
 
   const message = error instanceof Error ? error.message : String(error);
 
-  console.error('执行 cal 命令失败:', message);
+  console.error('Failed to execute cal command:', message);
   process.exit(exitCode);
 });

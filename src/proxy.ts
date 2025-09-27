@@ -92,7 +92,9 @@ function decompressBodyIfNeeded(
       }
     }
   } catch (e) {
-    writeLine(`[${nowISO()}] 解压响应体失败(${encoding}): ${String(e)}`);
+    writeLine(
+      `[${nowISO()}] Failed to decompress response body (${encoding}): ${String(e)}`,
+    );
   }
   return body; // 回退为原始内容
 }
@@ -133,12 +135,12 @@ app.use((req: Request & { id?: string }, _res, next) => {
   writeLine(headersToPrintable(req.headers));
   if (bodyBuf && bodyBuf.length) {
     writeLine('');
-    writeLine('-- 请求体开始 --');
+    writeLine('-- Request body begins --');
     writeLine(bodyText);
-    writeLine('-- 请求体结束 --');
+    writeLine('-- Request body ends --');
   } else {
     writeLine('');
-    writeLine('(无请求体)');
+    writeLine('(no request body)');
   }
   writeLine(`===== REQUEST END [${reqId}] ${nowISO()} =====`);
   next();
@@ -167,7 +169,9 @@ const exampleProxy = createProxyMiddleware({
         try {
           proxyReq.write(bodyBuf);
         } catch (e) {
-          writeLine(`[${nowISO()}] 写入代理请求体失败: ${String(e)}`);
+          writeLine(
+            `[${nowISO()}] Failed to write proxy request body: ${String(e)}`,
+          );
         }
       }
     },
@@ -189,7 +193,7 @@ const exampleProxy = createProxyMiddleware({
       // 打印响应起始行与头
       writeLine('');
       writeLine(`===== RESPONSE BEGIN [${reqId}] ${nowISO()} =====`);
-      writeLine(`状态: ${statusCode}${isSSE ? ' [SSE]' : ''}`);
+      writeLine(`Status: ${statusCode}${isSSE ? ' [SSE]' : ''}`);
       writeLine(headersToPrintable(proxyRes.headers));
 
       if (isSSE) {
@@ -200,16 +204,16 @@ const exampleProxy = createProxyMiddleware({
         if (contentEncoding && /gzip|br|deflate/i.test(contentEncoding)) {
           writeLine('');
           writeLine(
-            `[${nowISO()}] [SSE] 检测到压缩(${contentEncoding})，跳过内容解码，仅记录块到达与透传。`,
+            `[${nowISO()}] [SSE] Detected compression (${contentEncoding}); skipping content decoding and logging chunk delivery only.`,
           );
         }
         proxyRes.on('data', (chunk: Buffer) => {
           chunkIndex += 1;
           writeLine('');
-          writeLine(`[${nowISO()}] [SSE] ${reqId} 块#${chunkIndex}:`);
+          writeLine(`[${nowISO()}] [SSE] ${reqId} chunk #${chunkIndex}:`);
           if (contentEncoding && /gzip|br|deflate/i.test(contentEncoding)) {
             // 无法在不破坏边界的情况下按块解压，避免乱码，直接跳过正文
-            writeLine('(内容被压缩，未解码)');
+            writeLine('(content compressed; not decoded)');
           } else {
             // 即时打印每个 SSE 块（跨块字符用 StringDecoder 处理）
             const text = decoder.write(chunk);
@@ -223,16 +227,20 @@ const exampleProxy = createProxyMiddleware({
           const remain = decoder.end();
           if (remain) writeRaw(remain);
           writeLine('');
-          writeLine(`[${nowISO()}] [SSE] ${reqId} 结束，共 ${chunkIndex} 块`);
+          writeLine(
+            `[${nowISO()}] [SSE] ${reqId} complete; ${chunkIndex} chunks total`,
+          );
           writeLine(`===== RESPONSE END [${reqId}] ${nowISO()} =====`);
         });
         proxyRes.on('error', (err) => {
-          writeLine(`[${nowISO()}] [SSE] ${reqId} 响应流错误: ${String(err)}`);
+          writeLine(
+            `[${nowISO()}] [SSE] ${reqId} response stream error: ${String(err)}`,
+          );
           try {
             res.end();
           } catch (streamError) {
             writeLine(
-              `[${nowISO()}] [SSE] ${reqId} 终止响应时异常: ${String(
+              `[${nowISO()}] [SSE] ${reqId} exception while terminating response: ${String(
                 streamError,
               )}`,
             );
@@ -254,22 +262,24 @@ const exampleProxy = createProxyMiddleware({
           const bodyText = bufferToString(body, charset);
           if (body.length) {
             writeLine('');
-            writeLine('-- 响应体开始 --');
+            writeLine('-- Response body begins --');
             writeLine(bodyText);
-            writeLine('-- 响应体结束 --');
+            writeLine('-- Response body ends --');
           } else {
             writeLine('');
-            writeLine('(无响应体)');
+            writeLine('(no response body)');
           }
           writeLine(`===== RESPONSE END [${reqId}] ${nowISO()} =====`);
         });
         proxyRes.on('error', (err) => {
-          writeLine(`[${nowISO()}] ${reqId} 响应流错误: ${String(err)}`);
+          writeLine(
+            `[${nowISO()}] ${reqId} response stream error: ${String(err)}`,
+          );
           try {
             res.end();
           } catch (streamError) {
             writeLine(
-              `[${nowISO()}] ${reqId} 终止响应时异常: ${String(streamError)}`,
+              `[${nowISO()}] ${reqId} exception while terminating response: ${String(streamError)}`,
             );
           }
         });
@@ -285,12 +295,12 @@ const PORT = Number(process.env.CAL_PORT || 3000);
 app
   .listen(PORT, () => {
     const msg = [
-      '================ 代理已启动 ================',
-      `[${nowISO()}] 服务监听: http://localhost:${PORT}`,
-      `[${nowISO()}] 路由前缀: /proxy`,
-      `[${nowISO()}] 目标地址: ${target}`,
-      `[${nowISO()}] 日志文件: ${LOG_FILE}`,
-      `[${nowISO()}] 日志: 已启用完整请求/响应日志 (含 SSE)`,
+      '================ Proxy started ================',
+      `[${nowISO()}] Listening at: http://localhost:${PORT}`,
+      `[${nowISO()}] Route prefix: /proxy`,
+      `[${nowISO()}] Target URL: ${target}`,
+      `[${nowISO()}] Log file: ${LOG_FILE}`,
+      `[${nowISO()}] Logging: full request/response logging enabled (including SSE)`,
       '============================================',
     ];
     for (const line of msg) {
@@ -299,20 +309,20 @@ app
     }
   })
   .on('error', (err) => {
-    const info = `[${nowISO()}] 启动失败: ${String(err)}`;
+    const info = `[${nowISO()}] Startup failed: ${String(err)}`;
     console.error(info);
     writeLine(info);
   });
 
 process.on('SIGINT', () => {
-  writeLine(`[${nowISO()}] 进程收到 SIGINT, 准备退出...`);
+  writeLine(`[${nowISO()}] Received SIGINT, preparing to exit...`);
   logStream.end(() => {
     process.exit(0);
   });
 });
 
 process.on('SIGTERM', () => {
-  writeLine(`[${nowISO()}] 进程收到 SIGTERM, 准备退出...`);
+  writeLine(`[${nowISO()}] Received SIGTERM, preparing to exit...`);
   logStream.end(() => {
     process.exit(0);
   });

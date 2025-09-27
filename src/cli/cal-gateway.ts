@@ -99,13 +99,13 @@ async function prepareGatewayContext(
     configResult = configService.loadGlobalConfig();
 
     if (!configResult.isValid) {
-      console.error('配置仍然无效，请检查 ~/.code-cli-any-llm/config.yaml');
+      console.error('Configuration is still invalid. Check ~/.code-cli-any-llm/config.yaml.');
       process.exit(1);
     }
   }
 
   if (!configResult.config) {
-    console.error('无法加载全局配置，请检查是否具有读写权限。');
+    console.error('Unable to load the global configuration. Verify read/write permissions.');
     process.exit(1);
   }
 
@@ -123,15 +123,15 @@ async function prepareGatewayContext(
         geminiApiKey = 'chatgpt-mode';
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
-        console.error(`初始化 ChatGPT 凭据失败: ${reason}`);
-        console.error('请重新运行 `pnpm run cal auth` 并完成浏览器登录。');
+        console.error(`Failed to initialize ChatGPT credentials: ${reason}`);
+        console.error('Run `pnpm run cal auth` again and complete the browser sign-in.');
         process.exit(1);
       }
     } else {
       geminiApiKey = readGlobalApiKey(configFile);
       if (!geminiApiKey) {
         console.error(
-          '未能在 ~/.code-cli-any-llm/config.yaml 中找到有效的 apikey',
+          'No valid API key found in ~/.code-cli-any-llm/config.yaml.',
         );
         process.exit(1);
       }
@@ -158,29 +158,29 @@ export async function runGalStart(): Promise<void> {
 
   const currentStatus = await fetchGatewayHealth(gatewayHost, gatewayPort);
   if (currentStatus.healthy) {
-    console.log('网关已在运行。');
-    outputGatewayStatus('当前状态', context, currentStatus);
+    console.log('Gateway is already running.');
+    outputGatewayStatus('Current status', context, currentStatus);
     return;
   }
 
   const recordedPid = readGatewayPidInfo(context.configDir);
   if (recordedPid && isPidRunning(recordedPid.pid)) {
     console.log(
-      `检测到历史网关进程 (PID ${recordedPid.pid}) 状态异常，准备重启...`,
+      `Detected a previous gateway process (PID ${recordedPid.pid}) in an unhealthy state. Preparing to restart...`,
     );
     const stopResult = await stopGatewayProcess(context);
     if (stopResult.outcome === 'failed') {
       console.error(
-        `无法终止现有网关进程: ${stopResult.error?.message ?? '未知错误'}`,
+        `Unable to terminate the existing gateway process: ${stopResult.error?.message ?? 'unknown error'}`,
       );
       process.exit(1);
     }
   }
 
-  console.log('正在启动网关组件...');
+  console.log('Starting gateway components...');
   const pid = startGatewayProcess(context);
   if (pid && pid > 0) {
-    console.log(`已启动网关进程 (PID ${pid})，等待健康检查...`);
+    console.log(`Gateway process started (PID ${pid}); waiting for health check...`);
   }
 
   const { ready, lastStatus } = await waitForGatewayHealthy(
@@ -190,13 +190,13 @@ export async function runGalStart(): Promise<void> {
 
   if (!ready) {
     logGatewayFailure(lastStatus);
-    console.error('网关未在预期时间内就绪，请检查部署状态后重试。');
+    console.error('The gateway did not become ready in time. Verify the deployment status and try again.');
     process.exit(1);
   }
 
-  console.log(`网关已就绪，监听地址 http://${gatewayHost}:${gatewayPort}`);
+  console.log(`Gateway is ready and listening at http://${gatewayHost}:${gatewayPort}`);
   if (lastStatus) {
-    outputGatewayStatus('启动结果', context, lastStatus);
+    outputGatewayStatus('Startup result', context, lastStatus);
   }
 }
 
@@ -211,25 +211,25 @@ export async function runGalStop(): Promise<void> {
 
   switch (result.outcome) {
     case 'stopped':
-      console.log(`已停止网关进程 (PID ${result.pid}).`);
+      console.log(`Gateway process stopped (PID ${result.pid}).`);
       break;
     case 'already_stopped':
-      console.log(`记录的网关进程 (PID ${result.pid}) 已退出。`);
+      console.log(`Recorded gateway process (PID ${result.pid}) has already exited.`);
       break;
     case 'not_found':
-      console.log('未找到网关进程记录，无需执行停止操作。');
+      console.log('No gateway process record found; nothing to stop.');
       break;
     case 'failed':
     default:
-      console.error(`停止网关进程失败: ${result.error?.message ?? '未知错误'}`);
+      console.error(`Failed to stop the gateway process: ${result.error?.message ?? 'unknown error'}`);
       process.exit(1);
   }
 }
 
 export async function runGalRestart(): Promise<void> {
-  console.log('正在重启网关...');
+  console.log('Restarting the gateway...');
 
-  // 先执行停止操作
+  // Stop the gateway first
   const stopContext = await prepareGatewayContext({
     allowWizard: false,
     requireApiKey: false,
@@ -240,13 +240,13 @@ export async function runGalRestart(): Promise<void> {
 
   switch (stopResult.outcome) {
     case 'stopped':
-      console.log(`已停止网关进程 (PID ${stopResult.pid}).`);
+      console.log(`Gateway process stopped (PID ${stopResult.pid}).`);
       break;
     case 'already_stopped':
-      console.log(`记录的网关进程 (PID ${stopResult.pid}) 已退出。`);
+      console.log(`Recorded gateway process (PID ${stopResult.pid}) has already exited.`);
       break;
     case 'not_found':
-      console.log('未找到网关进程记录，尝试扫描端口并终止残留进程...');
+      console.log('No gateway process record found; scanning ports to kill lingering processes...');
       await forceKillProcesses({
         usePortFallback: true,
         silent: true,
@@ -254,52 +254,52 @@ export async function runGalRestart(): Promise<void> {
       break;
     case 'failed':
       console.error(
-        `停止网关进程失败: ${stopResult.error?.message ?? '未知错误'}`,
+        `Failed to stop the gateway process: ${stopResult.error?.message ?? 'unknown error'}`,
       );
-      console.log('尝试继续启动新的网关进程...');
+      console.log('Attempting to start a new gateway process regardless...');
       break;
   }
 
-  // 短暂等待确保进程完全停止
+  // Brief pause to ensure the process fully stops
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  // 然后执行启动操作
-  console.log('正在启动网关...');
+  // Then start the gateway
+  console.log('Starting gateway...');
   const startContext = await prepareGatewayContext();
   const { gatewayHost, gatewayPort } = startContext;
 
-  // 检查网关是否已经在运行（可能是停止失败但进程仍在运行的情况）
+  // Check if the gateway is already running (stop may have failed)
   const currentStatus = await fetchGatewayHealth(gatewayHost, gatewayPort);
   if (currentStatus.healthy) {
-    console.log('网关已在运行。');
-    outputGatewayStatus('重启结果', startContext, currentStatus);
+    console.log('Gateway is already running.');
+    outputGatewayStatus('Restart result', startContext, currentStatus);
     return;
   }
 
-  // 启动网关进程
-  console.log('正在启动网关组件...');
+  // Start the gateway process
+  console.log('Starting gateway components...');
   const pid = startGatewayProcess(startContext);
   if (pid && pid > 0) {
-    console.log(`已启动网关进程 (PID ${pid})，等待健康检查...`);
+    console.log(`Gateway process started (PID ${pid}); waiting for health check...`);
   }
 
-  // 等待网关服务就绪
+  // Wait for the gateway to become healthy
   const { ready, lastStatus } = await waitForGatewayHealthy(
     gatewayHost,
     gatewayPort,
   );
 
   if (!ready) {
-    console.error('网关未在预期时间内就绪，请检查部署状态后重试。');
+    console.error('The gateway did not become ready in time. Verify the deployment status and try again.');
     process.exit(1);
   }
 
-  console.log(`网关已就绪，监听地址 http://${gatewayHost}:${gatewayPort}`);
+  console.log(`Gateway is ready and listening at http://${gatewayHost}:${gatewayPort}`);
   if (lastStatus) {
-    outputGatewayStatus('重启结果', startContext, lastStatus);
+    outputGatewayStatus('Restart result', startContext, lastStatus);
   }
 
-  console.log('网关重启完成。');
+  console.log('Gateway restart complete.');
 }
 
 export async function runGalStatus(): Promise<void> {
@@ -314,7 +314,7 @@ export async function runGalStatus(): Promise<void> {
     context.gatewayPort,
   );
 
-  outputGatewayStatus('网关状态', context, status);
+  outputGatewayStatus('Gateway status', context, status);
 }
 
 /**
@@ -331,7 +331,7 @@ async function forceKillProcesses(
   const { usePortFallback = true, silent = false } = options;
 
   if (!silent) {
-    console.log('正在查找并终止僵尸进程...');
+    console.log('Searching for and terminating zombie processes...');
   }
 
   const projectRoot = process.cwd();
@@ -342,10 +342,10 @@ async function forceKillProcesses(
   if (configResult.isValid && configResult.config) {
     gatewayPort = configResult.config.gateway.port;
     if (!silent) {
-      console.log(`从配置文件读取到网关端口: ${gatewayPort}`);
+      console.log(`Gateway port read from configuration: ${gatewayPort}`);
     }
   } else if (!silent) {
-    console.log(`配置文件无效，使用默认端口: ${gatewayPort}`);
+    console.log(`Configuration invalid; using default port: ${gatewayPort}`);
   }
 
   const processesToKill: ProcessInfo[] = [];
@@ -357,14 +357,14 @@ async function forceKillProcesses(
       if (!Number.isNaN(pid) && pid > 0) {
         processesToKill.push({ pid, source: 'pidfile' });
         if (!silent) {
-          console.log(`从PID文件发现进程: ${pid}`);
+          console.log(`Process discovered from PID file: ${pid}`);
         }
       }
     }
   } catch (error) {
     if (!silent) {
       console.error(
-        '读取PID文件错误:',
+        'Failed to read PID file:',
         error instanceof Error ? error.message : String(error),
       );
     }
@@ -384,7 +384,7 @@ async function forceKillProcesses(
         if (!Number.isNaN(pid) && pid > 0) {
           processesToKill.push({ pid, source: 'port' });
           if (!silent) {
-            console.log(`从端口 ${gatewayPort} 发现进程: ${pid}`);
+            console.log(`Process discovered on port ${gatewayPort}: ${pid}`);
           }
         }
       }
@@ -413,7 +413,7 @@ async function forceKillProcesses(
           if (!Number.isNaN(pid) && pid > 0) {
             processesToKill.push({ pid, source: 'process_search' });
             if (!silent) {
-              console.log(`从进程搜索发现运行中的进程: ${pid}`);
+              console.log(`Process discovered via search: ${pid}`);
             }
             break;
           }
@@ -433,19 +433,19 @@ async function forceKillProcesses(
       try {
         fs.unlinkSync(pidFile);
         if (!silent) {
-          console.log('PID文件已删除');
+          console.log('PID file removed');
         }
       } catch (error) {
         if (!silent) {
           console.error(
-            '删除PID文件失败:',
+            'Failed to remove PID file:',
             error instanceof Error ? error.message : String(error),
           );
         }
       }
     }
   } else if (!silent) {
-    console.log('未发现运行中的开发进程');
+    console.log('No running development processes found.');
   }
 
   checkHangingProcesses();
@@ -457,7 +457,7 @@ async function forceKillProcesses(
 async function killProcess(pid: number): Promise<void> {
   try {
     // Try graceful shutdown first
-    console.log(`尝试优雅关闭进程 ${pid}...`);
+    console.log(`Attempting graceful shutdown of process ${pid}...`);
     process.kill(pid, 'SIGTERM');
 
     // Wait for graceful shutdown with timeout
@@ -468,11 +468,11 @@ async function killProcess(pid: number): Promise<void> {
         try {
           // Check if process is still running
           process.kill(pid, 0); // This throws if process doesn't exist
-          console.log(`进程 ${pid} 仍在运行，强制终止...`);
+          console.log(`Process ${pid} is still running; forcing termination...`);
           process.kill(pid, 'SIGKILL');
-          console.log(`进程 ${pid} 已强制终止`);
+          console.log(`Process ${pid} terminated forcibly.`);
         } catch {
-          console.log(`进程 ${pid} 已终止`);
+          console.log(`Process ${pid} has already exited.`);
         }
         resolve();
       }, gracefulTimeout);
@@ -483,7 +483,7 @@ async function killProcess(pid: number): Promise<void> {
           process.kill(pid, 0);
         } catch {
           // Process no longer exists
-          console.log(`进程 ${pid} 已优雅关闭`);
+          console.log(`Process ${pid} shut down gracefully.`);
           clearTimeout(timeoutId);
           clearInterval(checkInterval);
           resolve();
@@ -492,7 +492,7 @@ async function killProcess(pid: number): Promise<void> {
     });
   } catch (error) {
     console.error(
-      `终止进程 ${pid} 失败:`,
+      `Failed to terminate process ${pid}:`,
       error instanceof Error ? error.message : String(error),
     );
   }
@@ -512,9 +512,9 @@ function checkHangingProcesses(): void {
     );
 
     if (hangingProcesses.trim()) {
-      console.log('\n发现悬挂进程:');
+      console.log('\nDetected hanging processes:');
       console.log(hangingProcesses);
-      console.log('\n你可能需要手动终止这些进程:');
+      console.log('\nYou may need to terminate these processes manually:');
       console.log('  pkill -f "node.*code-cli-any-llm"');
     }
   } catch {
@@ -550,7 +550,7 @@ export async function runConfigWizard(configFile: string): Promise<void> {
       const content = fs.readFileSync(configFile, 'utf8');
       existingConfig = yaml.load(content) ?? {};
     } catch {
-      console.warn('读取现有配置失败，将写入新配置。');
+      console.warn('Failed to read the existing configuration; writing a fresh configuration.');
       existingConfig = {};
     }
   }
@@ -568,11 +568,11 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     output: process.stdout,
   });
 
-  console.log('首次使用，请填写必要的 OpenAI 配置：');
+  console.log('First-time setup: provide the required OpenAI configuration values.');
 
   let baseURL = await ask(
     rl,
-    'OpenAI Base URL (为空将使用默认值 https://open.bigmodel.cn/api/paas/v4)',
+    'OpenAI Base URL (leave blank for https://open.bigmodel.cn/api/paas/v4)',
     existingConfig.openai.baseURL,
   );
   if (!baseURL) {
@@ -581,7 +581,7 @@ export async function runConfigWizard(configFile: string): Promise<void> {
 
   let model = await ask(
     rl,
-    '默认模型 (为空将使用默认值 glm-4.5)',
+    'Default model (leave blank for glm-4.5)',
     existingConfig.openai.model,
   );
   if (!model) {
@@ -596,19 +596,19 @@ export async function runConfigWizard(configFile: string): Promise<void> {
 
   const apiModeRaw = await ask(
     rl,
-    'Gateway API 模式 (gemini/openai，默认 gemini)',
+    'Gateway API mode (gemini/openai, default gemini)',
     existingConfig.gateway.apiMode,
   );
 
   const cliModeRaw = await ask(
     rl,
-    '默认 CLI 模式 (gemini/opencode/crush，默认 gemini)',
+    'Default CLI mode (gemini/opencode/crush, default gemini)',
     existingConfig.gateway.cliMode,
   );
 
   const gatewayApiKeyRaw = await ask(
     rl,
-    'Gateway API Key (可选，用于 OpenAI 兼容伪装层)',
+    'Gateway API key (optional, used for OpenAI compatibility shims)',
     existingConfig.gateway.apiKey,
   );
 
@@ -632,9 +632,9 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     });
     fs.writeFileSync(configFile, yamlContent, { mode: 0o600 });
 
-    console.log(`配置已写入 ${configFile}`);
+    console.log(`Configuration written to ${configFile}`);
   } catch (error) {
-    console.error('写入配置失败:', error);
+    console.error('Failed to write configuration:', error);
     throw error;
   }
 }
@@ -670,7 +670,7 @@ async function askRequired(
       return value;
     }
 
-    console.log('该字段不能为空，请重新输入。');
+    console.log('This field cannot be empty. Please try again.');
   }
 }
 
@@ -702,7 +702,7 @@ function startGatewayProcess(context: GatewayContext): number | undefined {
   const entry = path.join(context.projectRoot, 'dist', 'main.js');
 
   if (!fs.existsSync(entry)) {
-    console.error('未找到 dist/main.js，请确认服务端已完成部署构建后再试。');
+    console.error('dist/main.js not found. Confirm the server build has completed before retrying.');
     process.exit(1);
   }
 
@@ -783,7 +783,7 @@ async function stopGatewayProcess(
     return {
       outcome: 'failed',
       pid,
-      error: new Error('网关进程在超时时间内未退出'),
+      error: new Error('Gateway process did not exit before the timeout'),
     };
   }
 
@@ -813,15 +813,15 @@ function outputGatewayStatus(
     }
   }
 
-  console.log(`${title}: ${status.healthy ? '健康' : '异常'}`);
-  console.log(`健康检查: ${healthUrl}`);
+  console.log(`${title}: ${status.healthy ? 'healthy' : 'unhealthy'}`);
+  console.log(`Health check: ${healthUrl}`);
 
   if (runningPid) {
-    console.log(`进程 PID: ${runningPid} (运行中)`);
+    console.log(`Process PID: ${runningPid} (running)`);
   } else if (pidInfo?.pid) {
-    console.log(`进程 PID: ${pidInfo.pid} (已退出)`);
+    console.log(`Process PID: ${pidInfo.pid} (exited)`);
   } else {
-    console.log('进程 PID: 未记录');
+    console.log('Process PID: not recorded');
   }
 
   const details = formatStatusDetails(status);
@@ -834,29 +834,29 @@ function formatStatusDetails(status: GatewayHealthStatus): string[] {
   const lines: string[] = [];
 
   if (status.message) {
-    lines.push(`状态消息: ${status.message}`);
+    lines.push(`Status message: ${status.message}`);
   }
 
   if (status.providerError) {
-    lines.push(`上游信息: ${status.providerError}`);
+    lines.push(`Upstream message: ${status.providerError}`);
   }
 
   if (status.statusCode && status.statusCode !== 200) {
-    lines.push(`HTTP 状态码: ${status.statusCode}`);
+    lines.push(`HTTP status code: ${status.statusCode}`);
   }
 
   const extraErrors = collectErrorMessages(status.payload?.errors);
   if (extraErrors.length > 0) {
-    lines.push(`错误详情: ${extraErrors.join('; ')}`);
+    lines.push(`Error details: ${extraErrors.join('; ')}`);
   }
 
   const provider = status.payload?.provider;
   if (isRecord(provider)) {
-    lines.push(`提供方响应: ${JSON.stringify(provider)}`);
+    lines.push(`Provider response: ${JSON.stringify(provider)}`);
   }
 
   if (!status.healthy && status.rawBody) {
-    lines.push(`原始响应: ${status.rawBody}`);
+    lines.push(`Raw response: ${status.rawBody}`);
   }
 
   return lines;
@@ -1061,7 +1061,7 @@ function fetchGatewayHealth(
     });
     request.on('timeout', () => {
       request.destroy();
-      resolve({ healthy: false, message: '健康检查请求超时' });
+      resolve({ healthy: false, message: 'Health check request timed out' });
     });
   });
 }
@@ -1174,30 +1174,30 @@ function isNonEmptyString(value: unknown): value is string {
 
 function logGatewayFailure(status?: GatewayHealthStatus): void {
   if (!status) {
-    console.error('网关健康检查失败，未获取到返回信息。');
+    console.error('Gateway health check failed with no response.');
     return;
   }
 
   if (status.message) {
-    console.error(`网关返回信息: ${status.message}`);
+    console.error(`Gateway response: ${status.message}`);
   } else if (status.statusCode) {
-    console.error(`网关健康检查失败，HTTP 状态码 ${status.statusCode}`);
+    console.error(`Gateway health check failed with HTTP status ${status.statusCode}`);
   } else {
-    console.error('网关健康检查失败，但未收到额外信息。');
+    console.error('Gateway health check failed with no additional details.');
   }
 
   const providerError = status.providerError;
   if (providerError && providerError !== status.message) {
-    console.error(`上游错误信息: ${providerError}`);
+    console.error(`Upstream error: ${providerError}`);
   }
 
   const extraErrors = collectErrorMessages(status.payload?.errors);
   if (extraErrors.length > 0) {
-    console.error(`网关错误列表: ${extraErrors.join('; ')}`);
+    console.error(`Gateway error list: ${extraErrors.join('; ')}`);
   }
 
   if (status.rawBody && !status.message && !providerError) {
-    console.error(`网关响应内容: ${status.rawBody}`);
+    console.error(`Gateway response body: ${status.rawBody}`);
   }
 }
 

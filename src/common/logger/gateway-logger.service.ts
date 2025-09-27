@@ -297,7 +297,7 @@ export class GatewayLoggerService extends ConsoleLogger {
     } catch (error) {
       // 如果重命名失败，保留旧文件继续写入，避免阻塞网关启动
       process.stderr.write(
-        `网关日志文件重命名失败，将继续使用原文件: ${(error as Error).message}\n`,
+        `Failed to rename gateway log file, continuing with the existing file: ${(error as Error).message}\n`,
       );
     }
   }

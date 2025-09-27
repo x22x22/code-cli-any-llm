@@ -87,7 +87,7 @@ function readJsonConfigFile(filePath: string): Record<string, any> {
     }
   } catch (error) {
     console.warn(
-      `读取配置文件失败 (${filePath})：${(error as Error).message}，将使用默认模板。`,
+      `Failed to read configuration file (${filePath}): ${(error as Error).message}. Using the default template instead.`,
     );
   }
   return {};
@@ -178,42 +178,42 @@ async function handleUpgradePrompt(): Promise<void> {
 
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     console.log(
-      `检测到新版本 ${context.info.latestVersion}，当前为非交互环境，默认暂不更新。`,
+      `Detected new version ${context.info.latestVersion}, but running in a non-interactive environment. Skipping update by default.`,
     );
     return;
   }
 
   console.log('');
   console.log(
-    `✨ 检测到新版本！当前 ${currentVersion} → 最新 ${context.info.latestVersion}`,
+    `✨ New version available! Current ${currentVersion} → Latest ${context.info.latestVersion}`,
   );
   console.log(
-    '请选择操作：y(现在更新) / n(暂不更新) / skip(跳过本次版本) / off(关闭自动检查)',
+    'Choose an action: y(update now) / n(skip for now) / skip(ignore this version) / off(disable future checks)',
   );
 
   while (true) {
-    const answerRaw = await promptUser('[Y/n/skip/off] (默认Y): ');
+    const answerRaw = await promptUser('[Y/n/skip/off] (default Y): ');
     const normalized = (answerRaw || 'y').toLowerCase();
 
     switch (normalized) {
       case 'y':
       case 'yes': {
         const command = buildUpgradeCommand();
-        console.log(`正在执行升级命令: ${command}`);
+        console.log(`Running upgrade command: ${command}`);
         const succeeded = await runUpgradeCommand(command);
         if (succeeded) {
-          console.log('升级完成，请重新运行 `cal code` 以使用最新版本。');
+          console.log('Upgrade complete. Restart `cal code` to use the latest version.');
           process.exit(0);
         } else {
-          console.error('自动升级失败，可稍后手动执行以下命令完成升级:');
+          console.error('Automatic upgrade failed. Run the command manually to finish updating:');
           console.error(`  ${command}`);
-          console.log('将继续使用当前版本启动。');
+          console.log('Continuing with the current version.');
         }
         return;
       }
       case 'n':
       case 'no':
-        console.log('已选择暂不更新，将继续使用当前版本。');
+        console.log('Skipping the update for now; continuing with the current version.');
         return;
       case 'skip':
       case 's': {
@@ -222,7 +222,7 @@ async function handleUpgradePrompt(): Promise<void> {
         context.info.skipVersions = Array.from(skipSet);
         await persistVersionInfo(context);
         console.log(
-          `已跳过版本 ${context.info.latestVersion}，后续检测到新版本时会再次提醒。`,
+          `Version ${context.info.latestVersion} has been skipped. You will be notified again when a newer version is available.`,
         );
         return;
       }
@@ -230,20 +230,20 @@ async function handleUpgradePrompt(): Promise<void> {
         context.info.disableCheck = true;
         await persistVersionInfo(context);
         process.env.CAL_DISABLE_UPDATE_CHECK = '1';
-        console.log('已关闭自动更新检查，正在重启网关以应用配置...');
+        console.log('Automatic update checks disabled. Restarting the gateway to apply the setting...');
         try {
           await runGalRestart();
-          console.log('网关重启完成，请重新运行 `cal code`。');
+          console.log('Gateway restart complete. Run `cal code` again.');
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
-          console.error(`重启网关失败: ${message}`);
+          console.error(`Gateway restart failed: ${message}`);
         }
         process.exit(0);
         return;
       }
       default:
-        console.log('无效选项，请输入 y/n/skip/off。');
+        console.log('Invalid option. Enter y/n/skip/off.');
     }
   }
 }
@@ -273,13 +273,13 @@ async function prepareGatewayContext(
     configWasUpdated = true;
 
     if (!configResult.isValid) {
-      console.error('配置仍然无效，请检查 ~/.code-cli-any-llm/config.yaml');
+      console.error('Configuration is still invalid. Check ~/.code-cli-any-llm/config.yaml.');
       process.exit(1);
     }
   }
 
   if (!configResult.config) {
-    console.error('无法加载全局配置，请检查是否具有读写权限。');
+    console.error('Unable to load the global configuration. Verify read/write permissions.');
     process.exit(1);
   }
 
@@ -325,15 +325,15 @@ async function prepareGatewayContext(
         geminiApiKey = 'chatgpt-mode';
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
-        console.error(`初始化 ChatGPT 凭据失败: ${reason}`);
-        console.error('请重新运行 `pnpm run cal auth` 并完成浏览器登录。');
+        console.error(`Failed to initialize ChatGPT credentials: ${reason}`);
+        console.error('Run `pnpm run cal auth` again and complete the browser sign-in.');
         process.exit(1);
       }
     } else {
       geminiApiKey = readGlobalApiKey(configFile);
       if (!geminiApiKey) {
         console.error(
-          '未能在 ~/.code-cli-any-llm/config.yaml 中找到有效的 apikey',
+          'No valid API key found in ~/.code-cli-any-llm/config.yaml.',
         );
         process.exit(1);
       }
@@ -392,7 +392,7 @@ function extractCliModeFromArgs(args: string[]): CliModeParseResult {
       const next = args[i + 1];
       const parsed = parseCliModeValue(next);
       if (!parsed) {
-        console.error('无效的 --cli-mode 参数，需要 gemini / opencode / crush');
+        console.error('Invalid value for --cli-mode. Use gemini / opencode / crush.');
         process.exit(1);
       }
       override = parsed;
@@ -404,7 +404,7 @@ function extractCliModeFromArgs(args: string[]): CliModeParseResult {
       const value = arg.split('=')[1];
       const parsed = parseCliModeValue(value);
       if (!parsed) {
-        console.error('无效的 --cli-mode 参数，需要 gemini / opencode / crush');
+        console.error('Invalid value for --cli-mode. Use gemini / opencode / crush.');
         process.exit(1);
       }
       override = parsed;
@@ -434,27 +434,27 @@ export async function runGalCode(args: string[]): Promise<void> {
   const clientHost = resolveClientHost(gatewayHost);
 
   if (configWasUpdated) {
-    console.log('检测到配置更新，正在重启网关...');
+    console.log('Configuration updated; restarting the gateway...');
     try {
       await runGalRestart();
-      console.log('网关已重新启动。');
+      console.log('Gateway restarted.');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`重启网关失败: ${message}`);
-      console.error('请手动运行 `pnpm run cal restart` 后重试。');
+      console.error(`Gateway restart failed: ${message}`);
+      console.error('Run `pnpm run cal restart` manually and try again.');
       process.exit(1);
     }
   }
 
   if ((cliMode === 'opencode' || cliMode === 'crush') && apiMode !== 'openai') {
     console.error(
-      '当前网关处于 Gemini 模式，无法提供 OpenAI 兼容接口。请在配置中将 gateway.apiMode 调整为 openai 后重试。',
+      'The gateway is in Gemini mode and cannot provide the OpenAI-compatible endpoint. Set gateway.apiMode to openai in the configuration and retry.',
     );
     process.exit(1);
   }
 
   if (!(await isGatewayHealthy(clientHost, gatewayPort))) {
-    console.log('检测到网关未运行，正在后台启动服务...');
+    console.log('Gateway appears offline; starting the service in the background...');
     startGatewayProcess(context);
 
     const { ready, lastStatus } = await waitForGatewayHealthy(
@@ -463,7 +463,7 @@ export async function runGalCode(args: string[]): Promise<void> {
     );
     if (!ready) {
       logGatewayFailure(lastStatus);
-      console.error('网关未在预期时间内就绪，请检查部署状态后重试。');
+      console.error('The gateway did not become ready in time. Verify the deployment status and try again.');
       process.exit(1);
     }
   }
@@ -557,7 +557,7 @@ export async function runConfigWizard(configFile: string): Promise<void> {
         existingConfig = parsed as Partial<GlobalConfig>;
       }
     } catch {
-      console.warn('读取现有配置失败，将写入新配置。');
+      console.warn('Failed to read the existing configuration; writing a fresh configuration.');
       existingConfig = {};
     }
   }
@@ -574,7 +574,7 @@ export async function runConfigWizard(configFile: string): Promise<void> {
   )
     ? (existingProvider as (typeof providerOptions)[number])
     : 'openai';
-  console.log('请选择要配置的 AI Provider：');
+  console.log('Select the AI provider to configure:');
   const aiProvider = await askChoice(
     rl,
     'AI Provider',
@@ -585,16 +585,16 @@ export async function runConfigWizard(configFile: string): Promise<void> {
   existingConfig.aiProvider = aiProvider;
 
   if (aiProvider === 'openai') {
-    console.log('\n请填写 OpenAI 配置：');
+    console.log('\nEnter the OpenAI configuration:');
     existingConfig.openai = await configureOpenAI(
       rl,
       existingConfig.openai ?? {},
     );
   } else if (aiProvider === 'codex') {
-    console.log('\n请填写 Codex 配置：');
+    console.log('\nEnter the Codex configuration:');
     existingConfig.codex = await configureCodex(rl, existingConfig.codex ?? {});
   } else {
-    console.log('\n请填写 Claude Code 配置：');
+    console.log('\nEnter the Claude Code configuration:');
     existingConfig.claudeCode = await configureClaudeCode(
       rl,
       existingConfig.claudeCode ?? {},
@@ -610,9 +610,9 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     });
     fs.writeFileSync(configFile, yamlContent, { mode: 0o600 });
 
-    console.log(`配置已写入 ${configFile}`);
+    console.log(`Configuration written to ${configFile}`);
   } catch (error) {
-    console.error('写入配置失败:', error);
+    console.error('Failed to write configuration:', error);
     throw error;
   }
 }
@@ -623,13 +623,13 @@ async function configureOpenAI(
 ): Promise<OpenAIConfig> {
   const baseURL = await ask(
     rl,
-    'OpenAI Base URL (默认 https://open.bigmodel.cn/api/paas/v4)',
+    'OpenAI Base URL (default https://open.bigmodel.cn/api/paas/v4)',
     existing.baseURL ?? 'https://open.bigmodel.cn/api/paas/v4',
   );
 
   const model = await ask(
     rl,
-    '默认模型 (默认 glm-4.5)',
+    'Default model (default glm-4.5)',
     existing.model ?? 'glm-4.5',
   );
 
@@ -637,7 +637,7 @@ async function configureOpenAI(
 
   const timeout = await askNumber(
     rl,
-    '请求超时时间 (ms, 默认 1800000 ≈ 30 分钟)',
+    'Request timeout (ms, default 1800000 ≈ 30 minutes)',
     existing.timeout ?? 1800000,
   );
 
@@ -656,7 +656,7 @@ async function configureCodex(
 ): Promise<CodexConfig> {
   const authModeChoice = await askChoice(
     rl,
-    '认证模式 (ApiKey / ChatGPT)',
+    'Authentication mode (ApiKey / ChatGPT)',
     ['apikey', 'chatgpt'] as const,
     existing.authMode === 'ChatGPT' ? 'chatgpt' : 'apikey',
   );
@@ -664,13 +664,13 @@ async function configureCodex(
 
   const baseURL = await ask(
     rl,
-    'Codex Base URL (默认 https://chatgpt.com/backend-api/codex)',
+    'Codex Base URL (default https://chatgpt.com/backend-api/codex)',
     existing.baseURL ?? 'https://chatgpt.com/backend-api/codex',
   );
 
   const model = await ask(
     rl,
-    '默认模型 (默认 gpt-5-codex)',
+    'Default model (default gpt-5-codex)',
     existing.model ?? 'gpt-5-codex',
   );
 
@@ -678,26 +678,26 @@ async function configureCodex(
   if (authMode === 'ApiKey') {
     apiKey = await askRequired(rl, 'Codex API Key', existing.apiKey);
   } else {
-    console.log('已选择 ChatGPT 模式，将在首次请求时提示登录。');
+    console.log('ChatGPT mode selected; you will be prompted to sign in on first use.');
     apiKey = undefined;
   }
 
   const timeout = await askNumber(
     rl,
-    '请求超时时间 (ms, 默认 1800000 ≈ 30 分钟)',
+    'Request timeout (ms, default 1800000 ≈ 30 minutes)',
     existing.timeout ?? 1800000,
   );
 
   const textVerbosity = await askChoice(
     rl,
-    '输出详略程度 (verbosity)',
+    'Response verbosity (verbosity)',
     ['low', 'medium', 'high'] as const,
     existing.textVerbosity ?? 'low',
   );
 
   const reasoningEffort = await askChoice(
     rl,
-    '推理模式 (reasoning.effort)',
+    'Reasoning effort (reasoning.effort)',
     ['minimal', 'low', 'medium', 'high'] as const,
     typeof existing.reasoning?.effort === 'string'
       ? (existing.reasoning?.effort.toLowerCase() as
@@ -710,7 +710,7 @@ async function configureCodex(
 
   const reasoningSummary = await askChoice(
     rl,
-    '推理总结模式 (reasoning.summary)',
+    'Reasoning summary mode (reasoning.summary)',
     ['concise', 'detailed', 'auto'] as const,
     typeof existing.reasoning?.summary === 'string'
       ? (existing.reasoning?.summary.toLowerCase() as
@@ -742,13 +742,13 @@ async function configureClaudeCode(
 ): Promise<ClaudeCodeConfig> {
   const baseURL = await ask(
     rl,
-    'Claude Code Base URL (默认 https://open.bigmodel.cn/api/anthropic)',
+    'Claude Code Base URL (default https://open.bigmodel.cn/api/anthropic)',
     existing.baseURL ?? 'https://open.bigmodel.cn/api/anthropic',
   );
 
   const model = await ask(
     rl,
-    '默认模型 (默认 claude-sonnet-4-20250514)',
+    'Default model (default claude-sonnet-4-20250514)',
     existing.model ?? 'claude-sonnet-4-20250514',
   );
 
@@ -756,7 +756,7 @@ async function configureClaudeCode(
 
   const anthropicVersion = await ask(
     rl,
-    'Anthropic API 版本 (默认 2023-06-01)',
+    'Anthropic API version (default 2023-06-01)',
     existing.anthropicVersion ?? '2023-06-01',
   );
 
@@ -767,7 +767,7 @@ async function configureClaudeCode(
       : 'claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14';
   const betaRaw = await ask(
     rl,
-    'anthropic-beta 头 (逗号分隔，留空表示使用默认)',
+    'anthropic-beta header (comma separated, leave blank for default)',
     defaultBetaString,
   );
   const betaList = betaRaw
@@ -777,27 +777,27 @@ async function configureClaudeCode(
 
   const timeout = await askNumber(
     rl,
-    '请求超时时间 (ms, 默认 1800000 ≈ 30 分钟)',
+    'Request timeout (ms, default 1800000 ≈ 30 minutes)',
     existing.timeout ?? 1800000,
   );
 
   const maxOutputTokens = await askNumber(
     rl,
-    '最大输出 tokens (默认 128000)',
+    'Maximum output tokens (default 128000)',
     existing.maxOutputTokens ?? 128000,
   );
 
   const userAgent = await ask(
     rl,
-    'User-Agent (默认 claude-cli/1.0.119 (external, cli))',
+    'User-Agent (default claude-cli/1.0.119 (external, cli))',
     existing.userAgent ?? 'claude-cli/1.0.119 (external, cli)',
   );
 
-  const xApp = await ask(rl, 'X-App 头 (默认 cli)', existing.xApp ?? 'cli');
+  const xApp = await ask(rl, 'X-App header (default cli)', existing.xApp ?? 'cli');
 
   const dangerousChoice = await askChoice(
     rl,
-    '是否启用 anthropic-dangerous-direct-browser-access',
+    'Enable anthropic-dangerous-direct-browser-access?',
     ['true', 'false'] as const,
     (existing.dangerousDirectBrowserAccess ?? true) ? 'true' : 'false',
   );
@@ -851,7 +851,7 @@ async function askChoice<T extends string>(
     if (match) {
       return match;
     }
-    console.log(`无效选项，请输入 ${options.join('/')}`);
+    console.log(`Invalid option. Enter ${options.join('/')}.`);
   }
 }
 
@@ -866,7 +866,7 @@ async function askRequired(
       return value;
     }
 
-    console.log('该字段不能为空，请重新输入。');
+    console.log('This field cannot be empty. Please try again.');
   }
 }
 
@@ -885,7 +885,7 @@ async function askNumber(
     if (trimmed === defaultValue.toString()) {
       return defaultValue;
     }
-    console.log('请输入有效的正整数。');
+    console.log('Enter a valid positive integer.');
   }
 }
 
@@ -899,7 +899,7 @@ function startGatewayProcess(context: GatewayContext): number | undefined {
   const entry = path.join(context.projectRoot, 'dist', 'main.js');
 
   if (!fs.existsSync(entry)) {
-    console.error('未找到 dist/main.js，请确认服务端已完成部署构建后再试。');
+    console.error('dist/main.js not found. Confirm the server build has completed before retrying.');
     process.exit(1);
   }
 
@@ -1067,7 +1067,7 @@ function fetchGatewayHealth(
     });
     request.on('timeout', () => {
       request.destroy();
-      resolve({ healthy: false, message: '健康检查请求超时' });
+      resolve({ healthy: false, message: 'Health check request timed out' });
     });
   });
 }
@@ -1180,30 +1180,30 @@ function isNonEmptyString(value: unknown): value is string {
 
 function logGatewayFailure(status?: GatewayHealthStatus): void {
   if (!status) {
-    console.error('网关健康检查失败，未获取到返回信息。');
+    console.error('Gateway health check failed with no response.');
     return;
   }
 
   if (status.message) {
-    console.error(`网关返回信息: ${status.message}`);
+    console.error(`Gateway response: ${status.message}`);
   } else if (status.statusCode) {
-    console.error(`网关健康检查失败，HTTP 状态码 ${status.statusCode}`);
+    console.error(`Gateway health check failed with HTTP status ${status.statusCode}`);
   } else {
-    console.error('网关健康检查失败，但未收到额外信息。');
+    console.error('Gateway health check failed with no additional details.');
   }
 
   const providerError = status.providerError;
   if (providerError && providerError !== status.message) {
-    console.error(`上游错误信息: ${providerError}`);
+    console.error(`Upstream error: ${providerError}`);
   }
 
   const extraErrors = collectErrorMessages(status.payload?.errors);
   if (extraErrors.length > 0) {
-    console.error(`网关错误列表: ${extraErrors.join('; ')}`);
+    console.error(`Gateway error list: ${extraErrors.join('; ')}`);
   }
 
   if (status.rawBody && !status.message && !providerError) {
-    console.error(`网关响应内容: ${status.rawBody}`);
+    console.error(`Gateway response body: ${status.rawBody}`);
   }
 }
 
@@ -1280,7 +1280,7 @@ async function runCliCommand(
 }
 
 function createExitError(command: string, code: number | null): Error {
-  const message = `${command} 命令以状态码 ${code ?? 'unknown'} 退出`;
+  const message = `${command} exited with status ${code ?? 'unknown'}`;
   const error: NodeJS.ErrnoException & { exitCode?: number } = new Error(
     message,
   );

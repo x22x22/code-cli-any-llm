@@ -82,24 +82,24 @@ async function bootstrap() {
 
   // 2. 配置验证失败 - 优雅退出
   if (!globalConfigResult.isValid) {
-    logger.error('全局配置验证失败:');
+    logger.error('Global configuration validation failed:');
     globalConfigResult.errors.forEach((error) => {
       logger.error(`  - ${error.field}: ${error.message}`);
-      logger.error(`    建议: ${error.suggestion}`);
+      logger.error(`    Suggestion: ${error.suggestion}`);
     });
-    logger.error(`\n配置文件位置: ~/.code-cli-any-llm/config.yaml`);
-    logger.error('请修复配置问题后重新启动应用');
-    logger.error(`网关日志文件: ${GatewayLoggerService.getLogFilePath()}`);
+    logger.error(`\nConfiguration file path: ~/.code-cli-any-llm/config.yaml`);
+    logger.error('Please resolve the configuration issues and restart the application');
+    logger.error(`Gateway log file: ${GatewayLoggerService.getLogFilePath()}`);
     GatewayLoggerService.close();
     process.exit(1);
   }
 
   // 3. 配置有效 - 显示配置来源信息
-  logger.log(`全局配置加载成功: ${globalConfigResult.config!.configSource}`);
-  logger.log(`网关日志文件: ${GatewayLoggerService.getLogFilePath()}`);
+  logger.log(`Global configuration loaded from: ${globalConfigResult.config!.configSource}`);
+  logger.log(`Gateway log file: ${GatewayLoggerService.getLogFilePath()}`);
   if (globalConfigResult.warnings.length > 0) {
     globalConfigResult.warnings.forEach((warning) => {
-      logger.warn(`配置警告: ${warning}`);
+      logger.warn(`Configuration warning: ${warning}`);
     });
   }
 

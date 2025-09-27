@@ -112,7 +112,7 @@ export class ChatGPTAuthManager {
         return refreshed;
       } catch (error) {
         this.logger.warn(
-          `刷新 ChatGPT 令牌失败，尝试重新登录: ${String(error)}`,
+          `Failed to refresh ChatGPT tokens, attempting reauthentication: ${String(error)}`,
         );
         const relogin = await this.loginFlow();
         await this.writeTokens(relogin);
@@ -128,7 +128,7 @@ export class ChatGPTAuthManager {
       return true;
     }
     const now = Date.now();
-    return tokens.expiresAt - now < 60_000; // refresh 1 分钟前
+    return tokens.expiresAt - now < 60_000; // refresh one minute early
   }
 
   private async readTokensFromDisk(): Promise<ChatGPTTokens | undefined> {
@@ -161,7 +161,7 @@ export class ChatGPTAuthManager {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return undefined;
       }
-      this.logger.warn(`读取 ChatGPT 认证文件失败: ${String(error)}`);
+      this.logger.warn(`Failed to read ChatGPT auth file: ${String(error)}`);
       return undefined;
     }
   }
@@ -215,7 +215,7 @@ export class ChatGPTAuthManager {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(
-        `刷新令牌失败 (${response.status}): ${text || response.statusText}`,
+        `Failed to refresh token (${response.status}): ${text || response.statusText}`,
       );
     }
 
@@ -254,14 +254,14 @@ export class ChatGPTAuthManager {
       state,
     );
 
-    this.logger.log('请在浏览器打开以下链接完成 ChatGPT 登录:');
+    this.logger.log('Open the following link in your browser to finish ChatGPT sign-in:');
     this.logger.log(authorizeUrl);
 
     const tokens = await new Promise<ChatGPTTokens>((resolve, reject) => {
       const timeout = setTimeout(
         () => {
           server.close();
-          reject(new Error('等待登录超时'));
+          reject(new Error('Login timed out'));
         },
         5 * 60 * 1000,
       );
@@ -316,8 +316,8 @@ export class ChatGPTAuthManager {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.end(
-              '<html><body><h2>登录成功，可以返回终端。</h2>' +
-                '<p>您现在可以关闭此窗口。</p></body></html>',
+              '<html><body><h2>Login successful. You may return to the terminal.</h2>' +
+                '<p>You can close this window now.</p></body></html>',
             );
             cleanup();
             resolve(exchanged);
@@ -325,10 +325,10 @@ export class ChatGPTAuthManager {
             const err =
               error instanceof Error
                 ? error
-                : new Error(String(error ?? '未知错误'));
+                : new Error(String(error ?? 'Unknown error'));
             res.statusCode = 500;
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-            res.end(`登录失败: ${err.message}`);
+            res.end(`Login failed: ${err.message}`);
             cleanup();
             reject(err);
           }
@@ -362,7 +362,7 @@ export class ChatGPTAuthManager {
 
         const address = server.address() as AddressInfo | null;
         if (!address || typeof address.port !== 'number') {
-          throw new Error('无法获取认证回调端口');
+          throw new Error('Unable to determine the authentication callback port');
         }
 
         return { server, port: address.port };
@@ -382,7 +382,7 @@ export class ChatGPTAuthManager {
       }
     }
 
-    throw new Error('无法启动本地认证服务，请检查端口占用。');
+    throw new Error('Unable to start the local authentication service; verify port availability.');
   }
 
   private async sendCancelRequest(port: number): Promise<void> {
@@ -422,7 +422,7 @@ export class ChatGPTAuthManager {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(
-        `交换令牌失败 (${response.status}): ${text || response.statusText}`,
+        `Failed to exchange tokens (${response.status}): ${text || response.statusText}`,
       );
     }
 
@@ -438,7 +438,7 @@ export class ChatGPTAuthManager {
       apiKey = await this.obtainApiKey(data.id_token);
     } catch (error) {
       this.logger.warn(
-        `获取 API Key 失败，将继续使用 ChatGPT 令牌: ${String(error)}`,
+        `Failed to retrieve an API key; continuing with ChatGPT tokens: ${String(error)}`,
       );
     }
 
@@ -477,7 +477,7 @@ export class ChatGPTAuthManager {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(
-        `交换 API Key 失败 (${response.status}): ${text || response.statusText}`,
+        `Failed to exchange API key (${response.status}): ${text || response.statusText}`,
       );
     }
 
@@ -548,7 +548,7 @@ export class ChatGPTAuthManager {
         undefined
       );
     } catch (error) {
-      this.logger.warn(`解析 ID Token 失败: ${String(error)}`);
+      this.logger.warn(`Failed to parse ID token: ${String(error)}`);
       return undefined;
     }
   }
