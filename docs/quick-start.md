@@ -37,6 +37,9 @@ gateway:
   port: 23062  # 网关服务端口
   host: '0.0.0.0'
   logLevel: 'info'
+  apiMode: openai      # gemini / openai
+  cliMode: gemini      # gemini / opencode / crush
+  apiKey: ''           # 可选：面向 façade 的共享密钥
 ```
 
 4. **启动服务**
@@ -78,6 +81,19 @@ curl -X POST http://localhost:23062/api/v1/gemini/models/gemini-2.5-pro:streamGe
       "role": "user",
       "parts": [{"text": "Tell me a joke"}]
     }]
+  }'
+```
+
+### OpenAI façade 测试
+确保 `gateway.apiMode=openai` 后，可以验证 OpenAI 兼容接口：
+```bash
+curl -X POST http://localhost:23062/api/v1/openai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "messages": [
+      {"role": "user", "content": "介绍一下 CAL 网关"}
+    ]
   }'
 ```
 

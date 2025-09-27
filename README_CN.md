@@ -1,31 +1,40 @@
-# Gemini Any LLM Gateway
+# Code CLI Any LLM
 
-> 让 Gemini CLI 访问任何大语言模型提供商
+> 让 Gemini、opencode、crush 等 CLI 无缝切换任意 LLM 提供商
 
 > English version: [README.md](./README.md)
 
 ## 🎯 项目简介
 
-Gemini Any LLM Gateway 是一个 API 网关服务，让您可以通过 Gemini CLI 无缝访问各种大语言模型提供商（如 OpenAI、智谱AI、千问等）。无需修改 Gemini CLI，即可享受多样化的 AI 模型服务。
+Code CLI Any LLM（简称 CAL）是一个多面向网关，既可以冒充 Gemini CLI，也可以切换为 opencode 或 crush，同时将请求代理到任意兼容 OpenAI 协议的后端（如 Claude Code、Codex、OpenAI、智谱AI、千问等）。借助 CAL，您可以保留熟悉的 CLI 体验，又能灵活重定向底层模型或混合多家供应商。
 
 **核心特性**：
-- 🔌 **即插即用** - 无需修改 Gemini CLI，完全兼容
-- 🌐 **多提供商支持** - 支持 Codex、Claude Code、OpenAI、智谱AI、千问等多种提供商
-- ⚡ **高性能流式响应** - 实时流式输出，体验流畅
-- 🛠️ **智能工具调用** - 完整支持 Function Calling
-- 📁 **灵活配置管理** - 全局配置 + 项目配置，使用便捷
+- 🔄 **多AI Code CLI 工具网关** —— 保持 `cal code` 体验，也可通过 `--cli-mode opencode/crush` 切换其它 CLI
+- 🔌 **提供商无关** —— 一次配置即可代理 Claude Code、Codex、OpenAI、智谱AI、千问等任何兼容服务
+- ⚡ **流式与工具** —— 保留原生 SSE 流式输出、工具调用、思维链等扩展能力
+- 🧩 **自动配置** —— 自动生成 façade 配置、刷新 `gateway.apiMode/cliMode` 并在变更后重启网关
+- 🛡️ **运维助力** —— 内置 restart/kill、健康检查与 PID 自动恢复，便于部署与排障
 
 ## 🚀 快速开始
 
 ### 安装步骤
 
-1. **安装 Gemini CLI**（如果尚未安装）：
+1. **（可选）安装 Gemini CLI**（若需要沿用 Gemini AI Code CLI 工具）
 ```bash
 npm install -g @google/gemini-cli@latest --registry https://registry.npmmirror.com
 npm install -g @google/gemini-cli-core@latest --registry https://registry.npmmirror.com
 ```
 
-2. **安装本工具**：
+2. **（可选）安装其它 CLI AI Code CLI 工具**
+```bash
+# opencode
+npm install -g opencode-ai@latest
+
+# crush
+brew install charmbracelet/tap/crush   # 或参考 crush 官方文档
+```
+
+3. **安装网关本体**
 ```bash
 npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmirror.com
 ```
@@ -38,23 +47,10 @@ npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmir
 cal code
 ```
 
-- 系统会自动触发配置向导，首先需选择 **AI Provider**（`claudeCode` / `codex` / `openai`）
-- 根据所选提供商填写：
-  - **Base URL**  
-    - OpenAI 默认：`https://open.bigmodel.cn/api/paas/v4`
-    - Codex 默认：`https://chatgpt.com/backend-api/codex`
-    - Claude Code 默认：`https://open.bigmodel.cn/api/anthropic`（也可填自建 relay，如 `https://<host>/api`）
-  - **默认模型**  
-    - OpenAI 默认：`glm-4.5`
-    - Codex 默认：`gpt-5-codex`
-    - Claude Code 默认：`claude-sonnet-4-20250514`
-  - **认证模式**（仅 Codex，支持 `ApiKey` 或 `ChatGPT`）
-  - **API Key**（当选择 OpenAI、Codex-ApiKey 或 Claude Code 时必填）
-- 对于 Claude Code，网关会自动同时携带 `x-api-key` 与 `Authorization: Bearer` 请求头，兼容官方和 Relay 服务。
-- 配置将保存到 `~/.code-cli-any-llm/config.yaml`
-- 自动生成或更新 `~/.gemini/settings.json`，设置认证类型为 `gemini-api-key`
-- 自动启动后台网关服务并等待就绪
-- 启动 Gemini CLI 进行对话
+- 向导会要求选择主要 Provider（`claudeCode` / `codex` / `openai`），并填写 Base URL、默认模型、认证方式和 API Key 等信息
+- 若使用 `--cli-mode opencode` / `--cli-mode crush`，会自动生成对应 façade 配置并写入 `~/.config/opencode` / `~/.config/crush`
+- 配置保存后，CLI 会自动执行 `cal restart` 重启网关，使 `gateway.apiMode / gateway.cliMode` 与所选AI Code CLI 工具保持一致
+- 网关健康检查通过后会启动目标 CLI AI Code CLI 工具（默认 Gemini，可随时利用 `--cli-mode` 切换）
 
 > 💡 **Codex ChatGPT 模式**：若在向导中选择 `Codex + ChatGPT`，首次请求时会提示在浏览器完成 OAuth 登录，登录链接将在终端显示。认证成功后令牌将保存到 `~/.code-cli-any-llm/codex/auth.json`，后续请求会自动刷新，无需重复登录。
 
@@ -216,6 +212,10 @@ export GAL_PORT="23062"
 export GAL_HOST="0.0.0.0"
 export GAL_LOG_LEVEL="info"
 export GAL_GATEWAY_LOG_DIR="~/.code-cli-any-llm/logs"
+#（可选）网关AI Code CLI 工具控制
+export GAL_GATEWAY_API_MODE="openai"
+export GAL_GATEWAY_CLI_MODE="opencode"
+export GAL_GATEWAY_API_KEY="shared-demo-key"
 export GAL_DISABLE_UPDATE_CHECK="1"            # 关闭自动更新提示
 
 # 通用高级配置

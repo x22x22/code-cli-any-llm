@@ -1,34 +1,43 @@
-# Gemini Any LLM Gateway
+# Code CLI Any LLM
 
-> Let the Gemini CLI access any large language model provider
+> A single gateway AI Code CLI tool for Gemini, opencode, and crush CLIs
 
 > 中文版请见 [README_CN.md](./README_CN.md)
 
 ## 🎯 Project Overview
 
-Gemini Any LLM Gateway is an API gateway service that lets you seamlessly access various large language model providers (such as OpenAI, ZhipuAI, Qwen, etc.) via the Gemini CLI. You can enjoy diverse AI model services without modifying the Gemini CLI.
+Code CLI Any LLM (CAL) is a universal proxy that can impersonate the Gemini CLI, opencode CLI, or crush CLI while routing traffic to any OpenAI-compatible backend (Claude Code, Codex, OpenAI, ZhipuAI, Qwen, ...). You keep using the CLI experience you already know, but gain the freedom to switch providers or fan out across several vendors with consistent tooling.
 
 **Core Features**:
-- 🔌 **Plug-and-play** - Fully compatible, no Gemini CLI changes required
-- 🌐 **Multi-provider support** - Supports Codex, Claude Code, OpenAI, ZhipuAI, Qwen, and more
-- ⚡ **High-performance streaming responses** - Real-time streaming output for a smooth experience
-- 🛠️ **Intelligent tool calling** - Complete Function Calling support
-- 📁 **Flexible configuration management** - Global plus project-level configuration for easy use
+- 🔄 **Multi-facade gateway** – continue using Gemini (`cal code`), or switch to opencode/crush via `--cli-mode`
+- 🔌 **Provider agnostic** – proxy to Claude Code, Codex, OpenAI, ZhipuAI, Qwen, or any OpenAI-compatible service
+- ⚡ **Streaming & tools** – preserve SSE streaming, tool-calling, and reasoning output per AI Code CLI tool
+- 🧩 **Auto configuration** – generate AI Code CLI tool configs, refresh `gateway.apiMode/cliMode`, and restart gateway automatically
+- 🛡️ **Operational helpers** – built-in restart/kill utilities, health reporting, PID auto-recovery
 
 ## 🚀 Quick Start
 
 ### Installation
 
-1. **Install Gemini CLI** (if you haven't yet):
-```bash
-npm install -g @google/gemini-cli@latest --registry https://registry.npmmirror.com
-npm install -g @google/gemini-cli-core@latest --registry https://registry.npmmirror.com
-```
+1. *(Optional)* **Install Gemini CLI** (if you plan to use the Gemini AI Code CLI tool):
+   ```bash
+   npm install -g @google/gemini-cli@latest --registry https://registry.npmmirror.com
+   npm install -g @google/gemini-cli-core@latest --registry https://registry.npmmirror.com
+   ```
 
-2. **Install this gateway**:
-```bash
-npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmirror.com
-```
+2. *(Optional)* **Install其他 AI Code CLI tool 工具**（如需体验 opencode 或 crush）：
+   ```bash
+   # opencode
+   npm install -g opencode-ai@latest
+
+   # crush
+   brew install charmbracelet/tap/crush   # 或按照 crush 官方文档安装
+   ```
+
+3. **安装网关本体**：
+   ```bash
+   npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmirror.com
+   ```
 
 ### First Run
 
@@ -38,24 +47,15 @@ Run the following command to get started:
 cal code
 ```
 
-**First-run flow**:
-- The system automatically launches a setup wizard and asks you to choose an **AI Provider** (`claudeCode`, `codex`, or `openai`)
-- Then fill in the following based on your provider:
-  - **Base URL**  
-    - OpenAI default: `https://open.bigmodel.cn/api/paas/v4`  
-    - Codex default: `https://chatgpt.com/backend-api/codex`
-    - Claude Code default: `https://open.bigmodel.cn/api/anthropic`（可替换为你自己的 relay 地址，如 `https://<host>/api`）
-  - **Default model**  
-    - OpenAI default: `glm-4.5`
-    - Codex default: `gpt-5-codex`
-    - Claude Code default: `claude-sonnet-4-20250514`
-  - **Auth mode**（Codex only, supports `ApiKey` or `ChatGPT`）
-  - **API Key**（OpenAI / Codex-ApiKey / Claude Code 模式都需要填写）
-- For Claude Code, the gateway automatically sends both `x-api-key` and `Authorization: Bearer` headers so it works with Anthropic relay services out of the box.
-- Configuration is saved to `~/.code-cli-any-llm/config.yaml`
-- Automatically generates or updates `~/.gemini/settings.json`, setting the auth type to `gemini-api-key`
-- Automatically starts the background gateway service and waits for it to become ready
-- Launches the Gemini CLI for conversation
+**First-run flow**
+- 向导会收集主要 Provider（`claudeCode` / `codex` / `openai`）以及连接信息：
+  - **Base URL**（默认已填，可按需修改）
+  - **默认模型**
+  - **认证模式**（Codex 支持 `ApiKey` / `ChatGPT`）
+  - **API Key**（按 Provider 要求填写）
+- 支持同时生成 AI Code CLI tool 配置：首次使用 `--cli-mode opencode` / `--cli-mode crush` 会自动写入 `~/.config/opencode/opencode.json` 或 `~/.config/crush/crush.json`
+- 新配置保存后，CLI 会自动重启网关（等价于执行 `cal restart`）并等待健康检查通过
+- 重启成功后会启动对应 AI Code CLI tool（默认 Gemini，可通过 `--cli-mode` 切换）
 
 > 💡 **Codex ChatGPT mode**: If you choose `Codex + ChatGPT` in the wizard, the first request will prompt you to finish OAuth login in a browser. The login link appears in the terminal. After a successful login, the token is stored in `~/.code-cli-any-llm/codex/auth.json`. Tokens refresh automatically so you don’t need to log in again.
 
@@ -145,7 +145,7 @@ The system supports a flexible configuration hierarchy. Higher priority values o
 
 - `gateway.apiMode`: selects which API surface the gateway exposes (`gemini` or `openai`). Set to `openai` to enable `/api/v1/openai/v1/...` endpoints.
 - `gateway.cliMode`: controls which CLI the `cal code` command launches by default (`gemini`, `opencode`, or `crush`). You can override per run with `--cli-mode`.
-- `gateway.apiKey`: optional shared key forwarded to the OpenAI-compatible façade. Inject it into opencode/crush configs or expose it via environment variables such as `CODE_CLI_API_KEY`.
+- `gateway.apiKey`: optional shared key forwarded to the OpenAI-compatible AI Code CLI tool. Inject it into opencode/crush configs or expose it via environment variables such as `CODE_CLI_API_KEY`.
 
 When `gateway.apiMode` is set to `openai`, the gateway serves:
 - `GET /api/v1/openai/v1/models`
@@ -210,6 +210,10 @@ export GAL_PORT="23062"
 export GAL_HOST="0.0.0.0"
 export GAL_LOG_LEVEL="info"
 export GAL_GATEWAY_LOG_DIR="~/.code-cli-any-llm/logs"
+# Optional gateway AI Code CLI tool controls
+export GAL_GATEWAY_API_MODE="openai"
+export GAL_GATEWAY_CLI_MODE="opencode"
+export GAL_GATEWAY_API_KEY="shared-demo-key"
 export GAL_DISABLE_UPDATE_CHECK="1"            # Disable automatic update prompts
 
 # General advanced configuration
