@@ -58,3 +58,6 @@ gateway:
   logLevel: 'info'
   logDir: '~/.code-cli-any-llm/logs'
   requestTimeout: 3600000
+  apiMode: gemini   # 可选 gemini / openai
+  cliMode: gemini   # 可选 gemini / opencode / crush
+  apiKey: ''        # 可选：提供给 CLI 网关的访问密钥

@@ -7,6 +7,7 @@ import {
 import { ConfigModule } from './config/config.module';
 import { GeminiController } from './controllers/gemini.controller';
 import { HealthController } from './controllers/health.controller';
+import { OpenAIController } from './controllers/openai.controller';
 import { OpenAIProvider } from './providers/openai/openai.provider';
 import { CodexProvider } from './providers/codex/codex.provider';
 import { ClaudeCodeProvider } from './providers/claude-code/claude-code.provider';
@@ -26,10 +27,16 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
 import { TimeoutMiddleware } from './middleware/timeout.middleware';
 import { TokenizerService } from './services/tokenizer.service';
 import { Logger } from '@nestjs/common';
+import { LlmProviderResolverService } from './services/llm-provider-resolver.service';
 
 @Module({
   imports: [ConfigModule.forRoot()],
-  controllers: [AppController, GeminiController, HealthController],
+  controllers: [
+    AppController,
+    GeminiController,
+    OpenAIController,
+    HealthController,
+  ],
   providers: [
     AppService,
     OpenAIProvider,
@@ -48,6 +55,7 @@ import { Logger } from '@nestjs/common';
     DoubleEscapeUtils,
     ToolCallProcessor,
     TimeoutMiddleware,
+    LlmProviderResolverService,
   ],
 })
 export class AppModule implements OnModuleDestroy {

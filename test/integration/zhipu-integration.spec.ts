@@ -29,7 +29,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
   describe('智谱模型检测和配置', () => {
     it('应该自动检测GLM-4.5模型并使用qwen格式', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:generateContent')
+        .post('/api/v1/gemini/models/glm-4.5:generateContent')
         .send({
           contents: [
             {
@@ -80,7 +80,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
 
     it('应该为GLM模型禁用工具调用时的流式响应', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:streamGenerateContent')
+        .post('/api/v1/gemini/models/glm-4.5:streamGenerateContent')
         .send({
           contents: [
             {
@@ -136,7 +136,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
     it('应该正确处理智谱API的双重转义参数', async () => {
       // 模拟一个复杂的工具调用场景
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:generateContent')
+        .post('/api/v1/gemini/models/glm-4.5:generateContent')
         .send({
           contents: [
             {
@@ -209,7 +209,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
 
     it('应该处理包含特殊字符的工具参数', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:generateContent')
+        .post('/api/v1/gemini/models/glm-4.5:generateContent')
         .send({
           contents: [
             {
@@ -274,7 +274,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
   describe('中文文本缓冲优化', () => {
     it('应该为GLM模型优化中文流式输出', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:streamGenerateContent')
+        .post('/api/v1/gemini/models/glm-4.5:streamGenerateContent')
         .send({
           contents: [
             {
@@ -338,7 +338,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
 
     it('应该在合适的断点处缓冲中文输出', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:streamGenerateContent')
+        .post('/api/v1/gemini/models/glm-4.5:streamGenerateContent')
         .send({
           contents: [
             {
@@ -391,7 +391,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
   describe('类型转换和错误恢复', () => {
     it('应该自动修复字符串数字类型', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:generateContent')
+        .post('/api/v1/gemini/models/glm-4.5:generateContent')
         .send({
           contents: [
             {
@@ -455,7 +455,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
     it('应该优雅处理解析错误', async () => {
       // 发送一个可能导致复杂解析的请求
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:generateContent')
+        .post('/api/v1/gemini/models/glm-4.5:generateContent')
         .send({
           contents: [
             {
@@ -524,7 +524,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
       const startTime = Date.now();
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:generateContent')
+        .post('/api/v1/gemini/models/glm-4.5:generateContent')
         .send({
           contents: [
             {
@@ -550,7 +550,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
         .fill(null)
         .map((_, index) =>
           request(app.getHttpServer())
-            .post('/api/v1/models/glm-4.5:generateContent')
+            .post('/api/v1/gemini/models/glm-4.5:generateContent')
             .send({
               contents: [
                 {
@@ -577,7 +577,7 @@ describe('智谱GLM-4.5集成测试 (Integration)', () => {
     it('应该保持现有API的兼容性', async () => {
       // 使用标准的Gemini API请求格式
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/glm-4.5:generateContent')
+        .post('/api/v1/gemini/models/glm-4.5:generateContent')
         .send({
           contents: [
             {

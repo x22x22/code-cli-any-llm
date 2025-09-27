@@ -215,6 +215,81 @@ export class ClaudeCodeProvider implements OnModuleInit {
     streamTransformer.reset();
   }
 
+  async generateContent(request: OpenAIRequest): Promise<OpenAIResponse> {
+    const config = this.ensureEnabledConfig();
+    const openAIRequest: OpenAIRequest = {
+      ...request,
+      stream: false,
+    };
+    const payload = this.buildClaudePayload(openAIRequest, config, false);
+    const response = await this.sendClaudeMessagesRequest(
+      payload,
+      config,
+      false,
+    );
+
+    if (!response.ok) {
+      await this.handleErrorResponse(response);
+    }
+
+    const data = (await response.json()) as ClaudeMessageResponse;
+    return this.convertClaudeResponseToOpenAI(data, config.model);
+  }
+
+  async *generateContentStream(
+    request: OpenAIRequest,
+  ): AsyncIterable<OpenAIStreamChunk> {
+    const config = this.ensureEnabledConfig();
+    const openAIRequest: OpenAIRequest = {
+      ...request,
+      stream: true,
+    };
+
+    const payload = this.buildClaudePayload(openAIRequest, config, true);
+    const response = await this.sendClaudeMessagesRequest(
+      payload,
+      config,
+      true,
+    );
+
+    if (!response.ok) {
+      await this.handleErrorResponse(response);
+    }
+
+    if (!response.body) {
+      throw new Error('Claude Code streaming response body is empty');
+    }
+
+    const stream = Readable.fromWeb(
+      response.body as unknown as NodeReadableStream<Uint8Array>,
+    );
+
+    const context: ClaudeStreamContext = {
+      responseId: randomUUID(),
+      model: config.model,
+      created: Math.floor(Date.now() / 1000),
+      started: false,
+      toolCallStates: new Map(),
+      finalChunkSent: false,
+    };
+
+    for await (const chunk of this.parseClaudeStream(stream, context)) {
+      yield chunk;
+    }
+  }
+
+  async listModels(): Promise<unknown> {
+    const config = this.ensureEnabledConfig();
+    return [
+      {
+        id: config.model,
+        object: 'model',
+        created: Math.floor(Date.now() / 1000),
+        owned_by: 'claude-code',
+      },
+    ];
+  }
+
   async healthCheck(): Promise<{
     status: 'healthy' | 'unhealthy';
     details?: unknown;

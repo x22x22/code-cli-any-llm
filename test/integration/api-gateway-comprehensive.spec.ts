@@ -52,7 +52,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       await request
-        .post(`/api/v1/models/${MODEL}:generateContent`)
+        .post(`/api/v1/gemini/models/${MODEL}:generateContent`)
         .send(requestBody)
         .expect(200)
         .expect((res) => {
@@ -83,7 +83,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       await request
-        .post(`/api/v1/models/${MODEL}:streamGenerateContent`)
+        .post(`/api/v1/gemini/models/${MODEL}:streamGenerateContent`)
         .send(requestBody)
         .expect(200)
         .expect('content-type', /text\/event-stream/)
@@ -111,7 +111,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       await request
-        .post(`/api/v1/models/${MODEL}:generateContent`)
+        .post(`/api/v1/gemini/models/${MODEL}:generateContent`)
         .send(requestBody)
         .expect(200)
         .expect((res) => {
@@ -137,7 +137,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       const firstResponse = await request
-        .post(`/api/v1/models/${MODEL}:generateContent`)
+        .post(`/api/v1/gemini/models/${MODEL}:generateContent`)
         .send(firstRequestBody)
         .expect(200);
 
@@ -165,7 +165,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       await request
-        .post(`/api/v1/models/${MODEL}:generateContent`)
+        .post(`/api/v1/gemini/models/${MODEL}:generateContent`)
         .send(secondRequestBody)
         .expect(200)
         .expect((res) => {
@@ -211,7 +211,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       await request
-        .post(`/api/v1/models/${MODEL}:generateContent`)
+        .post(`/api/v1/gemini/models/${MODEL}:generateContent`)
         .send(requestBody)
         .expect(200)
         .expect((res) => {
@@ -231,7 +231,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       await request
-        .post(`/api/v1/models/${MODEL}:generateContent`)
+        .post(`/api/v1/gemini/models/${MODEL}:generateContent`)
         .send(requestBody)
         .expect(400);
     });
@@ -247,7 +247,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       await request
-        .post('/api/v1/models/invalid-model:generateContent')
+        .post('/api/v1/gemini/models/invalid-model:generateContent')
         .send(requestBody)
         .expect(404);
     });
@@ -270,7 +270,7 @@ describe('Gemini API Gateway Comprehensive Tests', () => {
       };
 
       await request
-        .post(`/api/v1/models/${MODEL}:generateContent`)
+        .post(`/api/v1/gemini/models/${MODEL}:generateContent`)
         .send(requestBody)
         .expect(200)
         .expect((res) => {

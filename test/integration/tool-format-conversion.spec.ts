@@ -29,7 +29,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
   describe('OpenAI格式工具转换', () => {
     it('应该正确处理标准OpenAI格式的工具', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:generateContent')
+        .post('/api/v1/gemini/models/gpt-4:generateContent')
         .send({
           contents: [
             {
@@ -98,7 +98,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
 
     it('应该处理复杂嵌套的工具参数', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:generateContent')
+        .post('/api/v1/gemini/models/gpt-4:generateContent')
         .send({
           contents: [
             {
@@ -197,7 +197,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
     it('应该正确转换Anthropic样式的工具定义', async () => {
       // 注意：这里假设系统能检测并处理不同格式
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/claude-3:generateContent')
+        .post('/api/v1/gemini/models/claude-3:generateContent')
         .send({
           contents: [
             {
@@ -268,7 +268,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
   describe('Qwen格式工具转换', () => {
     it('应该正确处理Qwen格式的工具调用', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/qwen-max:generateContent')
+        .post('/api/v1/gemini/models/qwen-max:generateContent')
         .send({
           contents: [
             {
@@ -365,7 +365,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
   describe('多格式兼容性测试', () => {
     it('应该在同一个请求中处理多个工具', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:generateContent')
+        .post('/api/v1/gemini/models/gpt-4:generateContent')
         .send({
           contents: [
             {
@@ -447,7 +447,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
 
     it('应该处理无工具的常规对话', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:generateContent')
+        .post('/api/v1/gemini/models/gpt-4:generateContent')
         .send({
           contents: [
             {
@@ -484,7 +484,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
   describe('流式工具调用转换', () => {
     it('应该正确处理流式工具调用', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:streamGenerateContent')
+        .post('/api/v1/gemini/models/gpt-4:streamGenerateContent')
         .send({
           contents: [
             {
@@ -588,7 +588,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
   describe('错误处理和边界条件', () => {
     it('应该处理格式错误的工具定义', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:generateContent')
+        .post('/api/v1/gemini/models/gpt-4:generateContent')
         .send({
           contents: [
             {
@@ -629,7 +629,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
       const largeString = 'x'.repeat(10000);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:generateContent')
+        .post('/api/v1/gemini/models/gpt-4:generateContent')
         .send({
           contents: [
             {
@@ -671,7 +671,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
 
     it('应该处理Unicode和特殊字符', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:generateContent')
+        .post('/api/v1/gemini/models/gpt-4:generateContent')
         .send({
           contents: [
             {
@@ -733,7 +733,7 @@ describe('工具格式转换端到端测试 (E2E)', () => {
       const startTime = Date.now();
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/models/gpt-4:generateContent')
+        .post('/api/v1/gemini/models/gpt-4:generateContent')
         .send({
           contents: [
             {

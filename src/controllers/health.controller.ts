@@ -19,6 +19,10 @@ interface HealthResponse {
     model?: string;
     baseURL?: string;
   };
+  gateway?: {
+    apiMode: string;
+    cliMode: string;
+  };
 }
 
 @Controller()
@@ -125,6 +129,27 @@ export class HealthController implements OnApplicationBootstrap {
         error: (error as Error).message,
       };
     }
+
+    const gatewayConfig = this.configService.get<Record<string, unknown>>(
+      'gateway',
+    );
+    const apiModeValue = (gatewayConfig?.apiMode as string | undefined)
+      ?.trim()
+      .toLowerCase();
+    const cliModeValue = (gatewayConfig?.cliMode as string | undefined)
+      ?.trim()
+      .toLowerCase();
+    const normalizedCliMode =
+      cliModeValue === 'opencode'
+        ? 'opencode'
+        : cliModeValue === 'crush'
+          ? 'crush'
+          : 'gemini';
+
+    response.gateway = {
+      apiMode: apiModeValue === 'openai' ? 'openai' : 'gemini',
+      cliMode: normalizedCliMode,
+    };
 
     return response;
   }

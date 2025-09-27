@@ -133,6 +133,16 @@ async function bootstrap() {
     next();
   });
 
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (
+      req.path.startsWith('/api/v1/models/') &&
+      !req.path.startsWith('/api/v1/gemini/models/')
+    ) {
+      req.url = req.path.replace('/api/v1/models', '/api/v1/gemini/models');
+    }
+    next();
+  });
+
   // Set global prefix for API routes
   app.setGlobalPrefix('api/v1');
 

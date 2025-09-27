@@ -61,7 +61,7 @@ curl http://localhost:23062/api/v1/health
 ### Gemini API兼容测试
 ```bash
 # 普通请求
-curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent \
+curl -X POST http://localhost:23062/api/v1/gemini/models/gemini-2.5-pro:generateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [{
@@ -71,7 +71,7 @@ curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:generateContent
   }'
 
 # 流式请求
-curl -X POST http://localhost:23062/api/v1/models/gemini-2.5-pro:streamGenerateContent \
+curl -X POST http://localhost:23062/api/v1/gemini/models/gemini-2.5-pro:streamGenerateContent \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [{

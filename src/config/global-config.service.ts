@@ -263,6 +263,14 @@ export class GlobalConfigService {
     }
   }
 
+  saveConfig(config: GlobalConfig): void {
+    if (!fs.existsSync(this.configDir)) {
+      fs.mkdirSync(this.configDir, { recursive: true, mode: 0o700 });
+    }
+    const content = yaml.dump(config, { indent: 2, lineWidth: 120 });
+    fs.writeFileSync(this.configFile, content, { mode: 0o600 });
+  }
+
   private deepMerge(
     target: Record<string, unknown> | undefined,
     source: Record<string, unknown> | undefined,
@@ -369,26 +377,39 @@ gateway:
 
     let openaiConfig: OpenAIConfig | undefined = config.openai;
 
+    const gatewayCliModeRaw = (config.gateway?.cliMode || 'gemini')
+      .toString()
+      .trim()
+      .toLowerCase();
+    if (gatewayCliModeRaw === 'opencode' || gatewayCliModeRaw === 'crush') {
+      config.gateway = config.gateway ?? ({} as GatewayConfig);
+      config.gateway.apiMode = 'openai';
+    }
+    const requireOpenAIKey = (config.aiProvider ?? 'openai') === 'openai';
+
     // 验证openai配置
     if (!openaiConfig) {
-      errors.push({
-        field: 'openai',
-        message: 'OpenAI配置缺失',
-        suggestion: '请添加openai配置节',
-        required: true,
-      });
-      openaiConfig = {
+      const defaultConfig: OpenAIConfig = {
         apiKey: '',
         baseURL: 'https://open.bigmodel.cn/api/paas/v4',
         model: 'glm-4.5',
         timeout: 1800000,
         extraBody: undefined,
       };
+      if (requireOpenAIKey) {
+        errors.push({
+          field: 'openai',
+          message: 'OpenAI配置缺失',
+          suggestion: '请添加openai配置节',
+          required: true,
+        });
+      }
+      openaiConfig = defaultConfig;
       config.openai = openaiConfig;
     } else {
       const trimmedApiKey = openaiConfig.apiKey?.trim();
       // 验证apiKey
-      if (!trimmedApiKey) {
+      if (!trimmedApiKey && requireOpenAIKey) {
         errors.push({
           field: 'openai.apiKey',
           message: 'API密钥为空',
@@ -396,6 +417,7 @@ gateway:
           required: true,
         });
       }
+      openaiConfig.apiKey = trimmedApiKey ?? '';
 
       // 验证baseURL
       if (!openaiConfig.baseURL) {
@@ -463,15 +485,24 @@ gateway:
         .toLowerCase();
       codexConfig.authMode = authModeRaw === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
 
+      const gatewayApiKeyCandidate =
+        typeof config.gateway?.apiKey === 'string'
+          ? config.gateway.apiKey.trim()
+          : undefined;
+
       const trimmedCodexKey = codexConfig.apiKey?.trim();
       if (codexConfig.authMode === 'ApiKey') {
         if (!trimmedCodexKey) {
-          errors.push({
-            field: 'codex.apiKey',
-            message: 'Codex API密钥为空',
-            suggestion: '请在配置文件中设置 codex.apiKey',
-            required: true,
-          });
+          if (gatewayApiKeyCandidate) {
+            codexConfig.apiKey = gatewayApiKeyCandidate;
+          } else {
+            errors.push({
+              field: 'codex.apiKey',
+              message: 'Codex API密钥为空',
+              suggestion: '请在配置文件中设置 codex.apiKey',
+              required: true,
+            });
+          }
         } else {
           codexConfig.apiKey = trimmedCodexKey;
         }
@@ -674,6 +705,9 @@ gateway:
         logLevel: 'info',
         logDir: DEFAULT_GATEWAY_LOG_DIR,
         requestTimeout: 3600000,
+        apiMode: 'gemini',
+        cliMode: 'gemini',
+        apiKey: undefined,
       };
       config.gateway = gatewayConfig;
     }
@@ -691,6 +725,31 @@ gateway:
       gatewayConfig.requestTimeout = 3600000;
     } else {
       gatewayConfig.requestTimeout = parsedTimeout;
+    }
+
+    const apiModeRaw = (gatewayConfig.apiMode || 'gemini')
+      .toString()
+      .trim()
+      .toLowerCase();
+    gatewayConfig.apiMode = apiModeRaw === 'openai' ? 'openai' : 'gemini';
+
+    const cliModeRaw = (gatewayConfig.cliMode || 'gemini')
+      .toString()
+      .trim()
+      .toLowerCase();
+    if (cliModeRaw === 'opencode') {
+      gatewayConfig.cliMode = 'opencode';
+    } else if (cliModeRaw === 'crush') {
+      gatewayConfig.cliMode = 'crush';
+    } else {
+      gatewayConfig.cliMode = 'gemini';
+    }
+
+    if (typeof gatewayConfig.apiKey === 'string') {
+      const trimmed = gatewayConfig.apiKey.trim();
+      gatewayConfig.apiKey = trimmed.length > 0 ? trimmed : undefined;
+    } else {
+      gatewayConfig.apiKey = undefined;
     }
 
     const isValid = errors.length === 0;

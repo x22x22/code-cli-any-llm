@@ -246,7 +246,11 @@ export async function runGalRestart(): Promise<void> {
       console.log(`记录的网关进程 (PID ${stopResult.pid}) 已退出。`);
       break;
     case 'not_found':
-      console.log('未找到网关进程记录。');
+      console.log('未找到网关进程记录，尝试扫描端口并终止残留进程...');
+      await forceKillProcesses({
+        usePortFallback: true,
+        silent: true,
+      });
       break;
     case 'failed':
       console.error(
@@ -321,66 +325,74 @@ export async function runGalKill(): Promise<void> {
   await forceKillProcesses();
 }
 
-async function forceKillProcesses(): Promise<void> {
-  console.log('正在查找并终止僵尸进程...');
+async function forceKillProcesses(
+  options: { usePortFallback?: boolean; silent?: boolean } = {},
+): Promise<void> {
+  const { usePortFallback = true, silent = false } = options;
 
-  // Get project root directory
+  if (!silent) {
+    console.log('正在查找并终止僵尸进程...');
+  }
+
   const projectRoot = process.cwd();
-
-  // Load configuration to get the gateway port
   const configService = new GlobalConfigService();
   const configResult = configService.loadGlobalConfig();
 
-  let gatewayPort = 23062; // fallback default
-
+  let gatewayPort = 23062;
   if (configResult.isValid && configResult.config) {
     gatewayPort = configResult.config.gateway.port;
-    console.log(`从配置文件读取到网关端口: ${gatewayPort}`);
-  } else {
+    if (!silent) {
+      console.log(`从配置文件读取到网关端口: ${gatewayPort}`);
+    }
+  } else if (!silent) {
     console.log(`配置文件无效，使用默认端口: ${gatewayPort}`);
   }
 
   const processesToKill: ProcessInfo[] = [];
-
-  // Check for .pid file
   const pidFile = path.join(projectRoot, '.development.pid');
 
   try {
     if (fs.existsSync(pidFile)) {
       const pid = parseInt(fs.readFileSync(pidFile, 'utf8').trim(), 10);
-      if (!isNaN(pid) && pid > 0) {
+      if (!Number.isNaN(pid) && pid > 0) {
         processesToKill.push({ pid, source: 'pidfile' });
-        console.log(`从PID文件发现进程: ${pid}`);
+        if (!silent) {
+          console.log(`从PID文件发现进程: ${pid}`);
+        }
       }
     }
   } catch (error) {
-    console.error(
-      '读取PID文件错误:',
-      error instanceof Error ? error.message : String(error),
-    );
+    if (!silent) {
+      console.error(
+        '读取PID文件错误:',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
 
-  // If no PID file, try to find process by port
-  if (processesToKill.length === 0) {
+  if (processesToKill.length === 0 && usePortFallback) {
     try {
       const lsofOutput = execSync(`lsof -ti:${gatewayPort}`, {
         encoding: 'utf8',
         timeout: 5000,
-      }).trim();
-
-      if (lsofOutput) {
-        const pid = parseInt(lsofOutput.split('\n')[0], 10);
-        if (!isNaN(pid) && pid > 0) {
+      })
+        .trim()
+        .split('\n')
+        .filter(Boolean);
+      if (lsofOutput.length > 0) {
+        const pid = parseInt(lsofOutput[0], 10);
+        if (!Number.isNaN(pid) && pid > 0) {
           processesToKill.push({ pid, source: 'port' });
-          console.log(`从端口 ${gatewayPort} 发现进程: ${pid}`);
+          if (!silent) {
+            console.log(`从端口 ${gatewayPort} 发现进程: ${pid}`);
+          }
         }
       }
     } catch {
-      // Ignore error if no process found on port
+      // ignore
     }
   }
 
-  // If still no PID, try to find node processes related to the project
   if (processesToKill.length === 0) {
     try {
       const psOutput = execSync(
@@ -389,50 +401,53 @@ async function forceKillProcesses(): Promise<void> {
           encoding: 'utf8',
           timeout: 5000,
         },
-      );
+      )
+        .trim()
+        .split('\n')
+        .filter(Boolean);
 
-      if (psOutput.trim()) {
-        const lines = psOutput.trim().split('\n');
-        for (const line of lines) {
-          const match = line.match(/\s+(\d+)\s+/);
-          if (match) {
-            const pid = parseInt(match[1], 10);
-            if (!isNaN(pid) && pid > 0) {
-              processesToKill.push({ pid, source: 'process_search' });
+      for (const line of psOutput) {
+        const match = line.match(/\s+(\d+)\s+/);
+        if (match) {
+          const pid = parseInt(match[1], 10);
+          if (!Number.isNaN(pid) && pid > 0) {
+            processesToKill.push({ pid, source: 'process_search' });
+            if (!silent) {
               console.log(`从进程搜索发现运行中的进程: ${pid}`);
-              break; // Only take the first match to avoid duplicates
             }
+            break;
           }
         }
       }
     } catch {
-      // Ignore error if no process found
+      // ignore
     }
   }
 
-  // Kill found processes
   if (processesToKill.length > 0) {
     for (const processInfo of processesToKill) {
       await killProcess(processInfo.pid);
     }
 
-    // Clean up PID file
     if (fs.existsSync(pidFile)) {
       try {
         fs.unlinkSync(pidFile);
-        console.log('PID文件已删除');
+        if (!silent) {
+          console.log('PID文件已删除');
+        }
       } catch (error) {
-        console.error(
-          '删除PID文件失败:',
-          error instanceof Error ? error.message : String(error),
-        );
+        if (!silent) {
+          console.error(
+            '删除PID文件失败:',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
       }
     }
-  } else {
+  } else if (!silent) {
     console.log('未发现运行中的开发进程');
   }
 
-  // Also check for any hanging node processes related to code-cli-any-llm
   checkHangingProcesses();
 }
 
@@ -544,6 +559,10 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     existingConfig.openai = {};
   }
 
+  if (!existingConfig.gateway) {
+    existingConfig.gateway = {};
+  }
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -575,11 +594,36 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     existingConfig.openai.apiKey,
   );
 
+  const apiModeRaw = await ask(
+    rl,
+    'Gateway API 模式 (gemini/openai，默认 gemini)',
+    existingConfig.gateway.apiMode,
+  );
+
+  const cliModeRaw = await ask(
+    rl,
+    '默认 CLI 模式 (gemini/opencode/crush，默认 gemini)',
+    existingConfig.gateway.cliMode,
+  );
+
+  const gatewayApiKeyRaw = await ask(
+    rl,
+    'Gateway API Key (可选，用于 OpenAI 兼容伪装层)',
+    existingConfig.gateway.apiKey,
+  );
+
   rl.close();
 
   existingConfig.openai.apiKey = apiKey;
   existingConfig.openai.baseURL = baseURL;
   existingConfig.openai.model = model;
+  existingConfig.gateway.apiMode = normalizeGatewayApiMode(apiModeRaw);
+  existingConfig.gateway.cliMode = normalizeGatewayCliMode(cliModeRaw);
+  if (gatewayApiKeyRaw && gatewayApiKeyRaw.trim()) {
+    existingConfig.gateway.apiKey = gatewayApiKeyRaw.trim();
+  } else {
+    delete existingConfig.gateway.apiKey;
+  }
 
   try {
     const yamlContent = yaml.dump(existingConfig, {
@@ -628,6 +672,24 @@ async function askRequired(
 
     console.log('该字段不能为空，请重新输入。');
   }
+}
+
+function normalizeGatewayApiMode(value?: string): 'gemini' | 'openai' {
+  const normalized = (value || '').trim().toLowerCase();
+  return normalized === 'openai' ? 'openai' : 'gemini';
+}
+
+function normalizeGatewayCliMode(
+  value?: string,
+): 'gemini' | 'opencode' | 'crush' {
+  const normalized = (value || '').trim().toLowerCase();
+  if (normalized === 'opencode') {
+    return 'opencode';
+  }
+  if (normalized === 'crush') {
+    return 'crush';
+  }
+  return 'gemini';
 }
 
 function ensureDir(dirPath: string): void {
@@ -735,9 +797,20 @@ function outputGatewayStatus(
   status: GatewayHealthStatus,
 ): void {
   const healthUrl = `http://${context.gatewayHost}:${context.gatewayPort}${GATEWAY_HEALTH_PATH}`;
-  const pidInfo = readGatewayPidInfo(context.configDir);
-  const runningPid =
-    pidInfo && isPidRunning(pidInfo.pid) ? pidInfo.pid : undefined;
+  let pidInfo = readGatewayPidInfo(context.configDir);
+  let runningPid = pidInfo && isPidRunning(pidInfo.pid) ? pidInfo.pid : undefined;
+
+  if (!runningPid) {
+    const detectedPid = detectGatewayPid(context.gatewayPort);
+    if (detectedPid && isPidRunning(detectedPid)) {
+      runningPid = detectedPid;
+      pidInfo = {
+        pid: detectedPid,
+        startedAt: Date.now(),
+      };
+      writeGatewayPidInfo(context.configDir, pidInfo);
+    }
+  }
 
   console.log(`${title}: ${status.healthy ? '健康' : '异常'}`);
   console.log(`健康检查: ${healthUrl}`);
@@ -844,6 +917,49 @@ function isPidRunning(pid: number): boolean {
     }
     return false;
   }
+}
+
+function detectGatewayPid(port: number): number | undefined {
+  try {
+    const lsofOutput = execSync(`lsof -ti:${port}`, {
+      encoding: 'utf8',
+      timeout: 3000,
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    if (lsofOutput.length > 0) {
+      const pid = parseInt(lsofOutput[0], 10);
+      if (!Number.isNaN(pid) && pid > 0) {
+        return pid;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const psOutput = execSync('ps aux | grep "node.*dist/main.js" | grep -v grep', {
+      encoding: 'utf8',
+      timeout: 3000,
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    for (const line of psOutput) {
+      const match = line.match(/\s+(\d+)\s+/);
+      if (match) {
+        const pid = parseInt(match[1], 10);
+        if (!Number.isNaN(pid) && pid > 0) {
+          return pid;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return undefined;
 }
 
 async function waitForProcessExit(

@@ -6,7 +6,11 @@ import os from 'os';
 import path from 'path';
 import { promises as fs } from 'fs';
 
-const DEFAULT_CODEX_HOME = path.join(os.homedir(), '.code-cli-any-llm', 'codex');
+const DEFAULT_CODEX_HOME = path.join(
+  os.homedir(),
+  '.code-cli-any-llm',
+  'codex',
+);
 const DEFAULT_AUTH_PORT = 1455;
 const MAX_BIND_RETRIES = 10;
 const RETRY_DELAY_MS = 200;

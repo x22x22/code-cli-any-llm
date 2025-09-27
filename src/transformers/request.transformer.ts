@@ -224,7 +224,10 @@ export class RequestTransformer {
       }
 
       if (message.role === 'tool') {
-        if (message.tool_call_id && remainingToolCallIds.has(message.tool_call_id)) {
+        if (
+          message.tool_call_id &&
+          remainingToolCallIds.has(message.tool_call_id)
+        ) {
           finalMessages.push({ ...message });
         }
         continue;
@@ -266,7 +269,8 @@ export class RequestTransformer {
           if (combinedToolCalls.length > 0) {
             updatedLast.tool_calls = combinedToolCalls;
           } else {
-            delete (updatedLast as { tool_calls?: OpenAIToolCall[] }).tool_calls;
+            delete (updatedLast as { tool_calls?: OpenAIToolCall[] })
+              .tool_calls;
           }
 
           merged[merged.length - 1] = updatedLast;

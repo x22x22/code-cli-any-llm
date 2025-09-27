@@ -99,6 +99,10 @@ gal code --help
 
 # 使用其他 gemini CLI 参数
 gal code --temperature 0.7 "写一个创意故事"
+
+# 切换为其他 CLI 体验
+gal code --cli-mode opencode
+gal code --cli-mode crush
 ```
 
 ## 📖 使用指南
@@ -142,6 +146,17 @@ gal code --temperature 0.7 "写一个创意故事"
 1. **项目配置** (`./config/config.yaml`) - 最高优先级，项目特定配置
 2. **全局配置** (`~/.code-cli-any-llm/config.yaml`) - 中等优先级，用户默认配置  
 3. **环境变量** - 最低优先级，作为基础配置
+
+### 网关模式
+
+- `gateway.apiMode`：决定网关对外暴露的 API 形态（`gemini` 或 `openai`）。设置为 `openai` 时会开启 `/api/v1/openai/v1/...` 兼容接口。
+- `gateway.cliMode`：控制 `gal code` 默认启动的 CLI（`gemini` / `opencode` / `crush`），可通过 `--cli-mode` 临时覆盖。
+- `gateway.apiKey`：可选的访问密钥，用于 OpenAI 兼容伪装层，可通过环境变量（如 `CODE_CLI_API_KEY`）传递给 opencode/crush。
+
+当 `gateway.apiMode=openai` 时，网关会提供：
+- `GET /api/v1/openai/v1/models`
+- `POST /api/v1/openai/v1/chat/completions`
+- `POST /api/v1/openai/v1/responses`
 
 ### 支持的提供商
 

@@ -100,6 +100,10 @@ gal code --help
 
 # Use other Gemini CLI parameters
 gal code --temperature 0.7 "Write a creative story"
+
+# Launch alternative CLI experiences
+gal code --cli-mode opencode
+gal code --cli-mode crush
 ```
 
 ## 📖 User Guide
@@ -136,6 +140,17 @@ The system supports a flexible configuration hierarchy. Higher priority values o
 1. **Project configuration** (`./config/config.yaml`) - Highest priority, project-specific
 2. **Global configuration** (`~/.code-cli-any-llm/config.yaml`) - Medium priority, user defaults  
 3. **Environment variables** - Lowest priority, baseline settings
+
+### Gateway modes
+
+- `gateway.apiMode`: selects which API surface the gateway exposes (`gemini` or `openai`). Set to `openai` to enable `/api/v1/openai/v1/...` endpoints.
+- `gateway.cliMode`: controls which CLI the `gal code` command launches by default (`gemini`, `opencode`, or `crush`). You can override per run with `--cli-mode`.
+- `gateway.apiKey`: optional shared key forwarded to the OpenAI-compatible façade. Inject it into opencode/crush configs or expose it via environment variables such as `CODE_CLI_API_KEY`.
+
+When `gateway.apiMode` is set to `openai`, the gateway serves:
+- `GET /api/v1/openai/v1/models`
+- `POST /api/v1/openai/v1/chat/completions`
+- `POST /api/v1/openai/v1/responses`
 
 ### Supported providers
 

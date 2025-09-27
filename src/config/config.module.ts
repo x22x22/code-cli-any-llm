@@ -121,6 +121,9 @@ export class ConfigModule {
                     logLevel: config.gateway.logLevel,
                     logDir: resolveLogDir(config.gateway.logDir),
                     requestTimeout: config.gateway.requestTimeout ?? 3600000,
+                    apiMode: config.gateway.apiMode ?? 'gemini',
+                    cliMode: config.gateway.cliMode ?? 'gemini',
+                    apiKey: config.gateway.apiKey,
                   },
                   aiProvider: config.aiProvider,
                 };
@@ -223,6 +226,27 @@ export class ConfigModule {
                   logDir: resolveLogDir(process.env.GAL_GATEWAY_LOG_DIR),
                   requestTimeout:
                     Number(process.env.GAL_REQUEST_TIMEOUT) || 3600000,
+                  apiMode:
+                    (process.env.GAL_GATEWAY_API_MODE || 'gemini')
+                      .toString()
+                      .trim()
+                      .toLowerCase() === 'openai'
+                      ? 'openai'
+                      : 'gemini',
+                  cliMode: (() => {
+                    const raw = (process.env.GAL_GATEWAY_CLI_MODE || 'gemini')
+                      .toString()
+                      .trim()
+                      .toLowerCase();
+                    if (raw === 'opencode') {
+                      return 'opencode';
+                    }
+                    if (raw === 'crush') {
+                      return 'crush';
+                    }
+                    return 'gemini';
+                  })(),
+                  apiKey: process.env.GAL_GATEWAY_API_KEY,
                 },
                 aiProvider: (
                   process.env.GAL_AI_PROVIDER || 'openai'

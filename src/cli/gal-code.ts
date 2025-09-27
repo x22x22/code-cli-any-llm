@@ -31,6 +31,104 @@ const DEFAULT_TIMEOUT = 20000;
 const POLL_INTERVAL = 800;
 const GATEWAY_PID_FILE = 'gateway.pid.json';
 
+type CliMode = 'gemini' | 'opencode' | 'crush';
+type ApiMode = 'gemini' | 'openai';
+
+const CLI_MODE_VALUES: CliMode[] = ['gemini', 'opencode', 'crush'];
+
+function parseCliModeValue(value?: string | null): CliMode | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if ((CLI_MODE_VALUES as string[]).includes(normalized)) {
+    return normalized as CliMode;
+  }
+  return undefined;
+}
+
+function normalizeCliMode(value?: string | null): CliMode {
+  return parseCliModeValue(value) ?? 'gemini';
+}
+
+function resolveClientHost(host: string): string {
+  if (!host) {
+    return '127.0.0.1';
+  }
+  const normalized = host.trim();
+  if (
+    normalized === '0.0.0.0' ||
+    normalized === '::' ||
+    normalized === '::0' ||
+    normalized === '[::]'
+  ) {
+    return '127.0.0.1';
+  }
+  return normalized;
+}
+
+function stripJsonComments(content: string): string {
+  return content.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+}
+
+function readJsonConfigFile(filePath: string): Record<string, any> {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    if (!raw.trim()) {
+      return {};
+    }
+    const cleaned = stripJsonComments(raw);
+    const parsed = JSON.parse(cleaned);
+    if (parsed && typeof parsed === 'object') {
+      return parsed as Record<string, any>;
+    }
+  } catch (error) {
+    console.warn(
+      `读取配置文件失败 (${filePath})：${(error as Error).message}，将使用默认模板。`,
+    );
+  }
+  return {};
+}
+
+function writeJsonConfigFile(
+  filePath: string,
+  data: Record<string, unknown>,
+): void {
+  ensureDir(path.dirname(filePath));
+  fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, {
+    mode: 0o600,
+  });
+}
+
+function resolveConfigDirectory(subdir: string): string {
+  const base =
+    process.env.XDG_CONFIG_HOME && process.env.XDG_CONFIG_HOME.trim()
+      ? process.env.XDG_CONFIG_HOME.trim()
+      : path.join(os.homedir(), '.config');
+  return path.join(base, subdir);
+}
+
+function resolveOpencodeConfigPath(): string {
+  const dir = resolveConfigDirectory('opencode');
+  const jsonPath = path.join(dir, 'opencode.json');
+  const jsoncPath = path.join(dir, 'opencode.jsonc');
+  if (fs.existsSync(jsonPath)) {
+    return jsonPath;
+  }
+  if (fs.existsSync(jsoncPath)) {
+    return jsoncPath;
+  }
+  return jsonPath;
+}
+
+function resolveCrushConfigPath(): string {
+  const dir = resolveConfigDirectory('crush');
+  return path.join(dir, 'crush.json');
+}
+
 interface GatewayContext {
   projectRoot: string;
   configDir: string;
@@ -38,12 +136,17 @@ interface GatewayContext {
   gatewayHost: string;
   gatewayPort: number;
   geminiApiKey?: string;
+  cliMode: CliMode;
+  apiMode: ApiMode;
+  gatewayApiKey?: string;
+  configWasUpdated: boolean;
 }
 
 interface GatewayContextOptions {
   allowWizard?: boolean;
   requireApiKey?: boolean;
   ensureGeminiSettings?: boolean;
+  cliModeOverride?: CliMode;
 }
 
 interface GatewayPidInfo {
@@ -151,20 +254,23 @@ async function prepareGatewayContext(
   const {
     allowWizard = true,
     requireApiKey = true,
-    ensureGeminiSettings: ensureGemini = true,
+    ensureGeminiSettings: ensureGeminiFlag,
+    cliModeOverride,
   } = options;
 
   const projectRoot = locateProjectRoot(__dirname);
   const configDir = path.join(os.homedir(), '.code-cli-any-llm');
   const configFile = path.join(configDir, 'config.yaml');
 
-  const configService = new GlobalConfigService();
   const configExists = fs.existsSync(configFile);
+  const configService = new GlobalConfigService();
   let configResult = configService.loadGlobalConfig();
+  let configWasUpdated = false;
 
   if (allowWizard && shouldRunWizard(configExists, configResult)) {
     await runConfigWizard(configFile);
     configResult = configService.loadGlobalConfig();
+    configWasUpdated = true;
 
     if (!configResult.isValid) {
       console.error('配置仍然无效，请检查 ~/.code-cli-any-llm/config.yaml');
@@ -180,11 +286,36 @@ async function prepareGatewayContext(
   const config = configResult.config;
   const gatewayHost = normalizeGatewayHost(config.gateway.host);
   const gatewayPort = config.gateway.port;
+  const cliMode: CliMode =
+    cliModeOverride ?? normalizeCliMode(config.gateway.cliMode);
+  let apiModeValue = (config.gateway.apiMode ?? 'gemini')
+    .toString()
+    .trim()
+    .toLowerCase();
+
+  if (cliMode === 'opencode' || cliMode === 'crush') {
+    apiModeValue = 'openai';
+    if (config.gateway.apiMode !== 'openai' || config.gateway.cliMode !== cliMode) {
+      config.gateway.apiMode = 'openai';
+      config.gateway.cliMode = cliMode;
+      configService.saveConfig(config);
+      configWasUpdated = true;
+    }
+  } else if (config.gateway.cliMode !== cliMode) {
+    config.gateway.cliMode = cliMode;
+    configService.saveConfig(config);
+    configWasUpdated = true;
+  }
+
+  const apiMode: ApiMode = apiModeValue === 'openai' ? 'openai' : 'gemini';
+  const shouldEnsureGemini = ensureGeminiFlag ?? cliMode === 'gemini';
+  const requireGeminiApiKey = cliMode === 'gemini' && requireApiKey;
+  const gatewayApiKey = config.gateway.apiKey;
 
   const isChatGPTMode = isCodexChatGPTMode(config);
 
   let geminiApiKey: string | undefined;
-  if (requireApiKey) {
+  if (requireGeminiApiKey) {
     if (isChatGPTMode) {
       try {
         await ensureChatGPTAuth('GalCodeChatGPT');
@@ -206,7 +337,7 @@ async function prepareGatewayContext(
     }
   }
 
-  if (ensureGemini) {
+  if (shouldEnsureGemini && cliMode === 'gemini') {
     ensureGeminiSettings();
   }
 
@@ -217,20 +348,115 @@ async function prepareGatewayContext(
     gatewayHost,
     gatewayPort,
     geminiApiKey,
+    cliMode,
+    apiMode,
+    gatewayApiKey,
+    configWasUpdated,
   };
+}
+
+interface CliModeParseResult {
+  cliModeOverride?: CliMode;
+  filteredArgs: string[];
+}
+
+function extractCliModeFromArgs(args: string[]): CliModeParseResult {
+  const filtered: string[] = [];
+  let override: CliMode | undefined;
+  let skipNext = false;
+  let stopParsing = false;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+
+    if (stopParsing) {
+      filtered.push(arg);
+      continue;
+    }
+
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
+
+    if (arg === '--') {
+      stopParsing = true;
+      filtered.push(arg);
+      continue;
+    }
+
+    if (arg === '--cli-mode') {
+      const next = args[i + 1];
+      const parsed = parseCliModeValue(next);
+      if (!parsed) {
+        console.error('无效的 --cli-mode 参数，需要 gemini / opencode / crush');
+        process.exit(1);
+      }
+      override = parsed;
+      skipNext = true;
+      continue;
+    }
+
+    if (arg.startsWith('--cli-mode=')) {
+      const value = arg.split('=')[1];
+      const parsed = parseCliModeValue(value);
+      if (!parsed) {
+        console.error('无效的 --cli-mode 参数，需要 gemini / opencode / crush');
+        process.exit(1);
+      }
+      override = parsed;
+      continue;
+    }
+
+    filtered.push(arg);
+  }
+
+  return { cliModeOverride: override, filteredArgs: filtered };
 }
 
 export async function runGalCode(args: string[]): Promise<void> {
   await handleUpgradePrompt();
-  const context = await prepareGatewayContext();
-  const { gatewayHost, gatewayPort, geminiApiKey } = context;
+  const { cliModeOverride, filteredArgs } = extractCliModeFromArgs(args);
+  const context = await prepareGatewayContext({ cliModeOverride });
+  const {
+    gatewayHost,
+    gatewayPort,
+    geminiApiKey,
+    cliMode,
+    apiMode,
+    gatewayApiKey,
+    configWasUpdated,
+  } = context;
 
-  if (!(await isGatewayHealthy(gatewayHost, gatewayPort))) {
+  const clientHost = resolveClientHost(gatewayHost);
+
+  if (configWasUpdated) {
+    console.log('检测到配置更新，正在重启网关...');
+    try {
+      await runGalRestart();
+      console.log('网关已重新启动。');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`重启网关失败: ${message}`);
+      console.error('请手动运行 `pnpm run gal restart` 后重试。');
+      process.exit(1);
+    }
+  }
+
+  if ((cliMode === 'opencode' || cliMode === 'crush') && apiMode !== 'openai') {
+    console.error(
+      '当前网关处于 Gemini 模式，无法提供 OpenAI 兼容接口。请在配置中将 gateway.apiMode 调整为 openai 后重试。',
+    );
+    process.exit(1);
+  }
+
+
+  if (!(await isGatewayHealthy(clientHost, gatewayPort))) {
     console.log('检测到网关未运行，正在后台启动服务...');
     startGatewayProcess(context);
 
     const { ready, lastStatus } = await waitForGatewayHealthy(
-      gatewayHost,
+      clientHost,
       gatewayPort,
     );
     if (!ready) {
@@ -240,7 +466,29 @@ export async function runGalCode(args: string[]): Promise<void> {
     }
   }
 
-  await launchGeminiCLI(args, gatewayHost, gatewayPort, geminiApiKey ?? '');
+  if (cliMode === 'gemini') {
+    await launchGeminiCLI(
+      filteredArgs,
+      clientHost,
+      gatewayPort,
+      geminiApiKey ?? '',
+    );
+    return;
+  }
+
+  if (cliMode === 'opencode') {
+    prepareOpencodeConfig(clientHost, gatewayPort, apiMode, gatewayApiKey);
+    await launchOpencodeCLI(
+      filteredArgs,
+      clientHost,
+      gatewayPort,
+      gatewayApiKey,
+    );
+    return;
+  }
+
+  prepareCrushConfig(clientHost, gatewayPort, apiMode, gatewayApiKey);
+  await launchCrushCLI(filteredArgs, clientHost, gatewayPort, gatewayApiKey);
 }
 
 function shouldRunWizard(
@@ -761,10 +1009,11 @@ function fetchGatewayHealth(
   host: string,
   port: number,
 ): Promise<GatewayHealthStatus> {
+  const clientHost = resolveClientHost(host);
   return new Promise((resolve) => {
     const request = http.get(
       {
-        host,
+        host: clientHost,
         port,
         path: GATEWAY_HEALTH_PATH,
         timeout: 1500,
@@ -964,32 +1213,244 @@ async function launchGeminiCLI(
 ): Promise<void> {
   const origin = `http://${host}:${port}`;
   const baseURL = new URL('/api', origin).toString();
-  const child = spawn('gemini', args, {
+  await runCliCommand('gemini', args, {
+    GOOGLE_GEMINI_BASE_URL: baseURL,
+    GEMINI_API_KEY: geminiApiKey,
+  });
+}
+
+async function launchOpencodeCLI(
+  args: string[],
+  host: string,
+  port: number,
+  gatewayApiKey?: string,
+): Promise<void> {
+  const origin = `http://${host}:${port}`;
+  const openaiBaseUrl = `${origin}/api/v1/openai/v1`;
+  await runCliCommand('opencode', args, {
+    OPENAI_BASE_URL: openaiBaseUrl,
+    CODE_CLI_API_KEY: gatewayApiKey,
+  });
+}
+
+async function launchCrushCLI(
+  args: string[],
+  host: string,
+  port: number,
+  gatewayApiKey?: string,
+): Promise<void> {
+  const origin = `http://${host}:${port}`;
+  const openaiBaseUrl = `${origin}/api/v1/openai/v1`;
+  await runCliCommand('crush', args, {
+    CRUSH_DISABLE_PROVIDER_AUTO_UPDATE: '1',
+    OPENAI_BASE_URL: openaiBaseUrl,
+    CODE_CLI_API_KEY: gatewayApiKey,
+  });
+}
+
+async function runCliCommand(
+  command: string,
+  args: string[],
+  envOverrides: Record<string, string | undefined>,
+): Promise<void> {
+  const mergedEnv: NodeJS.ProcessEnv = { ...process.env };
+  for (const [key, value] of Object.entries(envOverrides)) {
+    if (value !== undefined) {
+      mergedEnv[key] = value;
+    }
+  }
+
+  const child = spawn(command, args, {
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      GOOGLE_GEMINI_BASE_URL: baseURL,
-      GEMINI_API_KEY: geminiApiKey,
-    },
+    env: mergedEnv,
   });
 
   await new Promise<void>((resolve, reject) => {
-    child.on('error', (error) => {
-      reject(error);
-    });
-
+    child.on('error', (error) => reject(error));
     child.on('exit', (code) => {
       if (code === 0) {
         resolve();
       } else {
-        const error: NodeJS.ErrnoException & { exitCode?: number } = new Error(
-          `gemini 命令以状态码 ${code ?? 'unknown'} 退出`,
-        );
-        error.exitCode = code ?? 1;
-        reject(error);
+        reject(createExitError(command, code));
       }
     });
   });
+}
+
+function createExitError(command: string, code: number | null): Error {
+  const message = `${command} 命令以状态码 ${code ?? 'unknown'} 退出`;
+  const error: NodeJS.ErrnoException & { exitCode?: number } = new Error(
+    message,
+  );
+  error.exitCode = code ?? 1;
+  return error;
+}
+
+function prepareOpencodeConfig(
+  host: string,
+  port: number,
+  apiMode: ApiMode,
+  gatewayApiKey?: string,
+): void {
+  if (apiMode !== 'openai') {
+    return;
+  }
+  const baseUrl = `http://${host}:${port}/api/v1/openai/v1`;
+  const configPath = resolveOpencodeConfigPath();
+  const config = readJsonConfigFile(configPath);
+
+  if (!config.$schema) {
+    config.$schema = 'https://opencode.ai/config.json';
+  }
+
+  const providerContainer = (config.provider =
+    (config.provider as Record<string, any>) ?? {});
+  const providerEntry = (providerContainer['code-cli'] =
+    (providerContainer['code-cli'] as Record<string, any>) ?? {});
+  providerEntry.npm = providerEntry.npm || '@ai-sdk/openai-compatible';
+  providerEntry.name = providerEntry.name || 'Code CLI Gateway';
+  providerEntry.api = providerEntry.api || baseUrl;
+
+  const existingOptions =
+    typeof providerEntry.options === 'object' && providerEntry.options
+      ? providerEntry.options
+      : {};
+  providerEntry.options = {
+    ...existingOptions,
+    baseURL: baseUrl,
+    ...(gatewayApiKey ? { apiKey: gatewayApiKey } : {}),
+  };
+
+  const models: Record<string, any> =
+    typeof providerEntry.models === 'object' && providerEntry.models
+      ? (providerEntry.models as Record<string, any>)
+      : {};
+
+  const existingClaude =
+    models['claude-code-proxy'] &&
+    typeof models['claude-code-proxy'] === 'object'
+      ? (models['claude-code-proxy'] as Record<string, any>)
+      : {};
+  const existingCodex =
+    models['codex-proxy'] && typeof models['codex-proxy'] === 'object'
+      ? (models['codex-proxy'] as Record<string, any>)
+      : {};
+
+  const existingClaudeOptions =
+    existingClaude && typeof existingClaude.options === 'object'
+      ? (existingClaude.options as Record<string, any>)
+      : {};
+  const existingThinking =
+    existingClaudeOptions && typeof existingClaudeOptions.thinking === 'object'
+      ? (existingClaudeOptions.thinking as Record<string, any>)
+      : {};
+  const existingBudgetTokens =
+    typeof existingThinking.budgetTokens === 'number'
+      ? existingThinking.budgetTokens
+      : 12000;
+
+  models['claude-code-proxy'] = {
+    ...existingClaude,
+    options: {
+      ...existingClaudeOptions,
+      thinking: {
+        ...existingThinking,
+        type: 'enabled',
+        budgetTokens: existingBudgetTokens,
+      },
+    },
+  };
+  models['codex-proxy'] = {
+    ...existingCodex,
+  };
+
+  providerEntry.models = models;
+
+  if (!config.model || typeof config.model !== 'string') {
+    config.model = 'code-cli/claude-code-proxy';
+  }
+
+  writeJsonConfigFile(configPath, config);
+}
+
+function prepareCrushConfig(
+  host: string,
+  port: number,
+  apiMode: ApiMode,
+  gatewayApiKey?: string,
+): void {
+  if (apiMode !== 'openai') {
+    return;
+  }
+
+  const baseUrl = `http://${host}:${port}/api/v1/openai/v1`;
+  const configPath = resolveCrushConfigPath();
+  const config = readJsonConfigFile(configPath);
+
+  if (!config.$schema) {
+    config.$schema = 'https://charm.land/crush.json';
+  }
+
+  const providers = (config.providers =
+    (config.providers as Record<string, any>) ?? {});
+  const providerEntry = (providers['code-cli'] =
+    (providers['code-cli'] as Record<string, any>) ?? {});
+
+  providerEntry.name = providerEntry.name || 'Code CLI Gateway';
+  providerEntry.type = 'openai';
+  providerEntry.base_url = baseUrl;
+  if (gatewayApiKey) {
+    providerEntry.api_key = gatewayApiKey;
+  }
+
+  const desiredModels = [
+    {
+      id: 'claude-code-proxy',
+      name: 'Claude Code (Gateway)',
+      context_window: 200000,
+      default_max_tokens: 16000,
+    },
+    {
+      id: 'codex-proxy',
+      name: 'Codex (Gateway)',
+      context_window: 120000,
+      default_max_tokens: 12000,
+    },
+  ];
+
+  const existingModelsArray = Array.isArray(providerEntry.models)
+    ? providerEntry.models
+    : [];
+  const modelsById = new Map<string, Record<string, any>>();
+  for (const model of existingModelsArray) {
+    if (model && typeof model.id === 'string') {
+      modelsById.set(model.id, { ...model });
+    }
+  }
+  for (const desired of desiredModels) {
+    const existing = modelsById.get(desired.id) ?? {};
+    modelsById.set(desired.id, { ...existing, ...desired });
+  }
+  providerEntry.models = Array.from(modelsById.values());
+
+  if (!config.models || typeof config.models !== 'object') {
+    config.models = {};
+  }
+  const modelsConfig = config.models as Record<string, any>;
+  if (!modelsConfig.large) {
+    modelsConfig.large = {
+      provider: 'code-cli',
+      model: 'claude-code-proxy',
+    };
+  }
+  if (!modelsConfig.small) {
+    modelsConfig.small = {
+      provider: 'code-cli',
+      model: 'codex-proxy',
+    };
+  }
+
+  writeJsonConfigFile(configPath, config);
 }
 
 export function ensureGeminiSettings(): void {

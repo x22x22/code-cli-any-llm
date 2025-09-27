@@ -44,6 +44,28 @@ function normalizeLogDir(value?: string): string {
   return path.isAbsolute(trimmed) ? trimmed : path.resolve(trimmed);
 }
 
+function normalizeApiMode(value?: string): 'gemini' | 'openai' {
+  const raw = (value || process.env.GAL_GATEWAY_API_MODE || 'gemini')
+    .toString()
+    .trim()
+    .toLowerCase();
+  return raw === 'openai' ? 'openai' : 'gemini';
+}
+
+function normalizeCliMode(value?: string): 'gemini' | 'opencode' | 'crush' {
+  const raw = (value || process.env.GAL_GATEWAY_CLI_MODE || 'gemini')
+    .toString()
+    .trim()
+    .toLowerCase();
+  if (raw === 'opencode') {
+    return 'opencode';
+  }
+  if (raw === 'crush') {
+    return 'crush';
+  }
+  return 'gemini';
+}
+
 export class OpenAIConfig {
   @IsString()
   @Transform(
@@ -271,6 +293,22 @@ export class GatewayConfigSchema {
       : Number(process.env.GAL_REQUEST_TIMEOUT) || 3600000,
   )
   requestTimeout!: number;
+
+  @IsIn(['gemini', 'openai'])
+  @Transform(({ value }: { value: string }) => normalizeApiMode(value))
+  apiMode!: 'gemini' | 'openai';
+
+  @IsIn(['gemini', 'opencode', 'crush'])
+  @Transform(({ value }: { value: string }) => normalizeCliMode(value))
+  cliMode!: 'gemini' | 'opencode' | 'crush';
+
+  @IsOptional()
+  @IsString()
+  @Transform(
+    ({ value }: { value: string }) =>
+      value ?? process.env.GAL_GATEWAY_API_KEY ?? undefined,
+  )
+  apiKey?: string;
 }
 
 function parseReasoningConfig(raw: unknown): CodexReasoningConfig | undefined {

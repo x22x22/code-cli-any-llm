@@ -393,7 +393,11 @@ export class StreamTransformer {
       return true;
     }
 
-    if (this.bufferFlushEndingTriggers.some((trigger) => this.textBuffer.endsWith(trigger))) {
+    if (
+      this.bufferFlushEndingTriggers.some((trigger) =>
+        this.textBuffer.endsWith(trigger),
+      )
+    ) {
       return true;
     }
 
@@ -404,7 +408,9 @@ export class StreamTransformer {
     return false;
   }
 
-  private flushTextBufferIntoParts(parts: Array<Record<string, unknown>>): void {
+  private flushTextBufferIntoParts(
+    parts: Array<Record<string, unknown>>,
+  ): void {
     if (this.textBuffer.length === 0) {
       return;
     }

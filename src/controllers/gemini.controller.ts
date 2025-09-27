@@ -6,7 +6,6 @@ import {
   Res,
   Logger,
   Query,
-  Optional,
   OnApplicationBootstrap,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -22,16 +21,22 @@ import { StreamTransformer } from '../transformers/stream.transformer';
 import { EnhancedRequestTransformer } from '../transformers/enhanced-request.transformer';
 import { EnhancedResponseTransformer } from '../transformers/enhanced-response.transformer';
 import { TokenizerService } from '../services/tokenizer.service';
+import {
+  LlmProviderResolverService,
+  SupportedLLMProvider,
+} from '../services/llm-provider-resolver.service';
 
-@Controller('')
+@Controller('gemini')
 export class GeminiController implements OnApplicationBootstrap {
   private readonly logger = new Logger(GeminiController.name);
   private isUsingZhipuModel = false;
   private useCodexProvider = false;
   private useClaudeCodeProvider = false;
-  private llmProvider!: OpenAIProvider | CodexProvider | ClaudeCodeProvider;
+  private llmProvider!: SupportedLLMProvider;
   private aiProvider!: 'openai' | 'codex' | 'claudeCode';
+  private gatewayApiMode: 'gemini' | 'openai' = 'gemini';
   private initialized = false;
+  private activeProviderConfig?: Record<string, unknown>;
 
   constructor(
     private readonly requestTransformer: RequestTransformer,
@@ -41,9 +46,7 @@ export class GeminiController implements OnApplicationBootstrap {
     private readonly enhancedResponseTransformer: EnhancedResponseTransformer,
     private readonly tokenizerService: TokenizerService,
     private readonly configService: ConfigService,
-    @Optional() private readonly openaiProvider?: OpenAIProvider,
-    @Optional() private readonly codexProvider?: CodexProvider,
-    @Optional() private readonly claudeCodeProvider?: ClaudeCodeProvider,
+    private readonly providerResolver: LlmProviderResolverService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -54,59 +57,13 @@ export class GeminiController implements OnApplicationBootstrap {
     if (this.initialized) {
       return;
     }
-    const providerInput =
-      this.configService.get<string>('aiProvider') || 'claudeCode';
-    const normalizedProvider = providerInput.trim().toLowerCase();
-    if (normalizedProvider === 'codex') {
-      this.aiProvider = 'codex';
-    } else if (
-      normalizedProvider === 'claudecode' ||
-      normalizedProvider === 'claude-code'
-    ) {
-      this.aiProvider = 'claudeCode';
-    } else {
-      this.aiProvider = 'openai';
-    }
-    this.useCodexProvider = this.aiProvider === 'codex';
-    this.useClaudeCodeProvider = this.aiProvider === 'claudeCode';
-
-    let provider:
-      | OpenAIProvider
-      | CodexProvider
-      | ClaudeCodeProvider
-      | undefined = this.openaiProvider;
-
-    if (this.useCodexProvider) {
-      const codexProvider = this.codexProvider;
-      if (!codexProvider) {
-        throw new Error(
-          'Codex provider selected but CodexProvider is not available',
-        );
-      }
-      if (!codexProvider.isEnabled()) {
-        throw new Error('Codex provider selected but configuration is missing');
-      }
-      provider = codexProvider;
-    } else if (this.useClaudeCodeProvider) {
-      const claudeProvider = this.claudeCodeProvider;
-      if (!claudeProvider || !claudeProvider.isEnabled()) {
-        throw new Error(
-          'Claude Code provider selected but configuration is missing',
-        );
-      }
-      provider = claudeProvider;
-    } else {
-      if (!this.openaiProvider || !this.openaiProvider.isEnabled()) {
-        throw new Error(
-          'OpenAI provider selected but configuration is missing',
-        );
-      }
-      provider = this.openaiProvider;
-    }
-    if (!provider) {
-      throw new Error('LLM provider is not available.');
-    }
-    this.llmProvider = provider;
+    const context = this.providerResolver.resolve();
+    this.gatewayApiMode = context.gatewayApiMode;
+    this.aiProvider = context.aiProvider;
+    this.useCodexProvider = context.useCodexProvider;
+    this.useClaudeCodeProvider = context.useClaudeCodeProvider;
+    this.llmProvider = context.provider;
+    this.activeProviderConfig = context.providerConfig;
 
     const config = this.getActiveProviderConfig();
     const providerName = this.useCodexProvider
@@ -129,13 +86,7 @@ export class GeminiController implements OnApplicationBootstrap {
     }
     this.logger.log('==========================');
 
-    const configuredModel =
-      ((config as Record<string, unknown>)?.model as string | undefined) ||
-      (this.useCodexProvider
-        ? 'gpt-5-codex'
-        : this.useClaudeCodeProvider
-          ? 'claude-sonnet-4-20250514'
-          : 'glm-4.5');
+    const configuredModel = this.providerResolver.resolveDefaultModel(context);
     this.isUsingZhipuModel =
       !this.useCodexProvider &&
       !this.useClaudeCodeProvider &&
@@ -147,6 +98,7 @@ export class GeminiController implements OnApplicationBootstrap {
       `Using Enhanced Transformers: ${this.isUsingZhipuModel ? 'YES' : 'NO'}`,
     );
     this.logger.log('===========================');
+    this.logger.log(`Gateway API Mode: ${this.gatewayApiMode.toUpperCase()}`);
     this.initialized = true;
   }
 
@@ -175,12 +127,17 @@ export class GeminiController implements OnApplicationBootstrap {
   }
 
   private getActiveProviderConfig(): Record<string, unknown> | undefined {
+    if (this.activeProviderConfig) {
+      return this.activeProviderConfig;
+    }
     const key = this.useCodexProvider
       ? 'codex'
       : this.useClaudeCodeProvider
         ? 'claudeCode'
         : 'openai';
-    return this.configService.get<Record<string, unknown>>(key);
+    const config = this.configService.get<Record<string, unknown>>(key);
+    this.activeProviderConfig = config;
+    return config;
   }
 
   private computePromptTokens(
@@ -265,13 +222,15 @@ export class GeminiController implements OnApplicationBootstrap {
           this.logger.debug(
             `Received generateContent request (Claude Code) for model: ${actualModel}`,
           );
-          const claudeResponse =
-            await this.claudeCodeProvider!.generateFromGemini(
-              request,
-              targetModel,
-            );
+          const claudeProvider = this.llmProvider as ClaudeCodeProvider;
+          const claudeResponse = await claudeProvider.generateFromGemini(
+            request,
+            targetModel,
+          );
           if (thoughtSignature) {
-            claudeResponse.thoughtSignature = thoughtSignature;
+            (
+              claudeResponse as unknown as Record<string, unknown>
+            ).thoughtSignature = thoughtSignature;
           }
           response.status(200).json(claudeResponse);
           return;
@@ -610,7 +569,7 @@ export class GeminiController implements OnApplicationBootstrap {
       this.logger.error('Response error (Claude stream):', err);
     });
 
-    const provider = this.claudeCodeProvider!;
+    const provider = this.llmProvider as ClaudeCodeProvider;
 
     try {
       for await (const chunk of provider.streamFromGemini(
