@@ -169,58 +169,58 @@ You can also configure settings with environment variables (baseline settings wi
 
 ```bash
 # Choose the primary provider (supports claudeCode / codex / openai)
-export GAL_AI_PROVIDER="codex"
+export CAL_AI_PROVIDER="codex"
 
 # Codex configuration
 # Auth mode can be apikey / chatgpt (default apikey)
-export GAL_CODEX_AUTH_MODE="chatgpt"
+export CAL_CODEX_AUTH_MODE="chatgpt"
 # Provide the API Key when using ApiKey mode; leave empty for ChatGPT mode
-export GAL_CODEX_API_KEY="your-codex-api-key"
-export GAL_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex"
-export GAL_CODEX_MODEL="gpt-5-codex"
-export GAL_CODEX_TIMEOUT="1800000"
+export CAL_CODEX_API_KEY="your-codex-api-key"
+export CAL_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex"
+export CAL_CODEX_MODEL="gpt-5-codex"
+export CAL_CODEX_TIMEOUT="1800000"
 # Optional: reasoning parameters and output verbosity control
-export GAL_CODEX_REASONING='{"effort":"medium"}'
-export GAL_CODEX_TEXT_VERBOSITY="medium"
+export CAL_CODEX_REASONING='{"effort":"medium"}'
+export CAL_CODEX_TEXT_VERBOSITY="medium"
 # Optional: custom OAuth token directory (defaults to ~/.code-cli-any-llm/codex)
 export CODEX_HOME="$HOME/.custom-codex"
 
 # Claude Code configuration
-export GAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
-export GAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"   # 或自建 relay 的 /api 根路径
-export GAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
-export GAL_CLAUDE_CODE_TIMEOUT="1800000"
-export GAL_CLAUDE_CODE_VERSION="2023-06-01"
-export GAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
-export GAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
-export GAL_CLAUDE_CODE_X_APP="cli"
-export GAL_CLAUDE_CODE_DANGEROUS_DIRECT="true"
-export GAL_CLAUDE_CODE_MAX_OUTPUT="64000"
+export CAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
+export CAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"   # 或自建 relay 的 /api 根路径
+export CAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
+export CAL_CLAUDE_CODE_TIMEOUT="1800000"
+export CAL_CLAUDE_CODE_VERSION="2023-06-01"
+export CAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
+export CAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
+export CAL_CLAUDE_CODE_X_APP="cli"
+export CAL_CLAUDE_CODE_DANGEROUS_DIRECT="true"
+export CAL_CLAUDE_CODE_MAX_OUTPUT="64000"
 
 # OpenAI / compatible service configuration
-export GAL_OPENAI_API_KEY="your-api-key"
-export GAL_OPENAI_BASE_URL="https://api.openai.com/v1"
-export GAL_OPENAI_MODEL="gpt-4"
-export GAL_OPENAI_TIMEOUT="1800000"
+export CAL_OPENAI_API_KEY="your-api-key"
+export CAL_OPENAI_BASE_URL="https://api.openai.com/v1"
+export CAL_OPENAI_MODEL="gpt-4"
+export CAL_OPENAI_TIMEOUT="1800000"
 # Optional: OpenAI organization ID
-export GAL_OPENAI_ORGANIZATION="org-xxxxxx"
+export CAL_OPENAI_ORGANIZATION="org-xxxxxx"
 
 # Gateway configuration
-export GAL_PORT="23062"
-export GAL_HOST="0.0.0.0"
-export GAL_LOG_LEVEL="info"
-export GAL_GATEWAY_LOG_DIR="~/.code-cli-any-llm/logs"
+export CAL_PORT="23062"
+export CAL_HOST="0.0.0.0"
+export CAL_LOG_LEVEL="info"
+export CAL_GATEWAY_LOG_DIR="~/.code-cli-any-llm/logs"
 # Optional gateway AI Code CLI tool controls
-export GAL_GATEWAY_API_MODE="openai"
-export GAL_GATEWAY_CLI_MODE="opencode"
-export GAL_GATEWAY_API_KEY="shared-demo-key"
-export GAL_DISABLE_UPDATE_CHECK="1"            # Disable automatic update prompts
+export CAL_GATEWAY_API_MODE="openai"
+export CAL_GATEWAY_CLI_MODE="opencode"
+export CAL_GATEWAY_API_KEY="shared-demo-key"
+export CAL_DISABLE_UPDATE_CHECK="1"            # Disable automatic update prompts
 
 # General advanced configuration
-export GAL_RATE_LIMIT_MAX="100"                # API rate limit cap (per 15 minutes)
-export GAL_REQUEST_TIMEOUT="3600000"           # Request timeout in milliseconds (default 1 hour)
-export GAL_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8080"  # Allowed origins for CORS
-export GAL_LOG_DIR="/custom/log/path"          # Custom log directory
+export CAL_RATE_LIMIT_MAX="100"                # API rate limit cap (per 15 minutes)
+export CAL_REQUEST_TIMEOUT="3600000"           # Request timeout in milliseconds (default 1 hour)
+export CAL_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8080"  # Allowed origins for CORS
+export CAL_LOG_DIR="/custom/log/path"          # Custom log directory
 ```
 
 ### Project-specific configuration
@@ -451,7 +451,7 @@ openai:
 cal auth
 ```
 
-In the wizard, choose the provider you need. You can also preselect it with the environment variable `GAL_AI_PROVIDER` (`openai` or `codex`).
+In the wizard, choose the provider you need. You can also preselect it with the environment variable `CAL_AI_PROVIDER` (`openai` or `codex`).
 
 Common configuration examples:
 - **OpenAI**: `https://api.openai.com/v1` + `gpt-4` or `gpt-4o`
@@ -506,7 +506,7 @@ cal restart
 - Every interactive `cal` command checks `~/.code-cli-any-llm/version.json` and refreshes the cache in the background every 20 hours. Network errors during the check never block the gateway.
 - When you run `cal code`, the CLI pauses before launching the Gemini experience if a newer version exists and offers four options: `y` (update now), `n` (skip for this run), `skip` (ignore this release), or `off` (disable future checks and restart the gateway).
 - Run `cal update` at any time to synchronously refresh the cache and install the latest published package.
-- Set `GAL_DISABLE_UPDATE_CHECK=1` if you need to permanently opt out of automatic checks (also available through the `off` option in the prompt).
+- Set `CAL_DISABLE_UPDATE_CHECK=1` if you need to permanently opt out of automatic checks (also available through the `off` option in the prompt).
 
 ## 🙏 Acknowledgements
 

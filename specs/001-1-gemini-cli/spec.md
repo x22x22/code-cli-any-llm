@@ -4,7 +4,7 @@
 **Feature Branch**: `001-1-gemini-cli`  
 **Created**: 2025-01-15  
 **Status**: Draft  
-**Input**: User description: "1. 本项目旨在为 Gemini CLI 提供访问非 Gemini 模型的路由服务。通过本服务，Gemini CLI 可以无缝地连接和使用其他大语言模型提供商的 API。即至少只要提供对应的GAL_OPENAI_API_KEY、GAL_OPENAI_BASE_URL、GAL_OPENAI_MODEL就可以启动本项， 然后暴露出一个http接口接收"Gemini API"的请求转换成"Openai api"的报文发送给"GAL_OPENAI_BASE_URL"对应的模型。 2. 使用本地配置文件的方式实现路由信息的配置，可配置的基本信息可以参考 @.env.example。 @.env 请酌情判断是否需要添加其它必要的配置项。 3. 具体的实现设计请参考 @docs/research/README.md @docs/research/aioncli-analysis.md @docs/research/llxprt-code-analysis.md @docs/research/comparison-summary.md 中提及的代码最小工作量的实现这个需求。有必要时可以重新翻阅 @/home/kdump/llm/project/llxprt-code/ 和 @/home/kdump/llm/project/aioncli/ 代码，把核心的报文转换代码直接复刻过来。"
+**Input**: User description: "1. 本项目旨在为 Gemini CLI 提供访问非 Gemini 模型的路由服务。通过本服务，Gemini CLI 可以无缝地连接和使用其他大语言模型提供商的 API。即至少只要提供对应的CAL_OPENAI_API_KEY、CAL_OPENAI_BASE_URL、CAL_OPENAI_MODEL就可以启动本项， 然后暴露出一个http接口接收"Gemini API"的请求转换成"Openai api"的报文发送给"CAL_OPENAI_BASE_URL"对应的模型。 2. 使用本地配置文件的方式实现路由信息的配置，可配置的基本信息可以参考 @.env.example。 @.env 请酌情判断是否需要添加其它必要的配置项。 3. 具体的实现设计请参考 @docs/research/README.md @docs/research/aioncli-analysis.md @docs/research/llxprt-code-analysis.md @docs/research/comparison-summary.md 中提及的代码最小工作量的实现这个需求。有必要时可以重新翻阅 @/home/kdump/llm/project/llxprt-code/ 和 @/home/kdump/llm/project/aioncli/ 代码，把核心的报文转换代码直接复刻过来。"
 
 ## Execution Flow (main)
 ```
@@ -50,7 +50,7 @@
 作为一个开发者，我希望能够继续使用 Gemini CLI 的所有功能和命令，但是能够通过配置将其连接到任何 OpenAI 兼容的 LLM 提供商，这样我就不需要学习新的 CLI 工具或修改现有的工作流程。
 
 ### Acceptance Scenarios
-1. **Given** 用户已设置 GAL_OPENAI_API_KEY、GAL_OPENAI_BASE_URL 和 GAL_OPENAI_MODEL 环境变量，**When** 启动网关服务，**Then** 服务成功启动并监听默认端口 3000
+1. **Given** 用户已设置 CAL_OPENAI_API_KEY、CAL_OPENAI_BASE_URL 和 CAL_OPENAI_MODEL 环境变量，**When** 启动网关服务，**Then** 服务成功启动并监听默认端口 3000
 
 2. **Given** 网关服务正在运行，**When** Gemini CLI 发送标准的 Gemini API 请求到网关，**Then** 网关将请求转换为 OpenAI 格式并转发到配置的提供商
 
@@ -69,7 +69,7 @@
 ### Functional Requirements
 - **FR-001**: 系统必须接收并解析所有标准的 Gemini API 请求格式
 - **FR-002**: 系统必须将 Gemini API 请求格式转换为 OpenAI API 兼容格式
-- **FR-003**: 系统必须支持通过环境变量配置目标提供商（GAL_OPENAI_API_KEY、GAL_OPENAI_BASE_URL、GAL_OPENAI_MODEL）
+- **FR-003**: 系统必须支持通过环境变量配置目标提供商（CAL_OPENAI_API_KEY、CAL_OPENAI_BASE_URL、CAL_OPENAI_MODEL）
 - **FR-004**: 系统必须将 OpenAI API 响应转换回 Gemini API 响应格式
 - **FR-005**: 系统必须支持流式和非流式两种响应模式
 - **FR-006**: 系统必须处理错误情况并将提供商错误转换为 Gemini API 错误格式

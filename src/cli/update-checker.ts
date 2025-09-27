@@ -210,7 +210,7 @@ export async function refreshVersionInfoImmediate(): Promise<VersionInfo | null>
 }
 
 export async function showUpdateBanner(currentVersion: string): Promise<void> {
-  if (process.env.GAL_DISABLE_UPDATE_CHECK === '1') {
+  if (process.env.CAL_DISABLE_UPDATE_CHECK === '1') {
     return;
   }
   if (!currentVersion || currentVersion === 'unknown') {
@@ -244,7 +244,7 @@ export async function showUpdateBanner(currentVersion: string): Promise<void> {
 export async function getVersionPromptContext(
   currentVersion: string,
 ): Promise<VersionPromptContext | null> {
-  if (process.env.GAL_DISABLE_UPDATE_CHECK === '1') {
+  if (process.env.CAL_DISABLE_UPDATE_CHECK === '1') {
     return null;
   }
   if (!currentVersion || currentVersion === 'unknown') {

@@ -72,7 +72,7 @@ export class GlobalConfigService {
 
       // 1. 环境变量作为基础配置（最低优先级）
       const envAiProviderRaw = (
-        process.env.GAL_AI_PROVIDER || 'openai'
+        process.env.CAL_AI_PROVIDER || 'openai'
       ).toLowerCase();
       const envAiProvider: 'openai' | 'codex' | 'claudeCode' =
         envAiProviderRaw === 'codex'
@@ -83,24 +83,24 @@ export class GlobalConfigService {
       const envConfig: Partial<GlobalConfig> = {
         aiProvider: envAiProvider,
         openai: {
-          apiKey: process.env.GAL_OPENAI_API_KEY || '',
+          apiKey: process.env.CAL_OPENAI_API_KEY || '',
           baseURL:
-            process.env.GAL_OPENAI_BASE_URL ||
+            process.env.CAL_OPENAI_BASE_URL ||
             'https://open.bigmodel.cn/api/paas/v4',
-          model: process.env.GAL_OPENAI_MODEL || 'glm-4.5',
-          timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 1800000,
+          model: process.env.CAL_OPENAI_MODEL || 'glm-4.5',
+          timeout: Number(process.env.CAL_OPENAI_TIMEOUT) || 1800000,
           extraBody: undefined,
         },
-        codex: process.env.GAL_CODEX_API_KEY
+        codex: process.env.CAL_CODEX_API_KEY
           ? {
-              apiKey: process.env.GAL_CODEX_API_KEY || '',
+              apiKey: process.env.CAL_CODEX_API_KEY || '',
               baseURL:
-                process.env.GAL_CODEX_BASE_URL ||
+                process.env.CAL_CODEX_BASE_URL ||
                 'https://chatgpt.com/backend-api/codex',
-              model: process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
-              timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 1800000,
+              model: process.env.CAL_CODEX_MODEL || 'gpt-5-codex',
+              timeout: Number(process.env.CAL_CODEX_TIMEOUT) || 1800000,
               reasoning: (() => {
-                const raw = process.env.GAL_CODEX_REASONING;
+                const raw = process.env.CAL_CODEX_REASONING;
                 if (!raw) return undefined;
                 try {
                   return JSON.parse(raw);
@@ -110,7 +110,7 @@ export class GlobalConfigService {
               })(),
               textVerbosity: (() => {
                 const raw = (
-                  process.env.GAL_CODEX_TEXT_VERBOSITY || ''
+                  process.env.CAL_CODEX_TEXT_VERBOSITY || ''
                 ).toLowerCase();
                 return ['low', 'medium', 'high'].includes(raw)
                   ? (raw as 'low' | 'medium' | 'high')
@@ -120,8 +120,8 @@ export class GlobalConfigService {
           : undefined,
         claudeCode: (() => {
           const apiKey =
-            process.env.GAL_CLAUDE_CODE_API_KEY ||
-            process.env.GAL_ANTHROPIC_API_KEY ||
+            process.env.CAL_CLAUDE_CODE_API_KEY ||
+            process.env.CAL_ANTHROPIC_API_KEY ||
             '';
           if (!apiKey.trim()) {
             return undefined;
@@ -129,34 +129,34 @@ export class GlobalConfigService {
           return {
             apiKey: apiKey.trim(),
             baseURL:
-              process.env.GAL_CLAUDE_CODE_BASE_URL ||
+              process.env.CAL_CLAUDE_CODE_BASE_URL ||
               'https://open.bigmodel.cn/api/anthropic',
             model:
-              process.env.GAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
-            timeout: Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 1800000,
+              process.env.CAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
+            timeout: Number(process.env.CAL_CLAUDE_CODE_TIMEOUT) || 1800000,
             anthropicVersion:
-              process.env.GAL_CLAUDE_CODE_VERSION || '2023-06-01',
-            beta: parseBetaEnv(process.env.GAL_CLAUDE_CODE_BETA),
+              process.env.CAL_CLAUDE_CODE_VERSION || '2023-06-01',
+            beta: parseBetaEnv(process.env.CAL_CLAUDE_CODE_BETA),
             userAgent:
-              process.env.GAL_CLAUDE_CODE_USER_AGENT ||
+              process.env.CAL_CLAUDE_CODE_USER_AGENT ||
               'claude-cli/1.0.119 (external, cli)',
-            xApp: process.env.GAL_CLAUDE_CODE_X_APP || 'cli',
+            xApp: process.env.CAL_CLAUDE_CODE_X_APP || 'cli',
             dangerousDirectBrowserAccess: normalizeBoolean(
-              process.env.GAL_CLAUDE_CODE_DANGEROUS_DIRECT,
+              process.env.CAL_CLAUDE_CODE_DANGEROUS_DIRECT,
               true,
             ),
-            maxOutputTokens: process.env.GAL_CLAUDE_CODE_MAX_OUTPUT
-              ? Number(process.env.GAL_CLAUDE_CODE_MAX_OUTPUT)
+            maxOutputTokens: process.env.CAL_CLAUDE_CODE_MAX_OUTPUT
+              ? Number(process.env.CAL_CLAUDE_CODE_MAX_OUTPUT)
               : undefined,
             extraHeaders: undefined,
           } as ClaudeCodeConfig;
         })(),
         gateway: {
-          port: Number(process.env.GAL_PORT) || 23062,
-          host: process.env.GAL_HOST || '0.0.0.0',
-          logLevel: process.env.GAL_LOG_LEVEL || 'info',
-          logDir: process.env.GAL_GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
-          requestTimeout: Number(process.env.GAL_REQUEST_TIMEOUT) || 3600000,
+          port: Number(process.env.CAL_PORT) || 23062,
+          host: process.env.CAL_HOST || '0.0.0.0',
+          logLevel: process.env.CAL_LOG_LEVEL || 'info',
+          logDir: process.env.CAL_GATEWAY_LOG_DIR || DEFAULT_GATEWAY_LOG_DIR,
+          requestTimeout: Number(process.env.CAL_REQUEST_TIMEOUT) || 3600000,
         },
       };
       mergedConfig = this.deepMerge(
@@ -164,29 +164,29 @@ export class GlobalConfigService {
         envConfig as Record<string, unknown>,
       ) as Partial<GlobalConfig>;
       if (
-        process.env.GAL_OPENAI_API_KEY ||
-        process.env.GAL_OPENAI_BASE_URL ||
-        process.env.GAL_OPENAI_MODEL ||
-        process.env.GAL_AI_PROVIDER ||
-        process.env.GAL_CODEX_API_KEY ||
-        process.env.GAL_CODEX_BASE_URL ||
-        process.env.GAL_CODEX_MODEL ||
-        process.env.GAL_CODEX_REASONING ||
-        process.env.GAL_CODEX_TEXT_VERBOSITY ||
-        process.env.GAL_CLAUDE_CODE_API_KEY ||
-        process.env.GAL_CLAUDE_CODE_BASE_URL ||
-        process.env.GAL_CLAUDE_CODE_MODEL ||
-        process.env.GAL_CLAUDE_CODE_VERSION ||
-        process.env.GAL_CLAUDE_CODE_BETA ||
-        process.env.GAL_CLAUDE_CODE_USER_AGENT ||
-        process.env.GAL_CLAUDE_CODE_X_APP ||
-        process.env.GAL_CLAUDE_CODE_DANGEROUS_DIRECT ||
-        process.env.GAL_CLAUDE_CODE_MAX_OUTPUT ||
-        process.env.GAL_PORT ||
-        process.env.GAL_HOST ||
-        process.env.GAL_LOG_LEVEL ||
-        process.env.GAL_GATEWAY_LOG_DIR ||
-        process.env.GAL_REQUEST_TIMEOUT
+        process.env.CAL_OPENAI_API_KEY ||
+        process.env.CAL_OPENAI_BASE_URL ||
+        process.env.CAL_OPENAI_MODEL ||
+        process.env.CAL_AI_PROVIDER ||
+        process.env.CAL_CODEX_API_KEY ||
+        process.env.CAL_CODEX_BASE_URL ||
+        process.env.CAL_CODEX_MODEL ||
+        process.env.CAL_CODEX_REASONING ||
+        process.env.CAL_CODEX_TEXT_VERBOSITY ||
+        process.env.CAL_CLAUDE_CODE_API_KEY ||
+        process.env.CAL_CLAUDE_CODE_BASE_URL ||
+        process.env.CAL_CLAUDE_CODE_MODEL ||
+        process.env.CAL_CLAUDE_CODE_VERSION ||
+        process.env.CAL_CLAUDE_CODE_BETA ||
+        process.env.CAL_CLAUDE_CODE_USER_AGENT ||
+        process.env.CAL_CLAUDE_CODE_X_APP ||
+        process.env.CAL_CLAUDE_CODE_DANGEROUS_DIRECT ||
+        process.env.CAL_CLAUDE_CODE_MAX_OUTPUT ||
+        process.env.CAL_PORT ||
+        process.env.CAL_HOST ||
+        process.env.CAL_LOG_LEVEL ||
+        process.env.CAL_GATEWAY_LOG_DIR ||
+        process.env.CAL_REQUEST_TIMEOUT
       ) {
         configSources.push('环境变量');
       }

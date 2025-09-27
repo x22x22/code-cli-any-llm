@@ -52,7 +52,7 @@ Configuration & environment:
   • Config file: ~/.code-cli-any-llm/config.yaml
   • Default gateway port: 23062 (changeable in the config file)
   • PID file: ~/.code-cli-any-llm/gateway.pid.json
-  • Disable automatic update checks: set GAL_DISABLE_UPDATE_CHECK=1
+  • Disable automatic update checks: set CAL_DISABLE_UPDATE_CHECK=1
 
 Usage examples:
   # First run: configure credentials

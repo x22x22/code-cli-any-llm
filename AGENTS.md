@@ -10,7 +10,7 @@
 项目全量使用 TypeScript，并遵循 Prettier 默认：两空格缩进、分号结尾、单引号。类、装饰器、DTO 采用 PascalCase，方法与变量使用 camelCase，文件名推荐 kebab-case（示例：`tokenizer.service.ts`）。路径导入优先使用 `@/` 别名，公共常量请放置于 `src/common/constants` 或模块内 `constants.ts`。
 
 ## 测试指南
-测试框架为 Jest + ts-jest，自动收集 `src/**/*.(t|j)s`。日常质量门禁为 `pnpm run lint && pnpm run test`，覆盖率基线参考关键模块 ≥80%。新增特性需至少补齐一个单元测试与一条集成或契约测试；端到端用例放在 `test/e2e/` 或 `app.e2e-spec.ts`，并通过可配置环境变量（例如 `GAL_OPENAI_API_KEY=stub`）隔离外部依赖。
+测试框架为 Jest + ts-jest，自动收集 `src/**/*.(t|j)s`。日常质量门禁为 `pnpm run lint && pnpm run test`，覆盖率基线参考关键模块 ≥80%。新增特性需至少补齐一个单元测试与一条集成或契约测试；端到端用例放在 `test/e2e/` 或 `app.e2e-spec.ts`，并通过可配置环境变量（例如 `CAL_OPENAI_API_KEY=stub`）隔离外部依赖。
 
 ## 提交与 PR 指南
 提交信息建议使用中文动词短句，结构如“动作 + 范围 + 结果”，必要时追加 Issue 号码。PR 描述需说明变更动机、接口或配置影响、验证结论与回滚策略；涉及配置、脚本或文档改动时同步更新 `docs/`、`specs/`、`config/` 并列出清单。

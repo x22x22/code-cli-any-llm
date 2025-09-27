@@ -4,7 +4,7 @@ export const corsConfig = {
     origin: string | undefined,
     callback: (error: Error | null, allow?: boolean) => void,
   ) => {
-    const allowedOrigins = process.env.GAL_ALLOWED_ORIGINS?.split(',') || [
+    const allowedOrigins = process.env.CAL_ALLOWED_ORIGINS?.split(',') || [
       'http://localhost:3000',
       'http://localhost:4200',
       'http://localhost:8080',

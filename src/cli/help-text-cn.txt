@@ -52,7 +52,7 @@ Commands:
   • 配置文件：~/.code-cli-any-llm/config.yaml
   • 默认网关端口：23062（可在配置文件中修改）
   • PID 文件：~/.code-cli-any-llm/gateway.pid.json
-  • 关闭自动更新检查：设置环境变量 GAL_DISABLE_UPDATE_CHECK=1
+  • 关闭自动更新检查：设置环境变量 CAL_DISABLE_UPDATE_CHECK=1
 
 使用示例:
   # 首次使用，配置认证信息

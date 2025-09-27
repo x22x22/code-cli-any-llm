@@ -45,7 +45,7 @@ function normalizeLogDir(value?: string): string {
 }
 
 function normalizeApiMode(value?: string): 'gemini' | 'openai' {
-  const raw = (value || process.env.GAL_GATEWAY_API_MODE || 'gemini')
+  const raw = (value || process.env.CAL_GATEWAY_API_MODE || 'gemini')
     .toString()
     .trim()
     .toLowerCase();
@@ -53,7 +53,7 @@ function normalizeApiMode(value?: string): 'gemini' | 'openai' {
 }
 
 function normalizeCliMode(value?: string): 'gemini' | 'opencode' | 'crush' {
-  const raw = (value || process.env.GAL_GATEWAY_CLI_MODE || 'gemini')
+  const raw = (value || process.env.CAL_GATEWAY_CLI_MODE || 'gemini')
     .toString()
     .trim()
     .toLowerCase();
@@ -69,21 +69,21 @@ function normalizeCliMode(value?: string): 'gemini' | 'opencode' | 'crush' {
 export class OpenAIConfig {
   @IsString()
   @Transform(
-    ({ value }: { value: string }) => value || process.env.GAL_OPENAI_API_KEY,
+    ({ value }: { value: string }) => value || process.env.CAL_OPENAI_API_KEY,
   )
   apiKey!: string;
 
   @IsUrl()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.GAL_OPENAI_BASE_URL || 'https://api.openai.com/v1',
+      value || process.env.CAL_OPENAI_BASE_URL || 'https://api.openai.com/v1',
   )
   baseURL!: string;
 
   @IsString()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.GAL_OPENAI_MODEL || 'gpt-3.5-turbo',
+      value || process.env.CAL_OPENAI_MODEL || 'gpt-3.5-turbo',
   )
   model!: string;
 
@@ -114,7 +114,7 @@ export class CodexConfig {
   @IsOptional()
   @IsString()
   @Transform(
-    ({ value }: { value: string }) => value || process.env.GAL_CODEX_API_KEY,
+    ({ value }: { value: string }) => value || process.env.CAL_CODEX_API_KEY,
   )
   apiKey?: string;
 
@@ -123,7 +123,7 @@ export class CodexConfig {
   @Transform(
     ({ value }: { value: string }) =>
       value ||
-      process.env.GAL_CODEX_BASE_URL ||
+      process.env.CAL_CODEX_BASE_URL ||
       'https://chatgpt.com/backend-api/codex',
   )
   baseURL?: string;
@@ -132,7 +132,7 @@ export class CodexConfig {
   @IsString()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
+      value || process.env.CAL_CODEX_MODEL || 'gpt-5-codex',
   )
   model?: string;
 
@@ -147,7 +147,7 @@ export class CodexConfig {
 
   @IsOptional()
   @Transform(({ value }: { value: unknown }) =>
-    parseReasoningConfig(value ?? process.env.GAL_CODEX_REASONING),
+    parseReasoningConfig(value ?? process.env.CAL_CODEX_REASONING),
   )
   reasoning?: CodexReasoningConfig | null;
 
@@ -157,7 +157,7 @@ export class CodexConfig {
     (() => {
       const raw = (
         value ||
-        process.env.GAL_CODEX_TEXT_VERBOSITY ||
+        process.env.CAL_CODEX_TEXT_VERBOSITY ||
         ''
       ).toLowerCase();
       return ['low', 'medium', 'high'].includes(raw)
@@ -173,8 +173,8 @@ export class ClaudeCodeConfig {
   @Transform(
     ({ value }: { value: string }) =>
       value ||
-      process.env.GAL_CLAUDE_CODE_API_KEY ||
-      process.env.GAL_ANTHROPIC_API_KEY,
+      process.env.CAL_CLAUDE_CODE_API_KEY ||
+      process.env.CAL_ANTHROPIC_API_KEY,
   )
   apiKey!: string;
 
@@ -182,7 +182,7 @@ export class ClaudeCodeConfig {
   @Transform(
     ({ value }: { value: string }) =>
       value ||
-      process.env.GAL_CLAUDE_CODE_BASE_URL ||
+      process.env.CAL_CLAUDE_CODE_BASE_URL ||
       'https://open.bigmodel.cn/api/anthropic',
   )
   baseURL!: string;
@@ -190,7 +190,7 @@ export class ClaudeCodeConfig {
   @IsString()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.GAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
+      value || process.env.CAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
   )
   model!: string;
 
@@ -201,7 +201,7 @@ export class ClaudeCodeConfig {
   @Transform(({ value }: { value: string }) =>
     value
       ? parseInt(value, 10)
-      : Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 1800000,
+      : Number(process.env.CAL_CLAUDE_CODE_TIMEOUT) || 1800000,
   )
   timeout?: number;
 
@@ -209,7 +209,7 @@ export class ClaudeCodeConfig {
   @IsString()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.GAL_CLAUDE_CODE_VERSION || '2023-06-01',
+      value || process.env.CAL_CLAUDE_CODE_VERSION || '2023-06-01',
   )
   anthropicVersion?: string;
 
@@ -223,7 +223,7 @@ export class ClaudeCodeConfig {
   @Transform(
     ({ value }: { value: string }) =>
       value ||
-      process.env.GAL_CLAUDE_CODE_USER_AGENT ||
+      process.env.CAL_CLAUDE_CODE_USER_AGENT ||
       'claude-cli/1.0.119 (external, cli)',
   )
   userAgent?: string;
@@ -232,14 +232,14 @@ export class ClaudeCodeConfig {
   @IsString()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.GAL_CLAUDE_CODE_X_APP || 'cli',
+      value || process.env.CAL_CLAUDE_CODE_X_APP || 'cli',
   )
   xApp?: string;
 
   @IsOptional()
   @IsBoolean()
   @Transform(({ value }: { value: unknown }) =>
-    toBoolean(value ?? process.env.GAL_CLAUDE_CODE_DANGEROUS_DIRECT ?? 'true'),
+    toBoolean(value ?? process.env.CAL_CLAUDE_CODE_DANGEROUS_DIRECT ?? 'true'),
   )
   dangerousDirectBrowserAccess?: boolean;
 
@@ -250,8 +250,8 @@ export class ClaudeCodeConfig {
   @Transform(({ value }: { value: string }) =>
     value
       ? parseInt(value, 10)
-      : process.env.GAL_CLAUDE_CODE_MAX_OUTPUT
-        ? parseInt(process.env.GAL_CLAUDE_CODE_MAX_OUTPUT, 10)
+      : process.env.CAL_CLAUDE_CODE_MAX_OUTPUT
+        ? parseInt(process.env.CAL_CLAUDE_CODE_MAX_OUTPUT, 10)
         : undefined,
   )
   maxOutputTokens?: number;
@@ -266,17 +266,17 @@ export class GatewayConfigSchema {
   @Min(1)
   @Max(65535)
   @Transform(({ value }: { value: string }) =>
-    value ? parseInt(value, 10) : Number(process.env.GAL_PORT) || 23062,
+    value ? parseInt(value, 10) : Number(process.env.CAL_PORT) || 23062,
   )
   port!: number;
 
   @IsString()
-  @Transform(({ value }: { value: string }) => value || process.env.GAL_HOST)
+  @Transform(({ value }: { value: string }) => value || process.env.CAL_HOST)
   host!: string;
 
   @IsString()
   @Transform(
-    ({ value }: { value: string }) => value || process.env.GAL_LOG_LEVEL,
+    ({ value }: { value: string }) => value || process.env.CAL_LOG_LEVEL,
   )
   logLevel!: string;
 
@@ -290,7 +290,7 @@ export class GatewayConfigSchema {
   @Transform(({ value }: { value: string }) =>
     value
       ? parseInt(value, 10)
-      : Number(process.env.GAL_REQUEST_TIMEOUT) || 3600000,
+      : Number(process.env.CAL_REQUEST_TIMEOUT) || 3600000,
   )
   requestTimeout!: number;
 
@@ -306,7 +306,7 @@ export class GatewayConfigSchema {
   @IsString()
   @Transform(
     ({ value }: { value: string }) =>
-      value ?? process.env.GAL_GATEWAY_API_KEY ?? undefined,
+      value ?? process.env.CAL_GATEWAY_API_KEY ?? undefined,
   )
   apiKey?: string;
 }
@@ -364,7 +364,7 @@ function parseReasoningConfig(raw: unknown): CodexReasoningConfig | undefined {
 }
 
 function normalizeAuthMode(value?: string): 'ApiKey' | 'ChatGPT' {
-  const envRaw = value ?? process.env.GAL_CODEX_AUTH_MODE;
+  const envRaw = value ?? process.env.CAL_CODEX_AUTH_MODE;
   if (!envRaw) {
     return 'ApiKey';
   }

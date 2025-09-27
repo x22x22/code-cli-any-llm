@@ -132,40 +132,40 @@ export class ConfigModule {
               // Fallback to environment variables if global config fails
               return {
                 openai: {
-                  apiKey: process.env.GAL_OPENAI_API_KEY,
+                  apiKey: process.env.CAL_OPENAI_API_KEY,
                   baseURL:
-                    process.env.GAL_OPENAI_BASE_URL ||
+                    process.env.CAL_OPENAI_BASE_URL ||
                     'https://api.openai.com/v1',
-                  model: process.env.GAL_OPENAI_MODEL || 'gpt-3.5-turbo',
-                  organization: process.env.GAL_OPENAI_ORGANIZATION,
-                  timeout: Number(process.env.GAL_OPENAI_TIMEOUT) || 1800000,
+                  model: process.env.CAL_OPENAI_MODEL || 'gpt-3.5-turbo',
+                  organization: process.env.CAL_OPENAI_ORGANIZATION,
+                  timeout: Number(process.env.CAL_OPENAI_TIMEOUT) || 1800000,
                   extraBody: undefined,
                 },
                 codex: (() => {
                   const authModeRaw = (
-                    process.env.GAL_CODEX_AUTH_MODE || 'ApiKey'
+                    process.env.CAL_CODEX_AUTH_MODE || 'ApiKey'
                   )
                     .trim()
                     .toLowerCase();
                   const authMode =
                     authModeRaw === 'chatgpt' ? 'ChatGPT' : 'ApiKey';
                   const hasApiKey = !!(
-                    process.env.GAL_CODEX_API_KEY || ''
+                    process.env.CAL_CODEX_API_KEY || ''
                   ).trim();
                   if (!hasApiKey && authMode !== 'ChatGPT') {
                     return undefined;
                   }
                   return {
                     apiKey: hasApiKey
-                      ? process.env.GAL_CODEX_API_KEY
+                      ? process.env.CAL_CODEX_API_KEY
                       : undefined,
                     baseURL:
-                      process.env.GAL_CODEX_BASE_URL ||
+                      process.env.CAL_CODEX_BASE_URL ||
                       'https://chatgpt.com/backend-api/codex',
-                    model: process.env.GAL_CODEX_MODEL || 'gpt-5-codex',
-                    timeout: Number(process.env.GAL_CODEX_TIMEOUT) || 1800000,
+                    model: process.env.CAL_CODEX_MODEL || 'gpt-5-codex',
+                    timeout: Number(process.env.CAL_CODEX_TIMEOUT) || 1800000,
                     reasoning: (() => {
-                      const raw = process.env.GAL_CODEX_REASONING;
+                      const raw = process.env.CAL_CODEX_REASONING;
                       if (!raw) return undefined;
                       try {
                         return JSON.parse(raw);
@@ -175,7 +175,7 @@ export class ConfigModule {
                     })(),
                     textVerbosity: (() => {
                       const raw = (
-                        process.env.GAL_CODEX_TEXT_VERBOSITY || ''
+                        process.env.CAL_CODEX_TEXT_VERBOSITY || ''
                       ).toLowerCase();
                       return ['low', 'medium', 'high'].includes(raw)
                         ? (raw as 'low' | 'medium' | 'high')
@@ -186,8 +186,8 @@ export class ConfigModule {
                 })(),
                 claudeCode: (() => {
                   const apiKey =
-                    process.env.GAL_CLAUDE_CODE_API_KEY ||
-                    process.env.GAL_ANTHROPIC_API_KEY ||
+                    process.env.CAL_CLAUDE_CODE_API_KEY ||
+                    process.env.CAL_ANTHROPIC_API_KEY ||
                     '';
                   if (!apiKey.trim()) {
                     return undefined;
@@ -195,46 +195,46 @@ export class ConfigModule {
                   return {
                     apiKey: apiKey.trim(),
                     baseURL:
-                      process.env.GAL_CLAUDE_CODE_BASE_URL ||
+                      process.env.CAL_CLAUDE_CODE_BASE_URL ||
                       'https://open.bigmodel.cn/api/anthropic',
                     model:
-                      process.env.GAL_CLAUDE_CODE_MODEL ||
+                      process.env.CAL_CLAUDE_CODE_MODEL ||
                       'claude-sonnet-4-20250514',
                     timeout:
-                      Number(process.env.GAL_CLAUDE_CODE_TIMEOUT) || 1800000,
+                      Number(process.env.CAL_CLAUDE_CODE_TIMEOUT) || 1800000,
                     anthropicVersion:
-                      process.env.GAL_CLAUDE_CODE_VERSION || '2023-06-01',
-                    beta: parseBetaEnv(process.env.GAL_CLAUDE_CODE_BETA),
+                      process.env.CAL_CLAUDE_CODE_VERSION || '2023-06-01',
+                    beta: parseBetaEnv(process.env.CAL_CLAUDE_CODE_BETA),
                     userAgent:
-                      process.env.GAL_CLAUDE_CODE_USER_AGENT ||
+                      process.env.CAL_CLAUDE_CODE_USER_AGENT ||
                       'claude-cli/1.0.119 (external, cli)',
-                    xApp: process.env.GAL_CLAUDE_CODE_X_APP || 'cli',
+                    xApp: process.env.CAL_CLAUDE_CODE_X_APP || 'cli',
                     dangerousDirectBrowserAccess: normalizeBoolean(
-                      process.env.GAL_CLAUDE_CODE_DANGEROUS_DIRECT,
+                      process.env.CAL_CLAUDE_CODE_DANGEROUS_DIRECT,
                       true,
                     ),
-                    maxOutputTokens: process.env.GAL_CLAUDE_CODE_MAX_OUTPUT
-                      ? Number(process.env.GAL_CLAUDE_CODE_MAX_OUTPUT)
+                    maxOutputTokens: process.env.CAL_CLAUDE_CODE_MAX_OUTPUT
+                      ? Number(process.env.CAL_CLAUDE_CODE_MAX_OUTPUT)
                       : undefined,
                     extraHeaders: undefined,
                   };
                 })(),
                 gateway: {
-                  port: Number(process.env.GAL_PORT) || 23062,
-                  host: process.env.GAL_HOST || '0.0.0.0',
-                  logLevel: process.env.GAL_LOG_LEVEL || 'info',
-                  logDir: resolveLogDir(process.env.GAL_GATEWAY_LOG_DIR),
+                  port: Number(process.env.CAL_PORT) || 23062,
+                  host: process.env.CAL_HOST || '0.0.0.0',
+                  logLevel: process.env.CAL_LOG_LEVEL || 'info',
+                  logDir: resolveLogDir(process.env.CAL_GATEWAY_LOG_DIR),
                   requestTimeout:
-                    Number(process.env.GAL_REQUEST_TIMEOUT) || 3600000,
+                    Number(process.env.CAL_REQUEST_TIMEOUT) || 3600000,
                   apiMode:
-                    (process.env.GAL_GATEWAY_API_MODE || 'gemini')
+                    (process.env.CAL_GATEWAY_API_MODE || 'gemini')
                       .toString()
                       .trim()
                       .toLowerCase() === 'openai'
                       ? 'openai'
                       : 'gemini',
                   cliMode: (() => {
-                    const raw = (process.env.GAL_GATEWAY_CLI_MODE || 'gemini')
+                    const raw = (process.env.CAL_GATEWAY_CLI_MODE || 'gemini')
                       .toString()
                       .trim()
                       .toLowerCase();
@@ -246,10 +246,10 @@ export class ConfigModule {
                     }
                     return 'gemini';
                   })(),
-                  apiKey: process.env.GAL_GATEWAY_API_KEY,
+                  apiKey: process.env.CAL_GATEWAY_API_KEY,
                 },
                 aiProvider: (
-                  process.env.GAL_AI_PROVIDER || 'openai'
+                  process.env.CAL_AI_PROVIDER || 'openai'
                 ).toLowerCase(),
               };
             },

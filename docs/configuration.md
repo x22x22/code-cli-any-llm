@@ -55,33 +55,33 @@ security:
 
 ## 环境变量支持
 
-除了 YAML 配置文件，项目还支持通过环境变量覆盖配置（所有应用相关环境变量使用 GAL_ 前缀）：
+除了 YAML 配置文件，项目还支持通过环境变量覆盖配置（所有应用相关环境变量使用 CAL_ 前缀）：
 
 ```bash
 # OpenAI 配置
-GAL_OPENAI_API_KEY=your-key
-GAL_OPENAI_BASE_URL=https://api.example.com/v1
-GAL_OPENAI_MODEL=gpt-4
-GAL_OPENAI_TIMEOUT=1800000
-GAL_OPENAI_ORGANIZATION=org-xxxxxx
+CAL_OPENAI_API_KEY=your-key
+CAL_OPENAI_BASE_URL=https://api.example.com/v1
+CAL_OPENAI_MODEL=gpt-4
+CAL_OPENAI_TIMEOUT=1800000
+CAL_OPENAI_ORGANIZATION=org-xxxxxx
 
 # 网关配置
-GAL_PORT=8080
-GAL_HOST=0.0.0.0
-GAL_LOG_LEVEL=debug
-GAL_GATEWAY_LOG_DIR=~/.code-cli-any-llm/logs
+CAL_PORT=8080
+CAL_HOST=0.0.0.0
+CAL_LOG_LEVEL=debug
+CAL_GATEWAY_LOG_DIR=~/.code-cli-any-llm/logs
 
 # 性能和安全配置（可选）
-GAL_RATE_LIMIT_MAX=100
-GAL_REQUEST_TIMEOUT=3600000
-GAL_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+CAL_RATE_LIMIT_MAX=100
+CAL_REQUEST_TIMEOUT=3600000
+CAL_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
 
 ## 配置优先级
 
 1. 项目配置文件 (`./config/config.yaml`) - 最高优先级
 2. 全局配置文件 (`~/.code-cli-any-llm/config.yaml`) - 中等优先级
-3. 环境变量（GAL_ 前缀）- 最低优先级，作为基础配置
+3. 环境变量（CAL_ 前缀）- 最低优先级，作为基础配置
 3. 默认值（最低优先级）
 
 ## 多提供商配置
@@ -208,5 +208,5 @@ gateway:
 或使用环境变量：
 
 ```bash
-GAL_LOG_LEVEL=debug pnpm run start:dev
+CAL_LOG_LEVEL=debug pnpm run start:dev
 ```

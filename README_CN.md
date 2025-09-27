@@ -123,7 +123,7 @@ cal code --cli-mode crush
 - 每次交互式 `cal` 命令都会检查 `~/.code-cli-any-llm/version.json` 中的缓存，后台每隔 20 小时刷新一次，检查失败不会阻塞网关启动。
 - 执行 `cal code` 时若发现新版本，会在启动 Gemini 体验前暂停，并提供 `y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）和 `off`（关闭自动检查并重启网关）四种选项。
 - 随时运行 `cal update` 可以同步刷新缓存并安装最新发布的包。
-- 如需彻底关闭自动检测，可设置 `GAL_DISABLE_UPDATE_CHECK=1`（也可以在提示中选择 `off`）。
+- 如需彻底关闭自动检测，可设置 `CAL_DISABLE_UPDATE_CHECK=1`（也可以在提示中选择 `off`）。
 
 ### Codex ChatGPT (OAuth) 模式
 
@@ -171,58 +171,58 @@ cal code --cli-mode crush
 
 ```bash
 # 选择主提供商（支持 claudeCode / codex / openai）
-export GAL_AI_PROVIDER="codex"
+export CAL_AI_PROVIDER="codex"
 
 # Codex 配置
 # 认证模式可选 apikey / chatgpt（默认 apikey）
-export GAL_CODEX_AUTH_MODE="chatgpt"
+export CAL_CODEX_AUTH_MODE="chatgpt"
 # 当选择 ApiKey 模式时填写 API Key；ChatGPT 模式可留空
-export GAL_CODEX_API_KEY="your-codex-api-key"
-export GAL_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex"
-export GAL_CODEX_MODEL="gpt-5-codex"
-export GAL_CODEX_TIMEOUT="1800000"
+export CAL_CODEX_API_KEY="your-codex-api-key"
+export CAL_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex"
+export CAL_CODEX_MODEL="gpt-5-codex"
+export CAL_CODEX_TIMEOUT="1800000"
 # 可选：推理参数与输出冗长度控制
-export GAL_CODEX_REASONING='{"effort":"medium"}'
-export GAL_CODEX_TEXT_VERBOSITY="medium"
+export CAL_CODEX_REASONING='{"effort":"medium"}'
+export CAL_CODEX_TEXT_VERBOSITY="medium"
 # 可选：自定义 OAuth 令牌目录（默认为 ~/.code-cli-any-llm/codex）
 export CODEX_HOME="$HOME/.custom-codex"
 
 # Claude Code 配置
-export GAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
-export GAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"   # 或自建 relay 的 /api 根路径
-export GAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
-export GAL_CLAUDE_CODE_TIMEOUT="1800000"
-export GAL_CLAUDE_CODE_VERSION="2023-06-01"
-export GAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
-export GAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
-export GAL_CLAUDE_CODE_X_APP="cli"
-export GAL_CLAUDE_CODE_DANGEROUS_DIRECT="true"
-export GAL_CLAUDE_CODE_MAX_OUTPUT="64000"
+export CAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
+export CAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"   # 或自建 relay 的 /api 根路径
+export CAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
+export CAL_CLAUDE_CODE_TIMEOUT="1800000"
+export CAL_CLAUDE_CODE_VERSION="2023-06-01"
+export CAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
+export CAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
+export CAL_CLAUDE_CODE_X_APP="cli"
+export CAL_CLAUDE_CODE_DANGEROUS_DIRECT="true"
+export CAL_CLAUDE_CODE_MAX_OUTPUT="64000"
 
 # OpenAI/兼容服务配置
-export GAL_OPENAI_API_KEY="your-api-key"
-export GAL_OPENAI_BASE_URL="https://api.openai.com/v1"
-export GAL_OPENAI_MODEL="gpt-4"
-export GAL_OPENAI_TIMEOUT="1800000"
+export CAL_OPENAI_API_KEY="your-api-key"
+export CAL_OPENAI_BASE_URL="https://api.openai.com/v1"
+export CAL_OPENAI_MODEL="gpt-4"
+export CAL_OPENAI_TIMEOUT="1800000"
 # 可选：OpenAI 组织 ID
-export GAL_OPENAI_ORGANIZATION="org-xxxxxx"
+export CAL_OPENAI_ORGANIZATION="org-xxxxxx"
 
 # 网关配置
-export GAL_PORT="23062"
-export GAL_HOST="0.0.0.0"
-export GAL_LOG_LEVEL="info"
-export GAL_GATEWAY_LOG_DIR="~/.code-cli-any-llm/logs"
+export CAL_PORT="23062"
+export CAL_HOST="0.0.0.0"
+export CAL_LOG_LEVEL="info"
+export CAL_GATEWAY_LOG_DIR="~/.code-cli-any-llm/logs"
 #（可选）网关AI Code CLI 工具控制
-export GAL_GATEWAY_API_MODE="openai"
-export GAL_GATEWAY_CLI_MODE="opencode"
-export GAL_GATEWAY_API_KEY="shared-demo-key"
-export GAL_DISABLE_UPDATE_CHECK="1"            # 关闭自动更新提示
+export CAL_GATEWAY_API_MODE="openai"
+export CAL_GATEWAY_CLI_MODE="opencode"
+export CAL_GATEWAY_API_KEY="shared-demo-key"
+export CAL_DISABLE_UPDATE_CHECK="1"            # 关闭自动更新提示
 
 # 通用高级配置
-export GAL_RATE_LIMIT_MAX="100"                # API 限流上限（每15分钟）
-export GAL_REQUEST_TIMEOUT="3600000"           # 请求超时时间（毫秒，默认1小时）
-export GAL_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8080"  # CORS 允许的来源
-export GAL_LOG_DIR="/custom/log/path"          # 自定义日志目录
+export CAL_RATE_LIMIT_MAX="100"                # API 限流上限（每15分钟）
+export CAL_REQUEST_TIMEOUT="3600000"           # 请求超时时间（毫秒，默认1小时）
+export CAL_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8080"  # CORS 允许的来源
+export CAL_LOG_DIR="/custom/log/path"          # 自定义日志目录
 ```
 
 ### 项目特定配置
@@ -453,7 +453,7 @@ openai:
 cal auth
 ```
 
-在向导中选择想要使用的提供商，也可以通过环境变量 `GAL_AI_PROVIDER`（取值 `openai` 或 `codex`）提前指定。
+在向导中选择想要使用的提供商，也可以通过环境变量 `CAL_AI_PROVIDER`（取值 `openai` 或 `codex`）提前指定。
 
 常见配置示例：
 - **OpenAI**: `https://api.openai.com/v1` + `gpt-4` 或 `gpt-4o`
@@ -508,7 +508,7 @@ cal restart
 - 每个交互式 `cal` 命令都会检查 `~/.code-cli-any-llm/version.json`，并在后台每隔 20 小时刷新缓存，网络错误不会阻塞网关。
 - 当运行 `cal code` 时，若检测到新版本会在进入 Gemini 体验前提示四个选项：`y`（立即更新）、`n`（暂不更新）、`skip`（跳过本次版本）或 `off`（关闭自动检查并重启网关）。
 - 随时运行 `cal update` 可以同步刷新缓存并安装最新发布的版本。
-- 如需永久关闭自动检测，可设置 `GAL_DISABLE_UPDATE_CHECK=1`（与提示中的 `off` 选项效果相同）。
+- 如需永久关闭自动检测，可设置 `CAL_DISABLE_UPDATE_CHECK=1`（与提示中的 `off` 选项效果相同）。
 
 ## 🙏 致谢
 

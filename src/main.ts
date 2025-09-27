@@ -46,7 +46,7 @@ async function bootstrap() {
   };
 
   const configuredLogLevel =
-    globalConfigResult.config?.gateway?.logLevel || process.env.GAL_LOG_LEVEL;
+    globalConfigResult.config?.gateway?.logLevel || process.env.CAL_LOG_LEVEL;
   const logLevels = resolveLogLevels(configuredLogLevel);
 
   const parsePort = (value: unknown): number | undefined => {
@@ -66,14 +66,14 @@ async function bootstrap() {
     return undefined;
   };
 
-  const environmentPort = parsePort(process.env.GAL_PORT);
+  const environmentPort = parsePort(process.env.CAL_PORT);
   const configuredPort = parsePort(globalConfigResult.config?.gateway?.port);
   const portForLogger = configuredPort ?? environmentPort ?? 23062;
 
   const gatewayLogger = GatewayLoggerService.create({
     logDir:
       globalConfigResult.config?.gateway?.logDir ||
-      process.env.GAL_GATEWAY_LOG_DIR,
+      process.env.CAL_GATEWAY_LOG_DIR,
     filePrefix: `gateway-${portForLogger}`,
     logLevels,
   });

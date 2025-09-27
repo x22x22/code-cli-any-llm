@@ -16,8 +16,8 @@ export const performanceConfig = {
   // Rate limiting configuration
   rateLimiting: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: process.env.GAL_RATE_LIMIT_MAX
-      ? parseInt(process.env.GAL_RATE_LIMIT_MAX, 10)
+    max: process.env.CAL_RATE_LIMIT_MAX
+      ? parseInt(process.env.CAL_RATE_LIMIT_MAX, 10)
       : 100000000, // limit each IP to 100000000 requests per windowMs
     skip: (req: RequestWithPath): boolean => {
       // Skip rate limiting for health checks

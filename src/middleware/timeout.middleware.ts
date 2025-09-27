@@ -12,8 +12,8 @@ export class TimeoutMiddleware implements NestMiddleware {
     const configuredTimeout = this.configService.get<number>(
       'gateway.requestTimeout',
     );
-    const envTimeout = process.env.GAL_REQUEST_TIMEOUT
-      ? parseInt(process.env.GAL_REQUEST_TIMEOUT, 10)
+    const envTimeout = process.env.CAL_REQUEST_TIMEOUT
+      ? parseInt(process.env.CAL_REQUEST_TIMEOUT, 10)
       : undefined;
     const resolved = configuredTimeout ?? envTimeout ?? 3600000;
     this.timeout =

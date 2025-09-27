@@ -229,7 +229,7 @@ async function handleUpgradePrompt(): Promise<void> {
       case 'off': {
         context.info.disableCheck = true;
         await persistVersionInfo(context);
-        process.env.GAL_DISABLE_UPDATE_CHECK = '1';
+        process.env.CAL_DISABLE_UPDATE_CHECK = '1';
         console.log('已关闭自动更新检查，正在重启网关以应用配置...');
         try {
           await runGalRestart();
