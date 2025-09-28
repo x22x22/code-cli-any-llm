@@ -16,9 +16,22 @@ export interface VersionPromptContext {
 
 const VERSION_FILENAME = 'version.json';
 const VERSION_CHECK_INTERVAL_MS = 20 * 60 * 60 * 1000; // 20 hours
-const LATEST_VERSION_URL =
-  'https://registry.npmjs.org/@kdump%2fgemini-any-llm/latest';
+const PACKAGE_NAME = '@kdump/code-cli-any-llm';
 const USER_AGENT = 'code-cli-any-llm-cli';
+
+function getConfiguredRegistry(): string {
+  const registry = process.env.npm_config_registry;
+  if (typeof registry === 'string' && registry.trim().length > 0) {
+    return registry.trim().replace(/\/+$/, '');
+  }
+  return 'https://registry.npmjs.org';
+}
+
+function buildLatestVersionUrl(): string {
+  const registry = getConfiguredRegistry();
+  const encodedPackage = PACKAGE_NAME.replace('/', '%2f');
+  return `${registry}/${encodedPackage}/latest`;
+}
 
 function getVersionFilePath(): string {
   return path.join(homedir(), '.code-cli-any-llm', VERSION_FILENAME);
@@ -74,7 +87,7 @@ async function fetchLatestVersionTag(): Promise<string | null> {
   }
 
   try {
-    const response = await fetch(LATEST_VERSION_URL, {
+    const response = await fetch(buildLatestVersionUrl(), {
       headers: {
         'User-Agent': USER_AGENT,
         Accept: 'application/json',

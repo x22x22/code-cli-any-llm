@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "chrome-mcp-server": {
+      "httpUrl": "http://172.29.32.1:12306/mcp",
+      "trust": true
+    }
+  }
+}
