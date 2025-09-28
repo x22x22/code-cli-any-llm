@@ -52,7 +52,9 @@ function normalizeApiMode(value?: string): 'gemini' | 'openai' {
   return raw === 'openai' ? 'openai' : 'gemini';
 }
 
-function normalizeCliMode(value?: string): 'gemini' | 'opencode' | 'crush' {
+function normalizeCliMode(
+  value?: string,
+): 'gemini' | 'opencode' | 'crush' | 'qwencode' {
   const raw = (value || process.env.CAL_GATEWAY_CLI_MODE || 'gemini')
     .toString()
     .trim()
@@ -62,6 +64,9 @@ function normalizeCliMode(value?: string): 'gemini' | 'opencode' | 'crush' {
   }
   if (raw === 'crush') {
     return 'crush';
+  }
+  if (raw === 'qwencode') {
+    return 'qwencode';
   }
   return 'gemini';
 }
@@ -298,9 +303,9 @@ export class GatewayConfigSchema {
   @Transform(({ value }: { value: string }) => normalizeApiMode(value))
   apiMode!: 'gemini' | 'openai';
 
-  @IsIn(['gemini', 'opencode', 'crush'])
+  @IsIn(['gemini', 'opencode', 'crush', 'qwencode'])
   @Transform(({ value }: { value: string }) => normalizeCliMode(value))
-  cliMode!: 'gemini' | 'opencode' | 'crush';
+  cliMode!: 'gemini' | 'opencode' | 'crush' | 'qwencode';
 
   @IsOptional()
   @IsString()

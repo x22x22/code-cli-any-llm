@@ -5,10 +5,10 @@
 ## 最新进展概览
 - **OpenAI 接口就绪**：新增 `OpenAIController` 挂载 `/api/v1/openai/v1/{models,chat/completions,responses}`，统一伪装 `claude code`、`codex` 和 OpenAI Provider；`LlmProviderResolverService` 负责在 Gemini/OpenAI 控制器之间共享 Provider 解析。
 - **Provider 能力补齐**：`ClaudeCodeProvider` 现支持 OpenAI 结构的同步/流式响应与模型列表，为伪装层直接复用提供基础。
-- **配置强化**：`gateway` 增加 `apiMode`、`cliMode`、`apiKey` 三字段并写入校验逻辑，向导与健康检查均可展示当前模式；当 CLI 选择 `opencode/crush` 时自动切换为 `openai` 模式。
-- **CLI 扩展**：`cal code` 支持 `--cli-mode` 参数，可自动生成/合并 `opencode.json`、`crush.json`（含 `@ai-sdk/openai-compatible` 与模型映射）并为 CLI 注入 `OPENAI_BASE_URL=/api/v1/openai/v1`；配置更新后自动写回 YAML 并调用 `cal restart`。
+- **配置强化**：`gateway` 增加 `apiMode`、`cliMode`、`apiKey` 三字段并写入校验逻辑，向导与健康检查均可展示当前模式；当 CLI 选择 `opencode/crush/qwencode` 时自动切换为 `openai` 模式。
+- **CLI 扩展**：`cal code` 支持 `--cli-mode` 参数，可自动生成/合并 `opencode.json`、`crush.json`、`~/.qwen/settings.json` & `.env`（含 `@ai-sdk/openai-compatible` 与模型映射/环境变量）并为 CLI 注入 `OPENAI_BASE_URL=/api/v1/openai/v1`；配置更新后自动写回 YAML 并调用 `cal restart`。
 - **运维体验**：`cal restart` 若发现 PID 缺失会执行 `cal kill` 逻辑清理残留进程；状态输出会复用原 PID 或重新探测端口并回写 `gateway.pid.json`。
-- **文档同步**：README（中/英）、quick-start 及本指南已补齐新路由、配置字段、CLI 示例及 opencode/crush 集成说明。
+- **文档同步**：README（中/英）、quick-start 及本指南已补齐新路由、配置字段、CLI 示例及 opencode/crush/qwencode 集成说明。
 
 ## 网关现状
 - **协议转换**：当前所有流量聚合在 `/api/v1` 下，由 `GeminiController` 把 Gemini 请求转换为 OpenAI 结构，再交由 `OpenAIProvider`、`CodexProvider`、`ClaudeCodeProvider` 对接真实模型，实现 Gemini → OpenAI → 目标模型的链路。
@@ -23,7 +23,7 @@
   - 新增 `/openai/v1` 前缀实现 `GET /models`、`POST /chat/completions`、`POST /responses`。
   - 原 Gemini 入口整体迁移到 `/gemini/v1/...`，保留兼容提示。
 - **Provider 复用**：沿用现有 Transformer/Provider，将 OpenAI 控制器输出统一伪装成 `claude code` 或 `codex` 风格，保持流式与工具调用体验一致。
-- **模式配置**：引入 `gateway.apiMode`（区分 Gemini/OpenAI）与 `gateway.cliMode`（决定 `cal code` 默认启动 CLI：gemini/opencode/crush）。
+- **模式配置**：引入 `gateway.apiMode`（区分 Gemini/OpenAI）与 `gateway.cliMode`（决定 `cal code` 默认启动 CLI：gemini/opencode/crush/qwencode）。
 
 ## opencode 调研
 - **配置路径**：`packages/opencode/src/global/index.ts` 将默认配置存放在 `~/.config/opencode`；CLI 亦支持通过 `OPENCODE_CONFIG_CONTENT` 注入 JSON。
@@ -234,6 +234,9 @@ pnpm run cal code --cli-mode opencode
 
 # 使用 crush 模式
 pnpm run cal code --cli-mode crush
+
+# 使用 qwencode 模式
+pnpm run cal code --cli-mode qwencode
 ```
 
 以上调研结果及执行要点可作为后续实现 OpenAI 伪装与多 CLI 支持的指导依据。

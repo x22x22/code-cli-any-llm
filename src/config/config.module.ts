@@ -244,6 +244,9 @@ export class ConfigModule {
                     if (raw === 'crush') {
                       return 'crush';
                     }
+                    if (raw === 'qwencode') {
+                      return 'qwencode';
+                    }
                     return 'gemini';
                   })(),
                   apiKey: process.env.CAL_GATEWAY_API_KEY,

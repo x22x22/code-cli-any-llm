@@ -143,7 +143,9 @@ export class HealthController implements OnApplicationBootstrap {
         ? 'opencode'
         : cliModeValue === 'crush'
           ? 'crush'
-          : 'gemini';
+          : cliModeValue === 'qwencode'
+            ? 'qwencode'
+            : 'gemini';
 
     response.gateway = {
       apiMode: apiModeValue === 'openai' ? 'openai' : 'gemini',

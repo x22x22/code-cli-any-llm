@@ -2,7 +2,7 @@
 
 ## 背景与目标
 - `code-cli-any-llm` 通过 `cal code` 命令为多款 AI Code CLI 工具提供统一入口，并在后端网关之间切换 Gemini/OpenAI 兼容协议。
-- `--cli-mode` 参数允许开发者切换 `gemini`、`opencode`、`crush` 等外观体验，本手册系统梳理其实现方式，并给出新增 CLI 模式时的开发流程。
+- `--cli-mode` 参数允许开发者切换 `gemini`、`opencode`、`crush`、`qwencode` 等外观体验，本手册系统梳理其实现方式，并给出新增 CLI 模式时的开发流程。
 - 目标是帮助开发者快速理解参数解析、配置联动、CLI 启动以及服务侧依赖，确保新增工具遵循既有规范与文档要求。
 
 ## 架构总览
@@ -13,12 +13,12 @@
 
 ## `--cli-mode` 工作流程
 ### 参数解析
-- `extractCliModeFromArgs` 会识别 `--cli-mode value` 或 `--cli-mode=value`，并通过 `parseCliModeValue` 校验输入是否属于 `CLI_MODE_VALUES`（默认 `gemini`、`opencode`、`crush`）。
+- `extractCliModeFromArgs` 会识别 `--cli-mode value` 或 `--cli-mode=value`，并通过 `parseCliModeValue` 校验输入是否属于 `CLI_MODE_VALUES`（默认 `gemini`、`opencode`、`crush`、`qwencode`）。
 - 非法值会立即在终端报错并退出，确保 CLI 模式枚举稳定。
 
 ### 配置载入与写回
 - `prepareGatewayContext` 使用 `GlobalConfigService` 读取配置文件，归一化 `gateway.cliMode` 与 `gateway.apiMode`。
-- 当 `cliMode` 选择 OpenAI 兼容工具（`opencode`、`crush`）时：
+- 当 `cliMode` 选择 OpenAI 兼容工具（`opencode`、`crush`、`qwencode`）时：
   - 自动将 `gateway.apiMode` 调整为 `openai`，并写回配置文件。
   - 若配置首次生成或被修正，命令结束前会触发 `cal restart` 确保网关重启生效。
 - 对于 `gemini` 模式，则保持 Gemini 网关设置，可选地校验或生成 Gemini CLI 所需的 `settings.json`。
@@ -43,6 +43,10 @@
 - **crush**：
   - 写入 `providers.code-cli` 与模型元数据，设置 `models.large`/`models.small` 对应 `claude-code-proxy`、`codex-proxy`。
   - 通过环境变量关闭 provider 自动更新并传递 `CODE_CLI_API_KEY`。
+- **qwencode**：
+  - 自动合并 `~/.qwen/settings.json` 与 `~/.qwen/.env`，确保 `security.auth.selectedType='openai'` 并注入 `OPENAI_BASE_URL`/`OPENAI_API_KEY`/`OPENAI_MODEL`。
+  - 启动前写入 `QWEN_DEFAULT_AUTH_TYPE=openai`，若缺少 `gateway.apiKey` 会在 `.env` 中写入占位符并提示用户补全。
+  - 通过设置 `CAL_QWEN_HOME` 可以覆盖默认的 `~/.qwen` 配置目录，便于测试或自定义安装路径。
 
 ## 新增 CLI 模式开发流程
 1. **扩展枚举与校验**
@@ -81,4 +85,3 @@
 - 在正式开发新 CLI 模式前，确认目标工具协议（Gemini/OpenAI/其他）与配置文件格式，以便选择合适的适配方案。
 - 开发完成后更新 README 的“多 AI Code CLI 工具网关”章节，保持用户文档与开发者手册一致。
 - 若需要跨团队协同，可将本手册作为 PR 描述的参考附件，方便评审快速了解实现要点。
-

@@ -634,7 +634,7 @@ export async function runConfigWizard(configFile: string): Promise<void> {
 
   const cliModeRaw = await ask(
     rl,
-    'Default CLI mode (gemini/opencode/crush, default gemini)',
+    'Default CLI mode (gemini/opencode/crush/qwencode, default gemini)',
     existingConfig.gateway.cliMode,
   );
 
@@ -713,13 +713,16 @@ function normalizeGatewayApiMode(value?: string): 'gemini' | 'openai' {
 
 function normalizeGatewayCliMode(
   value?: string,
-): 'gemini' | 'opencode' | 'crush' {
+): 'gemini' | 'opencode' | 'crush' | 'qwencode' {
   const normalized = (value || '').trim().toLowerCase();
   if (normalized === 'opencode') {
     return 'opencode';
   }
   if (normalized === 'crush') {
     return 'crush';
+  }
+  if (normalized === 'qwencode') {
+    return 'qwencode';
   }
   return 'gemini';
 }

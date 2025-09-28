@@ -47,7 +47,7 @@ export interface GatewayConfig {
   logDir: string;
   requestTimeout: number;
   apiMode?: 'gemini' | 'openai';
-  cliMode?: 'gemini' | 'opencode' | 'crush';
+  cliMode?: 'gemini' | 'opencode' | 'crush' | 'qwencode';
   apiKey?: string;
 }
 

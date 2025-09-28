@@ -9,7 +9,8 @@ Commands:
                     • Supports all native options and flags from the gemini CLI
                     • Guides you through configuring credentials on first use
                     • Alerts you about new versions before upgrading
-                    • Use `--cli-mode opencode|crush|gemini` to switch CLI AI Code CLI Tool
+                    • Use `--cli-mode gemini|opencode|crush|qwencode` to switch CLI AI Code CLI Tool
+                    • Selecting `--cli-mode qwencode` auto-manages `~/.qwen/settings.json` and `~/.qwen/.env`; if `gateway.apiKey` is empty a placeholder is written so you can fill it in
 
   auth              Configure AI service credentials
                     • Supports providers claudeCode / codex / openai

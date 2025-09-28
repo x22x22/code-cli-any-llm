@@ -31,10 +31,10 @@ const DEFAULT_TIMEOUT = 20000;
 const POLL_INTERVAL = 800;
 const GATEWAY_PID_FILE = 'gateway.pid.json';
 
-type CliMode = 'gemini' | 'opencode' | 'crush';
+type CliMode = 'gemini' | 'opencode' | 'crush' | 'qwencode';
 type ApiMode = 'gemini' | 'openai';
 
-const CLI_MODE_VALUES: CliMode[] = ['gemini', 'opencode', 'crush'];
+const CLI_MODE_VALUES: CliMode[] = ['gemini', 'opencode', 'crush', 'qwencode'];
 
 function parseCliModeValue(value?: string | null): CliMode | undefined {
   if (!value) {
@@ -129,6 +129,68 @@ function resolveCrushConfigPath(): string {
   return path.join(dir, 'crush.json');
 }
 
+function resolveQwencodeConfigDir(): string {
+  const override = process.env.CAL_QWEN_HOME?.trim();
+  if (override) {
+    return path.resolve(override);
+  }
+  return path.join(os.homedir(), '.qwen');
+}
+
+function resolveQwencodeSettingsPath(): string {
+  return path.join(resolveQwencodeConfigDir(), 'settings.json');
+}
+
+function resolveQwencodeEnvPath(): string {
+  return path.join(resolveQwencodeConfigDir(), '.env');
+}
+
+function readEnvFile(filePath: string): Record<string, string> {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+  const content = fs.readFileSync(filePath, 'utf8');
+  const lines = content.split(/\r?\n/);
+  const result: Record<string, string> = {};
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+    const equalsIndex = trimmed.indexOf('=');
+    if (equalsIndex === -1) {
+      continue;
+    }
+    const key = trimmed.slice(0, equalsIndex).trim();
+    if (!key) {
+      continue;
+    }
+    const rawValue = trimmed.slice(equalsIndex + 1).trim();
+    const unquoted = rawValue
+      .replace(/^"([\s\S]*)"$/, '$1')
+      .replace(/^'([\s\S]*)'$/, '$1');
+    result[key] = unquoted;
+  }
+  return result;
+}
+
+function formatEnvValue(value: string): string {
+  if (/^[A-Za-z0-9_\-./:@]+$/.test(value)) {
+    return value;
+  }
+  const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
+}
+
+function writeEnvFile(filePath: string, values: Record<string, string>): void {
+  ensureDir(path.dirname(filePath));
+  const entries = Object.entries(values)
+    .map(([key, value]) => `${key}=${formatEnvValue(value)}`)
+    .join('\n');
+  const content = entries.length > 0 ? `${entries}\n` : '';
+  fs.writeFileSync(filePath, content, { mode: 0o600 });
+}
+
 interface GatewayContext {
   projectRoot: string;
   configDir: string;
@@ -140,6 +202,7 @@ interface GatewayContext {
   apiMode: ApiMode;
   gatewayApiKey?: string;
   configWasUpdated: boolean;
+  openaiModel?: string;
 }
 
 interface GatewayContextOptions {
@@ -305,7 +368,7 @@ async function prepareGatewayContext(
     .trim()
     .toLowerCase();
 
-  if (cliMode === 'opencode' || cliMode === 'crush') {
+  if (cliMode === 'opencode' || cliMode === 'crush' || cliMode === 'qwencode') {
     apiModeValue = 'openai';
     if (
       config.gateway.apiMode !== 'openai' ||
@@ -358,6 +421,11 @@ async function prepareGatewayContext(
     ensureGeminiSettings();
   }
 
+  const openaiModel =
+    typeof config.openai?.model === 'string'
+      ? config.openai.model.trim()
+      : undefined;
+
   return {
     projectRoot,
     configDir,
@@ -369,6 +437,8 @@ async function prepareGatewayContext(
     apiMode,
     gatewayApiKey,
     configWasUpdated,
+    openaiModel:
+      openaiModel && openaiModel.length > 0 ? openaiModel : undefined,
   };
 }
 
@@ -407,7 +477,7 @@ function extractCliModeFromArgs(args: string[]): CliModeParseResult {
       const parsed = parseCliModeValue(next);
       if (!parsed) {
         console.error(
-          'Invalid value for --cli-mode. Use gemini / opencode / crush.',
+          'Invalid value for --cli-mode. Use gemini / opencode / crush / qwencode.',
         );
         process.exit(1);
       }
@@ -421,7 +491,7 @@ function extractCliModeFromArgs(args: string[]): CliModeParseResult {
       const parsed = parseCliModeValue(value);
       if (!parsed) {
         console.error(
-          'Invalid value for --cli-mode. Use gemini / opencode / crush.',
+          'Invalid value for --cli-mode. Use gemini / opencode / crush / qwencode.',
         );
         process.exit(1);
       }
@@ -447,6 +517,7 @@ export async function runGalCode(args: string[]): Promise<void> {
     apiMode,
     gatewayApiKey,
     configWasUpdated,
+    openaiModel,
   } = context;
 
   const clientHost = resolveClientHost(gatewayHost);
@@ -464,7 +535,10 @@ export async function runGalCode(args: string[]): Promise<void> {
     }
   }
 
-  if ((cliMode === 'opencode' || cliMode === 'crush') && apiMode !== 'openai') {
+  if (
+    (cliMode === 'opencode' || cliMode === 'crush' || cliMode === 'qwencode') &&
+    apiMode !== 'openai'
+  ) {
     console.error(
       'The gateway is in Gemini mode and cannot provide the OpenAI-compatible endpoint. Set gateway.apiMode to openai in the configuration and retry.',
     );
@@ -507,6 +581,23 @@ export async function runGalCode(args: string[]): Promise<void> {
       clientHost,
       gatewayPort,
       gatewayApiKey,
+    );
+    return;
+  }
+
+  if (cliMode === 'qwencode') {
+    const qwencodeConfig = prepareQwencodeConfig(
+      clientHost,
+      gatewayPort,
+      apiMode,
+      gatewayApiKey,
+      openaiModel,
+    );
+    await launchQwencodeCLI(
+      filteredArgs,
+      clientHost,
+      gatewayPort,
+      qwencodeConfig,
     );
     return;
   }
@@ -1269,6 +1360,41 @@ async function launchOpencodeCLI(
   });
 }
 
+interface QwencodeLaunchConfig {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}
+
+async function launchQwencodeCLI(
+  args: string[],
+  host: string,
+  port: number,
+  config?: QwencodeLaunchConfig,
+): Promise<void> {
+  const origin = `http://${host}:${port}`;
+  const baseUrl = config?.baseUrl ?? `${origin}/api/v1/openai/v1`;
+  const apiKey = config?.apiKey;
+  const model = config?.model ?? 'codex-proxy';
+
+  try {
+    await runCliCommand('qwen', args, {
+      OPENAI_BASE_URL: baseUrl,
+      OPENAI_API_KEY: apiKey,
+      OPENAI_MODEL: model,
+      QWEN_DEFAULT_AUTH_TYPE: 'openai',
+      CODE_CLI_API_KEY: apiKey,
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.error(
+        'qwen CLI not found. 请通过 `npm install -g @qwen-code/qwen-code` 安装并确认 qwen 命令可用。',
+      );
+    }
+    throw error;
+  }
+}
+
 async function launchCrushCLI(
   args: string[],
   host: string,
@@ -1407,6 +1533,65 @@ function prepareOpencodeConfig(
   }
 
   writeJsonConfigFile(configPath, config);
+}
+
+export function prepareQwencodeConfig(
+  host: string,
+  port: number,
+  apiMode: ApiMode,
+  gatewayApiKey: string | undefined,
+  openaiModel: string | undefined,
+): QwencodeLaunchConfig | undefined {
+  if (apiMode !== 'openai') {
+    return undefined;
+  }
+
+  const baseUrl = `http://${host}:${port}/api/v1/openai/v1`;
+
+  const settingsPath = resolveQwencodeSettingsPath();
+  const settings = readJsonConfigFile(settingsPath);
+
+  const security = (settings.security = isRecord(settings.security)
+    ? settings.security
+    : {});
+  const auth = (security.auth = isRecord(security.auth) ? security.auth : {});
+  auth.selectedType = 'openai';
+
+  writeJsonConfigFile(settingsPath, settings);
+
+  const envPath = resolveQwencodeEnvPath();
+  const env = readEnvFile(envPath);
+
+  const trimmedGatewayKey =
+    typeof gatewayApiKey === 'string' ? gatewayApiKey.trim() : '';
+  const existingApiKey =
+    typeof env.OPENAI_API_KEY === 'string' ? env.OPENAI_API_KEY.trim() : '';
+  let effectiveApiKey = trimmedGatewayKey || existingApiKey;
+  if (!effectiveApiKey) {
+    effectiveApiKey = 'REPLACE_WITH_GATEWAY_API_KEY';
+    console.warn(
+      'Qwen Code CLI 缺少 API Key，已写入占位符，请在 ~/.qwen/.env 中替换 OPENAI_API_KEY 或设置 gateway.apiKey。',
+    );
+  }
+
+  const trimmedModel =
+    typeof openaiModel === 'string' ? openaiModel.trim() : '';
+  const existingModel =
+    typeof env.OPENAI_MODEL === 'string' ? env.OPENAI_MODEL.trim() : '';
+  const effectiveModel = trimmedModel || existingModel || 'codex-proxy';
+
+  env.OPENAI_BASE_URL = baseUrl;
+  env.OPENAI_API_KEY = effectiveApiKey;
+  env.OPENAI_MODEL = effectiveModel;
+  env.QWEN_DEFAULT_AUTH_TYPE = 'openai';
+
+  writeEnvFile(envPath, env);
+
+  return {
+    baseUrl,
+    apiKey: effectiveApiKey,
+    model: effectiveModel,
+  };
 }
 
 function prepareCrushConfig(

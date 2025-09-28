@@ -1,6 +1,6 @@
 # Code CLI Any LLM
 
-> A unified gateway for the Gemini, opencode, and crush AI Code CLIs
+> A unified gateway for the Gemini, opencode, crush, and Qwen Code AI CLIs
 
 For the Chinese version of this document, see [README_CN.md](./README_CN.md).
 
@@ -9,10 +9,10 @@ For the Chinese version of this document, see [README_CN.md](./README_CN.md).
 Code CLI Any LLM (CAL) acts as a universal proxy that can masquerade as the Gemini, opencode, or crush CLI while sending traffic to any OpenAI-compatible backend (Claude Code, Codex, OpenAI, ZhipuAI, Qwen, and more). You keep the same CLI UX you already know and gain the flexibility to switch providers or spread requests across several vendors with consistent tooling.
 
 **Core Features**
-- 🔄 **Multi-facade gateway** – keep using Gemini (`cal code`) or switch to opencode/crush via `--cli-mode`
+- 🔄 **Multi-facade gateway** – keep the default Gemini experience or switch to gemini/opencode/crush/qwencode via `--cli-mode`
 - 🔌 **Provider agnostic** – proxy to Claude Code, Codex, OpenAI, ZhipuAI, Qwen, or any OpenAI-compatible service
 - ⚡ **Streaming & tools** – preserve SSE streaming, tool-calling, and reasoning outputs for each CLI experience
-- 🧩 **Automatic configuration** – generate CLI config files, refresh `gateway.apiMode/cliMode`, and restart the gateway for you
+- 🧩 **Automatic configuration** – generate/merge CLI config files (`~/.config/opencode`, `~/.config/crush`, and `~/.qwen/settings.json` + `~/.qwen/.env`), refresh `gateway.apiMode/cliMode`, and restart the gateway for you
 - 🛡️ **Operational helpers** – built-in restart/kill utilities, health reporting, and PID auto-recovery
 
 ## 🚀 Quick Start
@@ -25,13 +25,16 @@ Code CLI Any LLM (CAL) acts as a universal proxy that can masquerade as the Gemi
    npm install -g @google/gemini-cli-core@latest --registry https://registry.npmmirror.com
    ```
 
-2. *(Optional)* **Install additional AI Code CLI tools** if you want to try opencode or crush:
+2. *(Optional)* **Install additional AI Code CLI tools** if you want to try opencode, crush, or Qwen Code:
    ```bash
    # opencode
    npm install -g opencode-ai@latest
 
    # crush
    brew install charmbracelet/tap/crush   # or follow the official crush installation guide
+
+   # qwen-code
+   npm install -g @qwen-code/qwen-code@latest
    ```
 
 3. **Install the CAL gateway**:
@@ -46,6 +49,7 @@ Launch CAL with your preferred CLI facade:
 ```bash
 cal code --cli-mode opencode
 # cal code --cli-mode crush
+# cal code --cli-mode qwencode
 # cal code  # defaults to the Gemini CLI experience
 ```
 
@@ -55,8 +59,9 @@ cal code --cli-mode opencode
   - **Default model**
   - **Authentication mode** (Codex supports `ApiKey` and `ChatGPT`)
   - **API key** (when required by the provider)
-- Automatically generates CLI config files for opencode/crush on first use (`~/.config/opencode/opencode.json` and `~/.config/crush/crush.json`)
+- Automatically generates CLI config files for opencode/crush/qwencode on first use (`~/.config/opencode/opencode.json`, `~/.config/crush/crush.json`, and `~/.qwen/settings.json` + `~/.qwen/.env`)
 - Saves the new configuration, restarts the gateway (`cal restart`), and waits for the health check to pass
+- When `gateway.apiKey` is missing in `qwencode` mode, CAL writes a placeholder into `~/.qwen/.env` and prompts you to fill in a real key so the Qwen Code CLI can connect successfully
 - Finally launches the selected AI Code CLI (Gemini by default; switch with `--cli-mode` at any time)
 
 💡 **Codex ChatGPT mode**: Choosing `Codex + ChatGPT` prompts the CLI to open a browser-based OAuth login on the first request. The login URL appears in your terminal, and successful authentication writes `auth.json` to `~/.code-cli-any-llm/codex/`. Tokens refresh automatically, so repeat logins are not required.
@@ -106,6 +111,7 @@ cal code --temperature 0.7 "Write a creative story"
 # Launch alternate CLI experiences
 cal code --cli-mode opencode
 cal code --cli-mode crush
+cal code --cli-mode qwencode
 ```
 
 ## 📖 User Guide
@@ -146,7 +152,7 @@ CAL merges configuration from three layers (higher priority overrides lower prio
 ### Gateway modes
 
 - `gateway.apiMode`: determines which API surface the gateway exposes (`gemini` or `openai`). Set to `openai` to enable `/api/v1/openai/v1/...` endpoints.
-- `gateway.cliMode`: sets the default CLI launched by `cal code` (`gemini`, `opencode`, or `crush`). Override per run with `--cli-mode`.
+- `gateway.cliMode`: sets the default CLI launched by `cal code` (`gemini`, `opencode`, `crush`, or `qwencode`). Override per run with `--cli-mode`.
 - `gateway.apiKey`: optional shared key forwarded to OpenAI-compatible CLIs. Use it in opencode/crush configs or via environment variables such as `CODE_CLI_API_KEY`.
 
 When `gateway.apiMode` is `openai`, the gateway exposes:
@@ -469,3 +475,5 @@ Issues and pull requests are welcome!
 ## 📄 License
 
 Apache License 2.0
+# Qwen Code config directory override (optional, defaults to ~/.qwen)
+export CAL_QWEN_HOME="$HOME/.qwen"

@@ -38,7 +38,7 @@ gateway:
   host: '0.0.0.0'
   logLevel: 'info'
   apiMode: openai      # gemini / openai
-  cliMode: gemini      # gemini / opencode / crush
+  cliMode: gemini      # gemini / opencode / crush / qwencode
   apiKey: ''           # 可选：面向 AI Code CLI Tool 的共享密钥
 ```
 

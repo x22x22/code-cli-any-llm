@@ -1,6 +1,6 @@
 # Code CLI Any LLM
 
-> 让 Gemini、opencode、crush 等 CLI 无缝切换任意 LLM 提供商
+> 让 Gemini、opencode、crush、Qwen Code 等 CLI 无缝切换任意 LLM 提供商
 
 > English version: [README.md](./README.md)
 
@@ -9,10 +9,10 @@
 Code CLI Any LLM（简称 CAL）是一个多面向网关，既可以冒充 Gemini CLI，也可以切换为 opencode 或 crush，同时将请求代理到任意兼容 OpenAI 协议的后端（如 Claude Code、Codex、OpenAI、智谱AI、千问等）。借助 CAL，您可以保留熟悉的 CLI 体验，又能灵活重定向底层模型或混合多家供应商。
 
 **核心特性**：
-- 🔄 **多AI Code CLI 工具网关** —— 保持 `cal code` 体验，也可通过 `--cli-mode opencode/crush` 切换其它 CLI
+- 🔄 **多AI Code CLI 工具网关** —— 保持默认 Gemini 体验，也可通过 `--cli-mode gemini/opencode/crush/qwencode` 切换其它 CLI
 - 🔌 **提供商无关** —— 一次配置即可代理 Claude Code、Codex、OpenAI、智谱AI、千问等任何兼容服务
 - ⚡ **流式与工具** —— 保留原生 SSE 流式输出、工具调用、思维链等扩展能力
-- 🧩 **自动配置** —— 自动生成 AI Code CLI Tool 配置、刷新 `gateway.apiMode/cliMode` 并在变更后重启网关
+- 🧩 **自动配置** —— 自动生成/合并 AI Code CLI Tool 配置（含 `~/.config/opencode`、`~/.config/crush` 与 `~/.qwen/settings.json`、`~/.qwen/.env`），刷新 `gateway.apiMode/cliMode` 并在变更后重启网关
 - 🛡️ **运维助力** —— 内置 restart/kill、健康检查与 PID 自动恢复，便于部署与排障
 
 ## 🚀 快速开始
@@ -32,6 +32,9 @@ npm install -g opencode-ai@latest
 
 # crush
 brew install charmbracelet/tap/crush   # 或参考 crush 官方文档
+
+# qwen-code
+npm install -g @qwen-code/qwen-code@latest
 ```
 
 3. **安装网关本体**
@@ -46,12 +49,14 @@ npm install -g @kdump/code-cli-any-llm@latest --registry https://registry.npmmir
 ```bash
 cal code --cli-mode opencode
 # cal code --cli-mode crush
+# cal code --cli-mode qwencode
 # cal code # 默认是gemini
 ```
 
 - 向导会要求选择主要 Provider（`claudeCode` / `codex` / `openai`），并填写 Base URL、默认模型、认证方式和 API Key 等信息
-- 若使用 `--cli-mode opencode` / `--cli-mode crush`，会自动生成对应 AI Code CLI Tool 配置并写入 `~/.config/opencode` / `~/.config/crush`
+- 若使用 `--cli-mode opencode` / `--cli-mode crush` / `--cli-mode qwencode`，会自动生成对应 AI Code CLI Tool 配置并写入 `~/.config/opencode` / `~/.config/crush` / `~/.qwen/settings.json` 和 `~/.qwen/.env`
 - 配置保存后，CLI 会自动执行 `cal restart` 重启网关，使 `gateway.apiMode / gateway.cliMode` 与所选AI Code CLI 工具保持一致
+- 当 `gateway.apiKey` 缺失而选择 `qwencode` 时，系统会在 `~/.qwen/.env` 写入占位符并提示补齐，确保 Qwen Code CLI 能够顺利连接网关
 - 网关健康检查通过后会启动目标 CLI AI Code CLI 工具（默认 Gemini，可随时利用 `--cli-mode` 切换）
 
 > 💡 **Codex ChatGPT 模式**：若在向导中选择 `Codex + ChatGPT`，首次请求时会提示在浏览器完成 OAuth 登录，登录链接将在终端显示。认证成功后令牌将保存到 `~/.code-cli-any-llm/codex/auth.json`，后续请求会自动刷新，无需重复登录。
@@ -101,6 +106,7 @@ cal code --temperature 0.7 "写一个创意故事"
 # 切换为其他 CLI 体验
 cal code --cli-mode opencode
 cal code --cli-mode crush
+cal code --cli-mode qwencode
 ```
 
 ## 📖 使用指南
@@ -148,7 +154,7 @@ cal code --cli-mode crush
 ### 网关模式
 
 - `gateway.apiMode`：决定网关对外暴露的 API 形态（`gemini` 或 `openai`）。设置为 `openai` 时会开启 `/api/v1/openai/v1/...` 兼容接口。
-- `gateway.cliMode`：控制 `cal code` 默认启动的 CLI（`gemini` / `opencode` / `crush`），可通过 `--cli-mode` 临时覆盖。
+- `gateway.cliMode`：控制 `cal code` 默认启动的 CLI（`gemini` / `opencode` / `crush` / `qwencode`），可通过 `--cli-mode` 临时覆盖。
 - `gateway.apiKey`：可选的访问密钥，用于 OpenAI 兼容伪装层，可通过环境变量（如 `CODE_CLI_API_KEY`）传递给 opencode/crush。
 
 当 `gateway.apiMode=openai` 时，网关会提供：
@@ -523,3 +529,5 @@ cal restart
 ## 📄 许可证
 
 Apache License 2.0
+# Qwen Code 配置目录（可选，默认使用 ~/.qwen）
+export CAL_QWEN_HOME="$HOME/.qwen"

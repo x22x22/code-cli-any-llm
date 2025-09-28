@@ -382,7 +382,11 @@ gateway:
       .toString()
       .trim()
       .toLowerCase();
-    if (gatewayCliModeRaw === 'opencode' || gatewayCliModeRaw === 'crush') {
+    if (
+      gatewayCliModeRaw === 'opencode' ||
+      gatewayCliModeRaw === 'crush' ||
+      gatewayCliModeRaw === 'qwencode'
+    ) {
       config.gateway = config.gateway ?? ({} as GatewayConfig);
       config.gateway.apiMode = 'openai';
     }
@@ -752,8 +756,13 @@ gateway:
       .toLowerCase();
     if (cliModeRaw === 'opencode') {
       gatewayConfig.cliMode = 'opencode';
+      gatewayConfig.apiMode = 'openai';
     } else if (cliModeRaw === 'crush') {
       gatewayConfig.cliMode = 'crush';
+      gatewayConfig.apiMode = 'openai';
+    } else if (cliModeRaw === 'qwencode') {
+      gatewayConfig.cliMode = 'qwencode';
+      gatewayConfig.apiMode = 'openai';
     } else {
       gatewayConfig.cliMode = 'gemini';
     }
