@@ -513,25 +513,30 @@ export class ClaudeCodeProvider implements OnModuleInit {
 
       if (message.role === 'user') {
         flushToolResults();
-        anthropicMessages.push({
-          role: 'user',
-          content: (message.content as string) || ' ',
-        });
+        const textContent = this.extractTextContent(message.content);
+        if (textContent.trim().length > 0) {
+          anthropicMessages.push({
+            role: 'user',
+            content: textContent,
+          });
+        }
         continue;
       }
 
       if (message.role === 'assistant') {
         flushToolResults();
-        const text = typeof message.content === 'string' ? message.content : '';
+        const text = this.extractTextContent(message.content);
         const toolCalls = Array.isArray(message.tool_calls)
           ? message.tool_calls
           : [];
 
         if (toolCalls.length === 0) {
-          anthropicMessages.push({
-            role: 'assistant',
-            content: text || ' ',
-          });
+          if (text.trim().length > 0) {
+            anthropicMessages.push({
+              role: 'assistant',
+              content: text,
+            });
+          }
           continue;
         }
 
@@ -624,6 +629,54 @@ export class ClaudeCodeProvider implements OnModuleInit {
     });
   }
 
+  private extractTextContent(content: unknown): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+    if (!content) {
+      return '';
+    }
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => this.extractTextFromPart(part))
+        .filter((value): value is string => value.length > 0)
+        .join('');
+    }
+    const single = this.extractTextFromPart(content);
+    return single;
+  }
+
+  private extractTextFromPart(part: unknown): string {
+    if (!part) {
+      return '';
+    }
+    if (typeof part === 'string') {
+      return part;
+    }
+    if (typeof part !== 'object') {
+      return '';
+    }
+    const candidate = part as {
+      text?: unknown;
+      value?: unknown;
+      input_text?: unknown;
+    };
+    if (typeof candidate.text === 'string') {
+      return candidate.text;
+    }
+    if (typeof candidate.value === 'string') {
+      return candidate.value;
+    }
+    if (typeof candidate.input_text === 'string') {
+      return candidate.input_text;
+    }
+    try {
+      return JSON.stringify(part);
+    } catch {
+      return '';
+    }
+  }
+
   private transformToolChoice(
     toolChoice: OpenAIRequest['tool_choice'],
   ): Record<string, unknown> | undefined {
@@ -690,6 +743,19 @@ export class ClaudeCodeProvider implements OnModuleInit {
     return headers;
   }
 
+  private sanitizeHeaders(
+    headers: Record<string, string>,
+  ): Record<string, string> {
+    const sanitized: Record<string, string> = { ...headers };
+    const sensitiveKeys = ['x-api-key', 'authorization'];
+    for (const key of sensitiveKeys) {
+      if (sanitized[key]) {
+        sanitized[key] = '***';
+      }
+    }
+    return sanitized;
+  }
+
   private async sendClaudeMessagesRequest(
     payload: Record<string, unknown>,
     config: ResolvedClaudeCodeConfig,
@@ -697,17 +763,54 @@ export class ClaudeCodeProvider implements OnModuleInit {
   ): Promise<Response> {
     const url = this.buildUrl(config.baseURL, 'v1/messages');
     const headers = this.buildHeaders(stream, config);
+    const sanitizedHeaders = this.sanitizeHeaders(headers);
+
+    try {
+      this.logger.verbose(
+        `ClaudeCodeProvider -> 请求: ${url.toString()} ${JSON.stringify(payload)}`,
+      );
+      this.logger.verbose(
+        `ClaudeCodeProvider -> 请求头: ${JSON.stringify(sanitizedHeaders)}`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `ClaudeCodeProvider -> 请求日志序列化失败: ${(error as Error).message}`,
+      );
+    }
 
     const controller = new AbortController();
     const timeoutHandle = setTimeout(() => controller.abort(), config.timeout);
 
     try {
-      return await fetch(url.toString(), {
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
+
+      try {
+        const responseHeaders = Object.fromEntries(response.headers.entries());
+        this.logger.verbose(
+          `ClaudeCodeProvider -> 响应状态: ${response.status} ${response.statusText}`,
+        );
+        this.logger.verbose(
+          `ClaudeCodeProvider -> 响应头: ${JSON.stringify(responseHeaders)}`,
+        );
+        if (!stream) {
+          const cloned = response.clone();
+          const bodyText = await cloned.text();
+          this.logger.verbose(
+            `ClaudeCodeProvider -> 响应报文: ${bodyText}`,
+          );
+        }
+      } catch (error) {
+        this.logger.warn(
+          `ClaudeCodeProvider -> 响应日志处理失败: ${(error as Error).message}`,
+        );
+      }
+
+      return response;
     } finally {
       clearTimeout(timeoutHandle);
     }
@@ -917,7 +1020,12 @@ export class ClaudeCodeProvider implements OnModuleInit {
     let buffer = '';
 
     for await (const chunk of stream) {
-      buffer += chunk.toString('utf8');
+      const chunkText = chunk.toString('utf8');
+      this.logger.verbose(
+        `ClaudeCodeProvider -> 流式片段: ${chunkText.trim() || '[空片段]'}`,
+      );
+      buffer += chunkText;
+      buffer = buffer.replace(/\r\n/g, '\n');
 
       let boundaryIndex = buffer.indexOf('\n\n');
       while (boundaryIndex !== -1) {
@@ -928,6 +1036,8 @@ export class ClaudeCodeProvider implements OnModuleInit {
         if (!rawEvent) {
           continue;
         }
+
+        this.logger.verbose(`ClaudeCodeProvider -> SSE事件: ${rawEvent}`);
 
         let eventName: string | undefined;
         const dataLines: string[] = [];

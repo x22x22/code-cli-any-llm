@@ -1,217 +1,330 @@
 import { Injectable } from '@nestjs/common';
 
+import {
+  DoubleEscapeDetectionResult,
+  IDoubleEscapeUtils,
+} from './double-escape-utils.types';
+
 /**
  * 双重转义处理工具
  * 基于 llxprt-code 项目的 doubleEscapeUtils 实现
- * 智谱模型可能返回双重转义的JSON，需要特殊处理
+ * 智谱模型可能返回双重转义的 JSON，需要特殊处理
  */
 @Injectable()
-export class DoubleEscapeUtils {
-  /**
-   * 检测是否应该使用双重转义处理
-   */
+export class DoubleEscapeUtils implements IDoubleEscapeUtils {
   shouldUseDoubleEscapeHandling(toolFormat: string): boolean {
-    // Qwen 格式需要双重转义处理 (包括使用 qwen 格式的 GLM-4.5)
-    return toolFormat === 'qwen';
+    const normalized = toolFormat?.toLowerCase?.().trim() ?? '';
+    if (!normalized) {
+      return false;
+    }
+    if (normalized === 'qwen' || normalized === 'zhipu') {
+      return true;
+    }
+    return normalized.startsWith('glm') || normalized.includes('glm');
   }
 
-  /**
-   * 检测JSON字符串是否被双重字符串化
-   */
-  detectDoubleEscaping(jsonString: string): {
-    isDoubleEscaped: boolean;
-    correctedValue?: unknown;
-    originalValue: string;
-    detectionDetails: {
-      firstParse?: string;
-      secondParse?: unknown;
-      error?: string;
+  detectDoubleEscaping(jsonString: string): DoubleEscapeDetectionResult {
+    const original =
+      typeof jsonString === 'string' ? jsonString : String(jsonString ?? '');
+    const detectionDetails = {
+      hasEscapeSequences: /\\/.test(original),
+      hasDoubleQuotes: original.includes('\"'),
+      parseAttempts: 0,
+      finalParseSuccess: false,
+      detectedPatterns: [] as string[],
     };
-  } {
-    const result: {
-      isDoubleEscaped: boolean;
-      correctedValue?: unknown;
-      originalValue: string;
-      detectionDetails: {
-        firstParse?: string;
-        secondParse?: unknown;
-        error?: string;
-      };
-    } = {
+
+    const result: DoubleEscapeDetectionResult = {
       isDoubleEscaped: false,
       correctedValue: undefined,
-      originalValue: jsonString,
-      detectionDetails: {},
+      originalValue: original,
+      detectionDetails,
     };
 
+    if (!original.trim()) {
+      return result;
+    }
+
+    const patterns = [String.raw`\"[`, String.raw`\\\\\\\\`, String.raw`\\\"`];
+    for (const pattern of patterns) {
+      if (original.includes(pattern)) {
+        detectionDetails.detectedPatterns.push(pattern);
+      }
+    }
+
     try {
-      const parsed = JSON.parse(jsonString);
+      detectionDetails.parseAttempts += 1;
+      const parsed = JSON.parse(original);
+      detectionDetails.finalParseSuccess = true;
 
       if (typeof parsed === 'string') {
-        result.detectionDetails.firstParse = parsed;
-
-        // 参数被字符串化了，检查是否被双重字符串化
+        detectionDetails.parseAttempts += 1;
         try {
           const doubleParsed = JSON.parse(parsed);
           result.isDoubleEscaped = true;
-          result.correctedValue = doubleParsed;
-          result.detectionDetails.secondParse = doubleParsed;
+          result.correctedValue = this.normalizeStructuredValue(doubleParsed);
+          return result;
         } catch {
-          // 不是双重字符串化，只是单重字符串化
           result.correctedValue = parsed;
+          return result;
         }
-      } else if (typeof parsed === 'object' && parsed !== null) {
-        // 检查是否是包含字符串化值的对象（常见模式）
-        const hasStringifiedValues = Object.values(parsed).some((value) => {
-          if (typeof value === 'string') {
-            try {
-              const testParse = JSON.parse(value);
-              // 如果能解析且是数组或对象，可能是字符串化的
-              return typeof testParse === 'object';
-            } catch {
-              return false;
-            }
-          }
-          return false;
-        });
-
-        if (hasStringifiedValues) {
-          // 修复字符串化的值
-          const fixed = { ...parsed };
-          for (const [key, value] of Object.entries(fixed)) {
-            if (typeof value === 'string') {
-              try {
-                const testParse = JSON.parse(value);
-                if (typeof testParse === 'object') {
-                  fixed[key] = testParse;
-                  result.isDoubleEscaped = true;
-                }
-              } catch {
-                // 如果无法解析则保留原值
-              }
-            }
-          }
-          result.correctedValue = fixed;
-        } else {
-          result.correctedValue = parsed;
-        }
-      } else {
-        // 已经正确解析
-        result.correctedValue = parsed;
       }
-    } catch (parseError) {
-      result.detectionDetails.error = String(parseError);
+
+      if (this.containsStringifiedValues(parsed)) {
+        result.isDoubleEscaped = true;
+        result.correctedValue = this.normalizeStructuredValue(parsed);
+        return result;
+      }
+
+      result.correctedValue = parsed;
+    } catch {
+      // ignore parsing errors; finalParseSuccess 保持 false
     }
 
     return result;
   }
 
-  /**
-   * 处理工具调用参数，修复双重转义（如果检测到）
-   */
   processToolParameters(
     parametersString: string,
     toolName: string = 'unknown',
     format: string = 'qwen',
-  ): unknown {
-    if (!parametersString.trim()) {
+  ): Record<string, any> {
+    if (!parametersString || !parametersString.trim()) {
       return {};
     }
 
-    const normalizedToolName = toolName?.toLowerCase?.() ?? 'unknown';
     const normalizedFormat = format?.toLowerCase?.() ?? 'qwen';
-    const effectiveFormat = this.shouldUseDoubleEscapeHandling(normalizedFormat)
-      ? normalizedFormat
-      : normalizedToolName.includes('glm') ||
-          normalizedToolName.includes('qwen') ||
-          normalizedToolName.includes('double_escape')
-        ? 'qwen'
-        : normalizedFormat;
+    const normalizedToolName = toolName?.toLowerCase?.() ?? 'unknown';
+    const needsHandling =
+      this.shouldUseDoubleEscapeHandling(normalizedFormat) ||
+      normalizedToolName.includes('glm') ||
+      normalizedToolName.includes('qwen');
 
-    // 只对需要双重转义处理的格式应用
-    if (!this.shouldUseDoubleEscapeHandling(effectiveFormat)) {
-      // 对于不需要双重转义处理的格式，解析JSON字符串
+    if (!needsHandling) {
       try {
-        return JSON.parse(parametersString);
+        const parsed = JSON.parse(parametersString);
+        return this.ensureRecord(this.normalizeStructuredValue(parsed));
       } catch {
-        return parametersString; // 如果不是有效JSON则原样返回
+        return { raw: parametersString };
       }
     }
 
-    // 对 qwen 格式应用双重转义检测和修复
     const detection = this.detectDoubleEscaping(parametersString);
 
-    if (detection.isDoubleEscaped) {
-      // 为 qwen 格式转换字符串数字为实际数字
-      return this.convertStringNumbersToNumbers(detection.correctedValue);
-    } else if (detection.detectionDetails.error) {
-      // 如果解析失败则原样返回字符串
-      return parametersString;
+    if (detection.correctedValue && typeof detection.correctedValue === 'object') {
+      return this.ensureRecord(this.normalizeStructuredValue(detection.correctedValue));
     }
 
-    // 为 qwen 格式转换字符串数字为实际数字
-    return this.convertStringNumbersToNumbers(detection.correctedValue);
+    if (detection.isDoubleEscaped && typeof detection.correctedValue === 'string') {
+      const reparsed = this.safeJsonParse(detection.correctedValue);
+      if (reparsed.success && typeof reparsed.result === 'object') {
+        return this.ensureRecord(this.normalizeStructuredValue(reparsed.result));
+      }
+    }
+
+    try {
+      const fallback = JSON.parse(parametersString);
+      return this.ensureRecord(this.normalizeStructuredValue(fallback));
+    } catch {
+      return { raw: parametersString };
+    }
   }
 
-  /**
-   * 将对象中的字符串数字转换为实际数字
-   * qwen 模型会将数字参数字符串化，需要这个转换
-   */
-  private convertStringNumbersToNumbers(obj: unknown): unknown {
-    if (obj === null || obj === undefined) {
-      return obj;
+  detectDoubleEscapingInChunk(chunk: string): boolean {
+    if (typeof chunk !== 'string') {
+      return false;
     }
 
-    if (typeof obj === 'string') {
-      // 检查是否是数字字符串
-      if (/^-?\d+$/.test(obj)) {
-        // 整数
-        const num = parseInt(obj, 10);
-        if (!isNaN(num)) return num;
-      } else if (/^-?\d*\.?\d+$/.test(obj)) {
-        // 浮点数
-        const num = parseFloat(obj);
-        if (!isNaN(num)) return num;
+    const lines = chunk.split(/\r?\n/);
+    for (const line of lines) {
+      const match = line.trim().match(/^data:\s*(.*)$/i);
+      if (!match) {
+        continue;
       }
-      return obj;
+      const payloadRaw = match[1];
+      try {
+        const payload = JSON.parse(payloadRaw) as {
+          arguments?: string;
+        };
+        if (typeof payload.arguments === 'string') {
+          const detection = this.detectDoubleEscaping(payload.arguments);
+          if (detection.isDoubleEscaped) {
+            return true;
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+    return false;
+  }
+
+  coerceParameterTypes(
+    parameters: Record<string, any>,
+    schema?: Record<string, any>,
+  ): Record<string, any> {
+    if (!parameters || typeof parameters !== 'object') {
+      return {};
     }
 
-    if (Array.isArray(obj)) {
-      return obj.map((item) => this.convertStringNumbersToNumbers(item));
+    const normalized = this.normalizeStructuredValue(parameters) as Record<
+      string,
+      any
+    >;
+    if (!schema) {
+      return normalized;
     }
 
-    if (typeof obj === 'object') {
+    const coerced: Record<string, any> = {};
+    for (const [key, value] of Object.entries(normalized)) {
+      coerced[key] = this.applySchemaToValue(value, schema[key]);
+    }
+    return coerced;
+  }
+
+  safeJsonParse(jsonString: string, maxAttempts = 1): {
+    success: boolean;
+    result?: any;
+    error?: string;
+    attempts: number;
+  } {
+    const attempts = Math.max(1, Math.floor(maxAttempts));
+    let lastError: unknown;
+
+    for (let index = 0; index < attempts; index += 1) {
+      try {
+        const parsed = JSON.parse(jsonString);
+        return {
+          success: true,
+          result: parsed,
+          attempts: index + 1,
+        };
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    return {
+      success: false,
+      error: lastError ? String(lastError) : 'Unknown error',
+      attempts,
+    };
+  }
+
+  safeParse(jsonString: string): any {
+    const result = this.safeJsonParse(jsonString);
+    return result.success ? result.result : undefined;
+  }
+
+  private containsStringifiedValues(value: unknown): boolean {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    return Object.values(value as Record<string, unknown>).some((entry) => {
+      if (typeof entry !== 'string') {
+        return false;
+      }
+      try {
+        const parsed = JSON.parse(entry);
+        return typeof parsed === 'object';
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  private normalizeStructuredValue(value: unknown): unknown {
+    if (value === null || value === undefined) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (/^-?\d+$/.test(trimmed)) {
+        const num = Number(trimmed);
+        return Number.isNaN(num) ? value : num;
+      }
+      if (/^-?\d*\.\d+$/.test(trimmed)) {
+        const num = Number(trimmed);
+        return Number.isNaN(num) ? value : num;
+      }
+      if (/^(true|false)$/i.test(trimmed)) {
+        return trimmed.toLowerCase() === 'true';
+      }
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeStructuredValue(item));
+    }
+
+    if (typeof value === 'object') {
       const result: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(obj)) {
-        result[key] = this.convertStringNumbersToNumbers(value);
+      for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+        result[key] = this.normalizeStructuredValue(entry);
       }
       return result;
     }
 
-    return obj;
+    return value;
   }
 
-  /**
-   * 安全解析可能存在双重转义的JSON
-   * 这是一个简化的接口，使用默认参数
-   */
-  safeParse(jsonString: string): any {
-    return this.processToolParameters(jsonString, 'unknown', 'qwen');
+  private ensureRecord(value: unknown): Record<string, any> {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, any>;
+    }
+    return { value };
   }
 
-  /**
-   * 向后兼容的方法
-   */
-  fixDoubleEscape(jsonString: string): string {
-    const result = this.processToolParameters(jsonString, 'unknown', 'qwen');
-    return typeof result === 'string' ? result : JSON.stringify(result);
-  }
+  private applySchemaToValue(value: any, schema: any): any {
+    if (!schema) {
+      return value;
+    }
 
-  /**
-   * 向后兼容的方法
-   */
-  detectDoubleEscape(jsonString: string): boolean {
-    const detection = this.detectDoubleEscaping(jsonString);
-    return detection.isDoubleEscaped;
+    const schemaType = typeof schema === 'object' ? schema.type : schema;
+
+    if (schemaType === 'number') {
+      if (typeof value === 'number') {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const parsed = Number(value);
+        return Number.isNaN(parsed) ? value : parsed;
+      }
+      return value;
+    }
+
+    if (schemaType === 'boolean') {
+      if (typeof value === 'boolean') {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const lowered = value.toLowerCase();
+        if (lowered === 'true' || lowered === 'false') {
+          return lowered === 'true';
+        }
+      }
+      return value;
+    }
+
+    if (schemaType === 'string') {
+      return typeof value === 'string' ? value : String(value);
+    }
+
+    if (schemaType === 'object' && value && typeof value === 'object') {
+      const properties = schema.properties ?? {};
+      const coerced: Record<string, any> = {};
+      for (const [key, entry] of Object.entries(value)) {
+        coerced[key] = this.applySchemaToValue(entry, properties[key]);
+      }
+      return coerced;
+    }
+
+    if (schemaType === 'array' && Array.isArray(value)) {
+      const itemSchema = schema.items;
+      return value.map((item) => this.applySchemaToValue(item, itemSchema));
+    }
+
+    return value;
   }
 }

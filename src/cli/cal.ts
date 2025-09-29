@@ -45,14 +45,11 @@ function showVersion() {
 
 async function main() {
   const versionCommandAliases = new Set(['-v', '--version', 'version']);
-  const bannerExcludedCommands = new Set(['code']);
-  const shouldShowUpdateBanner =
+  const shouldTriggerUpdateCheck =
     process.env.CAL_DISABLE_UPDATE_CHECK !== '1' &&
-    process.stdout.isTTY &&
-    !versionCommandAliases.has(command ?? '') &&
-    !bannerExcludedCommands.has(command ?? '');
+    !versionCommandAliases.has(command ?? '');
 
-  if (shouldShowUpdateBanner) {
+  if (shouldTriggerUpdateCheck) {
     await showUpdateBanner(version);
   }
 

@@ -86,7 +86,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       };
 
       const result = enhancedRequestTransformer.transformRequest(
-        geminiRequest,
+        geminiRequest as any,
         'glm-4',
       );
 
@@ -132,7 +132,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       };
 
       const result = enhancedRequestTransformer.transformRequest(
-        geminiRequest,
+        geminiRequest as any,
         'gpt-4',
       );
 
@@ -179,9 +179,9 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       };
 
       const result = enhancedResponseTransformer.transformResponse(
-        openAIResponse,
+        openAIResponse as any,
         'glm-4',
-      );
+      ) as any;
 
       // 应该返回Gemini格式的响应
       expect(result).toHaveProperty('candidates');
@@ -220,7 +220,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
 
       // 第一个块，应该被缓冲
       const result1 = enhancedResponseTransformer.transformStreamChunk(
-        chunkWithChinese,
+        chunkWithChinese as any,
         'glm-4',
         textBuffer,
       );
@@ -271,7 +271,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       const emptyRequest = { contents: [] };
 
       expect(() => {
-        enhancedRequestTransformer.transformRequest(emptyRequest, 'glm-4');
+        enhancedRequestTransformer.transformRequest(emptyRequest as any, 'glm-4');
       }).not.toThrow();
     });
 
@@ -300,7 +300,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       };
 
       const startTime = Date.now();
-      enhancedRequestTransformer.transformRequest(request, 'glm-4');
+      enhancedRequestTransformer.transformRequest(request as any, 'glm-4');
       const endTime = Date.now();
 
       // 转换应该在10ms内完成
@@ -326,7 +326,7 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       };
 
       const startTime = Date.now();
-      enhancedResponseTransformer.transformResponse(response, 'glm-4');
+      enhancedResponseTransformer.transformResponse(response as any, 'glm-4');
       const endTime = Date.now();
 
       // 转换应该在10ms内完成

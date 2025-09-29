@@ -1,5 +1,17 @@
 import { Injectable } from '@nestjs/common';
 
+import {
+  AnthropicTool,
+  IGeminiTool,
+  ITool,
+  IToolFormatter,
+  OpenAITool,
+  ResponsesTool,
+  StreamingToolCall,
+  ToolCallBlock,
+  ToolFormat,
+} from './tool-formatter.types';
+
 /**
  * 工具参数Schema规范化工具（移植自 llxprt-code 的核心思路）
  *
@@ -10,7 +22,135 @@ import { Injectable } from '@nestjs/common';
  * - 规范 items/properties 的嵌套结构
  */
 @Injectable()
-export class ToolFormatter {
+export class ToolFormatter implements IToolFormatter {
+  convertGeminiToOpenAI(geminiTools: IGeminiTool[]): OpenAITool[] {
+    return geminiTools.map((tool) => ({
+      type: 'function',
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters ?? {
+          type: 'object',
+          properties: {},
+        },
+      },
+    }));
+  }
+
+  convertGeminiToAnthropic(geminiTools: IGeminiTool[]): AnthropicTool[] {
+    return geminiTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      input_schema: tool.parameters ?? {
+        type: 'object',
+        properties: {},
+      },
+    }));
+  }
+
+  convertGeminiToFormat(
+    geminiTools: IGeminiTool[],
+    format: ToolFormat,
+  ): unknown {
+    switch (format) {
+      case ToolFormat.OPENAI:
+        return this.convertGeminiToOpenAI(geminiTools);
+      case ToolFormat.ANTHROPIC:
+        return this.convertGeminiToAnthropic(geminiTools);
+      default:
+        return geminiTools;
+    }
+  }
+
+  fromProviderFormat(
+    rawToolCall: unknown,
+    format: ToolFormat,
+  ): ToolCallBlock[] {
+    if (!rawToolCall) {
+      return [];
+    }
+
+    if (Array.isArray(rawToolCall)) {
+      return rawToolCall as ToolCallBlock[];
+    }
+
+    if (format === ToolFormat.OPENAI && typeof rawToolCall === 'object') {
+      const call = rawToolCall as {
+        id?: string;
+        function?: { name?: string; arguments?: unknown };
+      };
+      return [
+        {
+          type: 'tool_call',
+          id: call.id ?? 'tool-call',
+          name: call.function?.name ?? 'unknown',
+          parameters: call.function?.arguments ?? {},
+        },
+      ];
+    }
+
+    return [];
+  }
+
+  accumulateStreamingToolCall(
+    deltaToolCall: any,
+    accumulatedToolCalls: Map<string, any>,
+    format: ToolFormat,
+  ): void {
+    if (!deltaToolCall || typeof deltaToolCall !== 'object') {
+      return;
+    }
+
+    const identifier = deltaToolCall.id ?? 'stream';
+    const existing = accumulatedToolCalls.get(identifier) ?? {};
+
+    if (format === ToolFormat.OPENAI) {
+      const merged: StreamingToolCall = {
+        id: identifier,
+        name: deltaToolCall.function?.name ?? existing.name,
+        parameters:
+          (existing.parameters ?? '') + (deltaToolCall.function?.arguments ?? ''),
+        isComplete: Boolean(deltaToolCall.isComplete ?? existing.isComplete),
+      };
+      accumulatedToolCalls.set(identifier, merged);
+      return;
+    }
+
+    accumulatedToolCalls.set(identifier, {
+      ...existing,
+      ...deltaToolCall,
+    });
+  }
+
+  toResponsesTool(tools: ITool[]): ResponsesTool[] {
+    return tools.map((tool) => ({
+      type: 'function',
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters ?? {},
+    }));
+  }
+
+  fixParameterTypes(
+    parameters: Record<string, any>,
+    toolName: string,
+  ): Record<string, any> {
+    if (!parameters || typeof parameters !== 'object') {
+      return {};
+    }
+
+    const normalized: Record<string, any> = {};
+    for (const [key, value] of Object.entries(parameters)) {
+      normalized[key] = this.normalizeValue(value);
+    }
+
+    if (toolName.toLowerCase().includes('weather')) {
+      normalized.unit = normalized.unit ?? 'celsius';
+    }
+
+    return normalized;
+  }
+
   /**
    * 将 Gemini 风格的参数 Schema 规范化为标准 JSON Schema
    * 注意：此方法是纯函数式转换，不修改入参对象
@@ -79,5 +219,33 @@ export class ToolFormatter {
     }
 
     return dst;
+  }
+
+  private normalizeValue(value: unknown): unknown {
+    if (value === null || value === undefined) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (/^-?\d+$/.test(trimmed) || /^-?\d*\.\d+$/.test(trimmed)) {
+        const num = Number(trimmed);
+        return Number.isNaN(num) ? value : num;
+      }
+      if (/^(true|false)$/i.test(trimmed)) {
+        return trimmed.toLowerCase() === 'true';
+      }
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeValue(item));
+    }
+    if (typeof value === 'object') {
+      const result: Record<string, unknown> = {};
+      for (const [key, entry] of Object.entries(value)) {
+        result[key] = this.normalizeValue(entry);
+      }
+      return result;
+    }
+    return value;
   }
 }

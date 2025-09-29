@@ -2,7 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import * as os from 'os';
 import * as path from 'path';
-import { GatewayConfig as GatewayConfigSchema } from '../../src/config/config.schema';
+import { GatewayConfigSchema } from '../../src/config/config.schema';
 import { GlobalConfigService } from '../../src/config/global-config.service';
 import type { GlobalConfig } from '../../src/config/global-config.interface';
 
@@ -16,7 +16,7 @@ describe('Global configuration qwencode integration', () => {
       requestTimeout: 3600000,
       apiMode: 'openai',
       cliMode: 'qwencode',
-    });
+    }) as GatewayConfigSchema;
 
     const errors = validateSync(instance, { forbidUnknownValues: false });
     expect(errors).toHaveLength(0);

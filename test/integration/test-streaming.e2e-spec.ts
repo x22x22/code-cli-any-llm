@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { Readable } from 'stream';
 
@@ -114,15 +114,16 @@ describe('StreamingResponse (e2e)', () => {
     // Read only first few chunks then abort
     let chunkCount = 0;
     await new Promise((resolve) => {
-      response.on('data', (chunk: Buffer) => {
+      const stream = response as any;
+      stream.on('data', (chunk: Buffer) => {
         chunkCount++;
         if (chunkCount >= 3) {
-          response.destroy();
+          stream.destroy();
           resolve(true);
         }
       });
-      response.on('end', resolve);
-      response.on('error', resolve);
+      stream.on('end', resolve);
+      stream.on('error', resolve);
     });
 
     // Should have received some chunks before interruption

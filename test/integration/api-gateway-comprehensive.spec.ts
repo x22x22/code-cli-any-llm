@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import supertest from 'supertest';
+import supertest, { SuperTest, Test as SupertestTest } from 'supertest';
 import { AppModule } from '../../src/app.module';
 
 describe('Gemini API Gateway Comprehensive Tests', () => {
   let app: INestApplication;
-  let request: supertest.SuperTest<supertest.Test>;
+  let request: ReturnType<typeof supertest>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

@@ -55,7 +55,7 @@ describe('refreshVersionInfoImmediate', () => {
 
     globalThis.fetch = mockFetch as unknown as typeof fetch;
 
-    const info = await refreshVersionInfoImmediate('0.1.0');
+    const info = await refreshVersionInfoImmediate();
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://registry.example.com/@kdump%2fcode-cli-any-llm/latest',

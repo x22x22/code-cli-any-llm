@@ -6,8 +6,8 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { HttpStatus, INestApplication } from '@nestjs/testing';
-import * as request from 'supertest';
+import { HttpStatus, INestApplication } from '@nestjs/common';
+import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 
 describe('工具格式转换端到端测试 (E2E)', () => {
