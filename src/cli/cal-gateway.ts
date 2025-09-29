@@ -5,6 +5,7 @@ import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
 import * as readline from 'readline';
+import { createRequire } from 'node:module';
 import * as yaml from 'js-yaml';
 import { GlobalConfigService } from '../config/global-config.service';
 import type {
@@ -733,25 +734,88 @@ function ensureDir(dirPath: string): void {
   }
 }
 
-function startGatewayProcess(context: GatewayContext): number | undefined {
-  const entry = path.join(context.projectRoot, 'dist', 'main.js');
-
-  if (!fs.existsSync(entry)) {
-    console.error(
-      'dist/main.js not found. Confirm the server build has completed before retrying.',
+function resolveModule(moduleId: string, basedir: string): string | null {
+  try {
+    const requireFromRoot = createRequire(
+      path.join(basedir, 'package.json'),
     );
-    process.exit(1);
+    return requireFromRoot.resolve(moduleId);
+  } catch {
+    return null;
+  }
+}
+
+function selectGatewayEntry(projectRoot: string): {
+  entry: string;
+  useTypeScript: boolean;
+} {
+  const tsEntry = path.join(projectRoot, 'src', 'main.ts');
+  const distEntry = path.join(projectRoot, 'dist', 'main.js');
+  const runningFromTs = path.extname(__filename).toLowerCase() === '.ts';
+
+  if (runningFromTs && fs.existsSync(tsEntry)) {
+    return { entry: tsEntry, useTypeScript: true };
+  }
+
+  return { entry: distEntry, useTypeScript: false };
+}
+
+function startGatewayProcess(context: GatewayContext): number | undefined {
+  const { entry, useTypeScript } = selectGatewayEntry(context.projectRoot);
+
+  const args: string[] = [];
+
+  if (useTypeScript) {
+    const tsNodeRegister = resolveModule(
+      'ts-node/register/transpile-only',
+      context.projectRoot,
+    );
+    const tsconfigPathsRegister = resolveModule(
+      'tsconfig-paths/register',
+      context.projectRoot,
+    );
+
+    if (!tsNodeRegister) {
+      console.error(
+        '无法解析 ts-node/register/transpile-only。请执行 `pnpm install` 后重试。',
+      );
+      process.exit(1);
+    }
+
+    if (!tsconfigPathsRegister) {
+      console.error(
+        '无法解析 tsconfig-paths/register。请执行 `pnpm install` 后重试。',
+      );
+      process.exit(1);
+    }
+
+    args.push(
+      '--require',
+      tsNodeRegister,
+      '--require',
+      tsconfigPathsRegister,
+      entry,
+    );
+  } else {
+    if (!fs.existsSync(entry)) {
+      console.error(
+        'dist/main.js 不存在。请先执行 `pnpm run build` 生成产物后再试。',
+      );
+      process.exit(1);
+    }
+
+    args.push(entry);
   }
 
   ensureDir(context.configDir);
 
-  const child = spawn(process.execPath, [entry], {
+  const child = spawn(process.execPath, args, {
     cwd: context.projectRoot,
     detached: true,
     stdio: 'ignore',
     env: {
       ...process.env,
-      NODE_ENV: process.env.NODE_ENV || 'production',
+      NODE_ENV: process.env.NODE_ENV || (useTypeScript ? 'development' : 'production'),
     },
   });
 
