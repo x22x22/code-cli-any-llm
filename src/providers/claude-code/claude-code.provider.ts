@@ -800,9 +800,7 @@ export class ClaudeCodeProvider implements OnModuleInit {
         if (!stream) {
           const cloned = response.clone();
           const bodyText = await cloned.text();
-          this.logger.verbose(
-            `ClaudeCodeProvider -> 响应报文: ${bodyText}`,
-          );
+          this.logger.verbose(`ClaudeCodeProvider -> 响应报文: ${bodyText}`);
         }
       } catch (error) {
         this.logger.warn(

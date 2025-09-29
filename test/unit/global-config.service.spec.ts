@@ -16,7 +16,7 @@ describe('Global configuration qwencode integration', () => {
       requestTimeout: 3600000,
       apiMode: 'openai',
       cliMode: 'qwencode',
-    }) as GatewayConfigSchema;
+    });
 
     const errors = validateSync(instance, { forbidUnknownValues: false });
     expect(errors).toHaveLength(0);

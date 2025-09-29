@@ -736,9 +736,7 @@ function ensureDir(dirPath: string): void {
 
 function resolveModule(moduleId: string, basedir: string): string | null {
   try {
-    const requireFromRoot = createRequire(
-      path.join(basedir, 'package.json'),
-    );
+    const requireFromRoot = createRequire(path.join(basedir, 'package.json'));
     return requireFromRoot.resolve(moduleId);
   } catch {
     return null;
@@ -815,7 +813,8 @@ function startGatewayProcess(context: GatewayContext): number | undefined {
     stdio: 'ignore',
     env: {
       ...process.env,
-      NODE_ENV: process.env.NODE_ENV || (useTypeScript ? 'development' : 'production'),
+      NODE_ENV:
+        process.env.NODE_ENV || (useTypeScript ? 'development' : 'production'),
     },
   });
 

@@ -111,14 +111,24 @@ export class DoubleEscapeUtils implements IDoubleEscapeUtils {
 
     const detection = this.detectDoubleEscaping(parametersString);
 
-    if (detection.correctedValue && typeof detection.correctedValue === 'object') {
-      return this.ensureRecord(this.normalizeStructuredValue(detection.correctedValue));
+    if (
+      detection.correctedValue &&
+      typeof detection.correctedValue === 'object'
+    ) {
+      return this.ensureRecord(
+        this.normalizeStructuredValue(detection.correctedValue),
+      );
     }
 
-    if (detection.isDoubleEscaped && typeof detection.correctedValue === 'string') {
+    if (
+      detection.isDoubleEscaped &&
+      typeof detection.correctedValue === 'string'
+    ) {
       const reparsed = this.safeJsonParse(detection.correctedValue);
       if (reparsed.success && typeof reparsed.result === 'object') {
-        return this.ensureRecord(this.normalizeStructuredValue(reparsed.result));
+        return this.ensureRecord(
+          this.normalizeStructuredValue(reparsed.result),
+        );
       }
     }
 
@@ -182,7 +192,10 @@ export class DoubleEscapeUtils implements IDoubleEscapeUtils {
     return coerced;
   }
 
-  safeJsonParse(jsonString: string, maxAttempts = 1): {
+  safeJsonParse(
+    jsonString: string,
+    maxAttempts = 1,
+  ): {
     success: boolean;
     result?: any;
     error?: string;
@@ -260,7 +273,9 @@ export class DoubleEscapeUtils implements IDoubleEscapeUtils {
 
     if (typeof value === 'object') {
       const result: Record<string, unknown> = {};
-      for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      for (const [key, entry] of Object.entries(
+        value as Record<string, unknown>,
+      )) {
         result[key] = this.normalizeStructuredValue(entry);
       }
       return result;

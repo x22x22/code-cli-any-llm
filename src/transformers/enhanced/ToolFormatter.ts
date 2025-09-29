@@ -109,7 +109,8 @@ export class ToolFormatter implements IToolFormatter {
         id: identifier,
         name: deltaToolCall.function?.name ?? existing.name,
         parameters:
-          (existing.parameters ?? '') + (deltaToolCall.function?.arguments ?? ''),
+          (existing.parameters ?? '') +
+          (deltaToolCall.function?.arguments ?? ''),
         isComplete: Boolean(deltaToolCall.isComplete ?? existing.isComplete),
       };
       accumulatedToolCalls.set(identifier, merged);

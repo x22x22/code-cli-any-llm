@@ -58,7 +58,7 @@ interface CodexStreamContext {
   accumulated: string;
   started: boolean;
   completed: boolean;
-  finishReason?: 'stop' | 'tool_calls';
+  finishReason?: 'stop' | 'tool_calls' | 'length';
   usage?: OpenAIUsage;
   toolCalls: OpenAIToolCall[];
   toolCallState: Map<string, ToolCallState>;
@@ -582,17 +582,18 @@ export class CodexProvider implements OnModuleInit {
     context: CodexStreamContext,
   ): AsyncGenerator<OpenAIStreamChunk> {
     const endpoint = this.resolveEndpoint(config.baseURL);
-    const maxRetries = config.authMode === 'ChatGPT' ? 1 : 0;
+    const maxAttempts = config.authMode === 'ChatGPT' ? 4 : 3;
     const requestBody = JSON.stringify(payload);
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const controller = new AbortController();
       const timeoutHandle = setTimeout(
         () => controller.abort(),
         config.timeout,
       );
 
-      let response: Response;
+      let response: Response | undefined;
+      let fetchError: unknown;
       try {
         const baseHeaders = await this.buildRequestHeaders(config);
         const requestHeaders: Record<string, string> = {
@@ -611,8 +612,36 @@ export class CodexProvider implements OnModuleInit {
           body: requestBody,
           signal: controller.signal,
         });
+      } catch (error) {
+        fetchError = error;
       } finally {
         clearTimeout(timeoutHandle);
+      }
+
+      if (fetchError) {
+        const errorSummary = this.describeError(fetchError);
+        if (
+          attempt < maxAttempts - 1 &&
+          !context.started &&
+          this.isRetriableFetchError(fetchError)
+        ) {
+          const delay = this.computeRetryDelay(attempt);
+          this.logger.warn(
+            `[CodexProvider] fetch attempt ${attempt + 1} failed (${errorSummary}); retrying in ${delay}ms`,
+          );
+          await this.delay(delay);
+          continue;
+        }
+        this.logger.error(
+          `[CodexProvider] fetch attempt ${attempt + 1} failed (${errorSummary}); giving up`,
+        );
+        const errorToThrow =
+          fetchError instanceof Error ? fetchError : new Error(errorSummary);
+        throw errorToThrow;
+      }
+
+      if (!response) {
+        throw new Error('Codex response was not received');
       }
 
       if (!response.ok) {
@@ -622,7 +651,7 @@ export class CodexProvider implements OnModuleInit {
           status === 401 &&
           config.authMode === 'ChatGPT' &&
           this.chatgptAuth &&
-          attempt < maxRetries
+          attempt < maxAttempts - 1
         ) {
           await this.chatgptAuth.refreshAuthTokens();
           continue;
@@ -640,25 +669,171 @@ export class CodexProvider implements OnModuleInit {
         response.body as unknown as NodeReadableStream<Uint8Array>,
       );
 
-      for await (const event of this.parseSSE(stream)) {
-        if (event === '[DONE]') {
-          break;
+      let streamError: unknown;
+      let sawDone = false;
+      try {
+        for await (const event of this.parseSSE(stream)) {
+          if (event === '[DONE]') {
+            sawDone = true;
+            break;
+          }
+          const chunk = this.mapEventToChunk(
+            event as CodexStreamEvent,
+            context,
+          );
+          if (chunk) {
+            yield chunk;
+          }
         }
-        const chunk = this.mapEventToChunk(event as CodexStreamEvent, context);
-        if (chunk) {
-          yield chunk;
+      } catch (error: unknown) {
+        streamError = error;
+      }
+
+      if (streamError) {
+        const errorSummary = this.describeError(streamError);
+        const hasStreamedContent =
+          context.started ||
+          context.accumulated.length > 0 ||
+          context.toolCalls.length > 0 ||
+          context.reasoningStates.size > 0;
+
+        if (!hasStreamedContent) {
+          if (
+            attempt < maxAttempts - 1 &&
+            this.isRetriableFetchError(streamError)
+          ) {
+            const delay = this.computeRetryDelay(attempt);
+            this.logger.warn(
+              `[CodexProvider] stream attempt ${attempt + 1} failed before first chunk (${errorSummary}); retrying in ${delay}ms`,
+            );
+            await this.delay(delay);
+            continue;
+          }
+
+          this.logger.error(
+            `[CodexProvider] stream attempt ${attempt + 1} failed before first chunk (${errorSummary}); giving up`,
+          );
+          const errorToThrow =
+            streamError instanceof Error
+              ? streamError
+              : new Error(errorSummary);
+          throw errorToThrow;
         }
+
+        this.logger.warn(
+          `[CodexProvider] stream terminated after partial response (${errorSummary}); completing with accumulated data`,
+        );
       }
 
       if (!context.completed) {
+        if (!context.finishReason) {
+          context.finishReason = sawDone ? 'stop' : 'length';
+        }
         yield this.createCompletionChunk(context);
         context.completed = true;
+      }
+
+      try {
+        stream.destroy();
+      } catch {
+        // ignore
       }
 
       return;
     }
 
     throw new Error('Codex request failed after retries');
+  }
+
+  private computeRetryDelay(attempt: number): number {
+    const base = 250;
+    return base * (attempt + 1);
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private describeError(error: unknown): string {
+    if (!error || typeof error !== 'object') {
+      return String(error);
+    }
+
+    const err = error as { message?: string; cause?: unknown };
+    const parts: string[] = [];
+    if (err.message) {
+      parts.push(err.message);
+    }
+
+    const code = this.extractErrorCode(err.cause ?? err);
+    if (code) {
+      parts.push(`code=${code}`);
+    }
+
+    const causeMessage = this.extractErrorMessage(err.cause);
+    if (causeMessage) {
+      parts.push(`cause=${causeMessage}`);
+    }
+
+    return parts.join(' ');
+  }
+
+  private isRetriableFetchError(error: unknown): boolean {
+    if (!error) {
+      return false;
+    }
+
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return true;
+    }
+
+    if (error instanceof TypeError && error.message === 'fetch failed') {
+      const code = this.extractErrorCode((error as { cause?: unknown }).cause);
+      if (!code) {
+        return true;
+      }
+      return this.isRetriableErrnoCode(code);
+    }
+
+    const code = this.extractErrorCode((error as { cause?: unknown }).cause);
+    if (code) {
+      return this.isRetriableErrnoCode(code);
+    }
+
+    return false;
+  }
+
+  private extractErrorCode(cause: unknown): string | undefined {
+    if (!cause || typeof cause !== 'object') {
+      return undefined;
+    }
+    const code = (cause as { code?: unknown }).code;
+    return typeof code === 'string' ? code : undefined;
+  }
+
+  private extractErrorMessage(cause: unknown): string | undefined {
+    if (!cause || typeof cause !== 'object') {
+      return undefined;
+    }
+    const message = (cause as { message?: unknown }).message;
+    return typeof message === 'string' ? message : undefined;
+  }
+
+  private isRetriableErrnoCode(code: string): boolean {
+    const retriableCodes = new Set([
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'EAI_AGAIN',
+      'ENETUNREACH',
+      'ECONNREFUSED',
+      'EPIPE',
+      'EHOSTUNREACH',
+      'UND_ERR_SOCKET',
+      'UND_ERR_CONNECT_TIMEOUT',
+      'UND_ERR_HEADERS_TIMEOUT',
+      'UND_ERR_BODY_TIMEOUT',
+    ]);
+    return retriableCodes.has(code);
   }
 
   private async *parseSSE(stream: Readable): AsyncGenerator<any> {

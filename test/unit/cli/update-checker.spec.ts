@@ -1,6 +1,9 @@
 import { promises as fsPromises } from 'node:fs';
 
-import { isNewerVersion, refreshVersionInfoImmediate } from '@/cli/update-checker';
+import {
+  isNewerVersion,
+  refreshVersionInfoImmediate,
+} from '@/cli/update-checker';
 
 describe('isNewerVersion', () => {
   it('忽略预发布版本比较', () => {

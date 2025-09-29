@@ -271,7 +271,10 @@ describe('智谱模型优化端到端测试 (E2E)', () => {
       const emptyRequest = { contents: [] };
 
       expect(() => {
-        enhancedRequestTransformer.transformRequest(emptyRequest as any, 'glm-4');
+        enhancedRequestTransformer.transformRequest(
+          emptyRequest as any,
+          'glm-4',
+        );
       }).not.toThrow();
     });
 
