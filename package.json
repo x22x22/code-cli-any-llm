@@ -1,6 +1,6 @@
 {
   "name": "@kdump/code-cli-any-llm",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "author": "x22x22",
   "private": false,
   "bin": {
