@@ -202,7 +202,7 @@ interface GatewayContext {
   apiMode: ApiMode;
   gatewayApiKey?: string;
   configWasUpdated: boolean;
-  openaiModel?: string;
+  providerModel?: string;
 }
 
 interface GatewayContextOptions {
@@ -216,6 +216,23 @@ interface GatewayPidInfo {
   pid: number;
   startedAt?: number;
   entry?: string;
+}
+
+function resolveProviderModel(config: GlobalConfig): string | undefined {
+  const provider = config.aiProvider ?? 'openai';
+  const rawModel =
+    provider === 'codex'
+      ? config.codex?.model
+      : provider === 'claudeCode'
+        ? config.claudeCode?.model
+        : config.openai?.model;
+
+  if (typeof rawModel !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = rawModel.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function promptUser(message: string): Promise<string> {
@@ -421,10 +438,7 @@ async function prepareGatewayContext(
     ensureGeminiSettings();
   }
 
-  const openaiModel =
-    typeof config.openai?.model === 'string'
-      ? config.openai.model.trim()
-      : undefined;
+  const providerModel = resolveProviderModel(config);
 
   return {
     projectRoot,
@@ -437,8 +451,7 @@ async function prepareGatewayContext(
     apiMode,
     gatewayApiKey,
     configWasUpdated,
-    openaiModel:
-      openaiModel && openaiModel.length > 0 ? openaiModel : undefined,
+    providerModel,
   };
 }
 
@@ -517,7 +530,7 @@ export async function runGalCode(args: string[]): Promise<void> {
     apiMode,
     gatewayApiKey,
     configWasUpdated,
-    openaiModel,
+    providerModel,
   } = context;
 
   const clientHost = resolveClientHost(gatewayHost);
@@ -591,7 +604,7 @@ export async function runGalCode(args: string[]): Promise<void> {
       gatewayPort,
       apiMode,
       gatewayApiKey,
-      openaiModel,
+      providerModel,
     );
     await launchQwencodeCLI(
       filteredArgs,
@@ -1540,7 +1553,7 @@ export function prepareQwencodeConfig(
   port: number,
   apiMode: ApiMode,
   gatewayApiKey: string | undefined,
-  openaiModel: string | undefined,
+  providerModel: string | undefined,
 ): QwencodeLaunchConfig | undefined {
   if (apiMode !== 'openai') {
     return undefined;
@@ -1575,7 +1588,7 @@ export function prepareQwencodeConfig(
   }
 
   const trimmedModel =
-    typeof openaiModel === 'string' ? openaiModel.trim() : '';
+    typeof providerModel === 'string' ? providerModel.trim() : '';
   const existingModel =
     typeof env.OPENAI_MODEL === 'string' ? env.OPENAI_MODEL.trim() : '';
   const effectiveModel = trimmedModel || existingModel || 'codex-proxy';
