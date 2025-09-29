@@ -366,8 +366,8 @@ export class CodexProvider implements OnModuleInit {
       //   continue;
       // }
 
-      if (message.role === 'system' && message.content) {
-        const content = message.content;
+      if (message.role === 'system') {
+        const content = this.normalizeContent(message.content);
         if (content) {
           input.push({
             type: 'message',
@@ -479,11 +479,85 @@ export class CodexProvider implements OnModuleInit {
     return undefined;
   }
 
-  private normalizeContent(content?: string | null): string | undefined {
+  private normalizeContent(content: unknown): string | undefined {
     if (content == null) {
       return undefined;
     }
-    return content;
+
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      const parts: string[] = [];
+      for (const item of content) {
+        const text = this.extractContentPart(item);
+        if (text) {
+          parts.push(text);
+        }
+      }
+      if (parts.length > 0) {
+        return parts.join('\n\n');
+      }
+      return undefined;
+    }
+
+    if (typeof content === 'object') {
+      return this.extractContentPart(content);
+    }
+
+    return undefined;
+  }
+
+  private extractContentPart(candidate: unknown): string | undefined {
+    if (!candidate) {
+      return undefined;
+    }
+
+    if (typeof candidate === 'string') {
+      return candidate;
+    }
+
+    if (Array.isArray(candidate)) {
+      const nested = candidate
+        .map((item) => this.extractContentPart(item))
+        .filter((value): value is string => Boolean(value));
+      if (nested.length > 0) {
+        return nested.join('\n\n');
+      }
+      return undefined;
+    }
+
+    if (typeof candidate !== 'object') {
+      return undefined;
+    }
+
+    const data = candidate as Record<string, unknown>;
+    const candidateKeys: Array<keyof typeof data> = [
+      'text',
+      'value',
+      'input_text',
+      'output_text',
+      'content',
+      'message',
+    ];
+
+    for (const key of candidateKeys) {
+      const value = data[key];
+      if (typeof value === 'string') {
+        return value;
+      }
+      if (Array.isArray(value)) {
+        const nested = value
+          .map((item) => this.extractContentPart(item))
+          .filter((val): val is string => Boolean(val));
+        if (nested.length > 0) {
+          return nested.join('\n\n');
+        }
+      }
+    }
+
+    return undefined;
   }
 
   private createStreamContext(model: string): CodexStreamContext {
