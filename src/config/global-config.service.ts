@@ -87,7 +87,7 @@ export class GlobalConfigService {
           baseURL:
             process.env.CAL_OPENAI_BASE_URL ||
             'https://open.bigmodel.cn/api/paas/v4',
-          model: process.env.CAL_OPENAI_MODEL || 'glm-4.5',
+          model: process.env.CAL_OPENAI_MODEL || 'glm-4.6',
           timeout: Number(process.env.CAL_OPENAI_TIMEOUT) || 1800000,
           extraBody: undefined,
         },
@@ -322,7 +322,7 @@ aiProvider: openai
 openai:
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/paas/v4"
-  model: "glm-4.5"
+  model: "glm-4.6"
   timeout: 1800000
 
 # Codex provider (optional)
@@ -395,7 +395,7 @@ gateway:
       const defaultConfig: OpenAIConfig = {
         apiKey: '',
         baseURL: 'https://open.bigmodel.cn/api/paas/v4',
-        model: 'glm-4.5',
+        model: 'glm-4.6',
         timeout: 1800000,
         extraBody: undefined,
       };
@@ -431,7 +431,7 @@ gateway:
       // 验证model
       if (!openaiConfig.model) {
         warnings.push('model is not set; using the default value.');
-        openaiConfig.model = 'glm-4.5';
+        openaiConfig.model = 'glm-4.6';
       }
 
       // 验证timeout

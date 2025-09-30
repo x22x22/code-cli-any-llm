@@ -8,7 +8,7 @@ aiProvider: claudeCode
 openai:
   apiKey: 'your-api-key-here'
   baseURL: 'https://open.bigmodel.cn/api/paas/v4'  # 智谱AI endpoint
-  model: 'glm-4.5'  # Default model
+  model: 'glm-4.6'  # Default model
   timeout: 1800000
   # Extra body parameters that will be added to the API request
   # Useful for provider-specific parameters like max_input_tokens for qwen models
