@@ -74,6 +74,12 @@ Run this command whenever you need to update credentials or switch providers:
 cal auth
 ```
 
+**💡 Shortcut Tip**: During the configuration wizard, press **`Shift+Alt+.`** to automatically fill in the default value for any field:
+- On Linux/Windows: produces `>`
+- On macOS: produces `≥` (using Shift+Option+.)
+
+This saves time when you want to quickly accept the suggested defaults without typing them out.
+
 ## 💡 Usage Examples
 
 ### Basic conversations

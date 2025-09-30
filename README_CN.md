@@ -69,6 +69,12 @@ cal code --cli-mode opencode
 cal auth
 ```
 
+**💡 快捷键提示**：在配置向导中，按 **`Shift+Alt+.`** 可以自动填入当前字段的默认值：
+- Linux/Windows 系统：产生 `>`
+- macOS 系统：产生 `≥`（使用 Shift+Option+.）
+
+当您希望快速接受建议的默认值而无需手动输入时，这可以节省时间。
+
 ## 💡 使用示例
 
 ### 基本对话

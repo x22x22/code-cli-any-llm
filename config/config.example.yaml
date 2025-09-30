@@ -42,9 +42,7 @@ claudeCode:
   anthropicVersion: '2023-06-01'
   beta:
     - claude-code-20250219
-    - interleaved-thinking-2025-05-14
-    - fine-grained-tool-streaming-2025-05-14
-  userAgent: 'claude-cli/1.0.119 (external, cli)'
+  userAgent: 'claude-cli/2.0.1 (external, cli)'
   xApp: 'cli'
   dangerousDirectBrowserAccess: true
   maxOutputTokens: 64000

@@ -405,7 +405,7 @@ export class ClaudeCodeProvider implements OnModuleInit {
       timeout: rawConfig.timeout ?? 1800000,
       anthropicVersion: rawConfig.anthropicVersion || '2023-06-01',
       beta: rawConfig.beta,
-      userAgent: rawConfig.userAgent || 'claude-cli/1.0.119 (external, cli)',
+      userAgent: rawConfig.userAgent || 'claude-cli/2.0.1 (external, cli)',
       xApp: rawConfig.xApp || 'cli',
       dangerousDirectBrowserAccess:
         rawConfig.dangerousDirectBrowserAccess ?? true,

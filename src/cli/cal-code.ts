@@ -695,6 +695,13 @@ export async function runConfigWizard(configFile: string): Promise<void> {
     output: process.stdout,
   });
 
+  // 根据操作系统显示不同的快捷键提示
+  const isMacOS = process.platform === 'darwin';
+  const shortcutTip = isMacOS
+    ? '\n💡 Tip: Press Shift+Option+. (produces ≥) to auto-fill default values\n'
+    : '\n💡 Tip: Press Shift+Alt+. (produces >) to auto-fill default values\n';
+  console.log(shortcutTip);
+
   const providerOptions = ['claudeCode', 'codex', 'openai'] as const;
   const existingProvider = existingConfig.aiProvider;
   const aiProviderDefault = providerOptions.includes(
@@ -721,12 +728,15 @@ export async function runConfigWizard(configFile: string): Promise<void> {
   } else if (aiProvider === 'codex') {
     console.log('\nEnter the Codex configuration:');
     existingConfig.codex = await configureCodex(rl, existingConfig.codex ?? {});
-  } else {
+  } else if (aiProvider === 'claudeCode') {
     console.log('\nEnter the Claude Code configuration:');
     existingConfig.claudeCode = await configureClaudeCode(
       rl,
       existingConfig.claudeCode ?? {},
     );
+  } else {
+    console.error(`\nUnknown provider: "${aiProvider}"`);
+    throw new Error(`Unsupported provider: ${aiProvider}`);
   }
 
   rl.close();
@@ -894,7 +904,7 @@ async function configureClaudeCode(
     ? existing.beta.join(',')
     : typeof existing.beta === 'string'
       ? existing.beta
-      : 'claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14';
+      : 'claude-code-20250219';
   const betaRaw = await ask(
     rl,
     'anthropic-beta header (comma separated, leave blank for default)',
@@ -919,8 +929,8 @@ async function configureClaudeCode(
 
   const userAgent = await ask(
     rl,
-    'User-Agent (default claude-cli/1.0.119 (external, cli))',
-    existing.userAgent ?? 'claude-cli/1.0.119 (external, cli)',
+    'User-Agent (default claude-cli/2.0.1 (external, cli))',
+    existing.userAgent ?? 'claude-cli/2.0.1 (external, cli)',
   );
 
   const xApp = await ask(
@@ -958,16 +968,128 @@ function ask(
 ): Promise<string> {
   return new Promise((resolve) => {
     const suffix = defaultValue ? ` (${defaultValue})` : '';
-    rl.question(`${prompt}${suffix}: `, (answer) => {
-      const value = answer.trim();
-      if (value) {
-        resolve(value);
-      } else if (defaultValue) {
-        resolve(defaultValue);
-      } else {
-        resolve('');
+
+    // 启用原始模式以捕获特殊按键
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+    }
+
+    let inputBuffer = '';
+    let resolved = false;
+    let escapeSequence = '';
+
+    const cleanup = () => {
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
       }
-    });
+      process.stdin.removeListener('data', handleData);
+    };
+
+    const finalize = (value: string) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      process.stdout.write('\n');
+      resolve(value);
+    };
+
+    const handleData = (chunk: Buffer) => {
+      const key = chunk.toString('utf8');
+
+      // Shift+Alt+. 组合键检测
+      // Linux/Windows: Shift+. = >, Alt+> = ESC + > (\x1b>)
+      // macOS: Shift+Option+. = ≥ (U+2265) = \xe2\x89\xa5
+      const isShortcutKey =
+        key === '\x1b>' ||
+        (escapeSequence === '\x1b' && key === '>') ||
+        key === '≥' ||
+        key === '\xe2\x89\xa5';
+
+      if (isShortcutKey) {
+        if (defaultValue) {
+          // 清除当前输入行
+          const clearLength = inputBuffer.length;
+          if (clearLength > 0) {
+            process.stdout.write('\b'.repeat(clearLength));
+            process.stdout.write(' '.repeat(clearLength));
+            process.stdout.write('\b'.repeat(clearLength));
+          }
+          // 显示默认值
+          process.stdout.write(defaultValue);
+          inputBuffer = defaultValue;
+        }
+        escapeSequence = '';
+        return;
+      }
+
+      // 检测 ESC 键开始的序列
+      if (key === '\x1b') {
+        escapeSequence = key;
+        return;
+      }
+
+      // 重置 ESC 序列（如果不是目标组合键）
+      if (escapeSequence) {
+        escapeSequence = '';
+      }
+
+      // Enter (0x0D 或 0x0A)
+      if (key === '\r' || key === '\n') {
+        const value = inputBuffer.trim();
+        if (value) {
+          finalize(value);
+        } else if (defaultValue) {
+          finalize(defaultValue);
+        } else {
+          finalize('');
+        }
+        return;
+      }
+
+      // Backspace (0x7F 或 0x08)
+      if (key === '\x7F' || key === '\b') {
+        if (inputBuffer.length > 0) {
+          inputBuffer = inputBuffer.slice(0, -1);
+          process.stdout.write('\b \b'); // 退格、空格、退格
+        }
+        return;
+      }
+
+      // Ctrl+C (ETX, 0x03)
+      if (key === '\x03') {
+        cleanup();
+        process.stdout.write('\n');
+        process.exit(130); // Ctrl+C 的标准退出码
+        return;
+      }
+
+      // Ctrl+U - 清除整行输入
+      if (key === '\x15') {
+        if (inputBuffer.length > 0) {
+          const clearLength = inputBuffer.length;
+          process.stdout.write('\b'.repeat(clearLength));
+          process.stdout.write(' '.repeat(clearLength));
+          process.stdout.write('\b'.repeat(clearLength));
+          inputBuffer = '';
+        }
+        return;
+      }
+
+      // 普通字符（可打印字符）- 支持单字符输入和粘贴多字符输入
+      // 检查是否所有字符都是可打印ASCII字符 (32-126)
+      const allPrintable = key.length > 0 && [...key].every(ch => {
+        const code = ch.charCodeAt(0);
+        return code >= 32 && code < 127;
+      });
+
+      if (allPrintable) {
+        inputBuffer += key;
+        process.stdout.write(key);
+      }
+    };
+
+    process.stdin.on('data', handleData);
+    process.stdout.write(`${prompt}${suffix}: `);
   });
 }
 
@@ -981,11 +1103,16 @@ async function askChoice<T extends string>(
   while (true) {
     const answer = await ask(rl, displayPrompt, defaultValue);
     const normalized = answer.trim().toLowerCase();
-    const match = options.find((option) => option.toLowerCase() === normalized);
+
+    const match = options.find((option) => {
+      const optionLower = option.toLowerCase();
+      return optionLower === normalized;
+    });
+
     if (match) {
       return match;
     }
-    console.log(`Invalid option. Enter ${options.join('/')}.`);
+    console.log(`Invalid option. Please enter one of: ${options.join('/')}`);
   }
 }
 

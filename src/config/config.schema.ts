@@ -229,7 +229,7 @@ export class ClaudeCodeConfig {
     ({ value }: { value: string }) =>
       value ||
       process.env.CAL_CLAUDE_CODE_USER_AGENT ||
-      'claude-cli/1.0.119 (external, cli)',
+      'claude-cli/2.0.1 (external, cli)',
   )
   userAgent?: string;
 
