@@ -185,7 +185,7 @@ paths:
                       [models](https://docs.claude.com/en/docs/models-overview)
                       for additional details and options.
                     examples:
-                      - claude-sonnet-4-20250514
+                      - claude-sonnet-4-5-20250929
                     maxLength: 256
                     minLength: 1
                     title: Model
@@ -399,21 +399,21 @@ paths:
               - messages: &ref_0
                   - content: Hello, world
                     role: user
-                model: claude-sonnet-4-20250514
+                model: claude-sonnet-4-5-20250929
             requiredProperties:
               - messages
               - model
             additionalProperties: false
             example:
               messages: *ref_0
-              model: claude-sonnet-4-20250514
+              model: claude-sonnet-4-5-20250929
         examples:
           example:
             value:
               messages:
                 - content: Hello, world
                   role: user
-              model: claude-sonnet-4-20250514
+              model: claude-sonnet-4-5-20250929
     codeSamples:
       - lang: bash
         source: |-

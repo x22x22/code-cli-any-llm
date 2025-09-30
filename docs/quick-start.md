@@ -90,7 +90,7 @@ curl -X POST http://localhost:23062/api/v1/gemini/models/gemini-2.5-pro:streamGe
 curl -X POST http://localhost:23062/api/v1/openai/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "claude-sonnet-4-20250514",
+    "model": "claude-sonnet-4-5-20250929",
     "messages": [
       {"role": "user", "content": "介绍一下 CAL 网关"}
     ]

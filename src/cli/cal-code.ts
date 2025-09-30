@@ -878,8 +878,8 @@ async function configureClaudeCode(
 
   const model = await ask(
     rl,
-    'Default model (default claude-sonnet-4-20250514)',
-    existing.model ?? 'claude-sonnet-4-20250514',
+    'Default model (default claude-sonnet-4-5-20250929)',
+    existing.model ?? 'claude-sonnet-4-5-20250929',
   );
 
   const apiKey = await askRequired(rl, 'Claude Code API Key', existing.apiKey);

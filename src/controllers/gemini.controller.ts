@@ -203,7 +203,7 @@ export class GeminiController implements OnApplicationBootstrap {
         (this.useCodexProvider
           ? 'gpt-5-codex'
           : this.useClaudeCodeProvider
-            ? 'claude-sonnet-4-20250514'
+            ? 'claude-sonnet-4-5-20250929'
             : 'glm-4.5');
       this.logger.debug(`Mapping model ${actualModel} to ${targetModel}`);
 

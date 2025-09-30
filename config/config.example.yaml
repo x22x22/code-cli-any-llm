@@ -37,7 +37,7 @@ codex:
 claudeCode:
   apiKey: ''
   baseURL: 'https://open.bigmodel.cn/api/anthropic'
-  model: 'claude-sonnet-4-20250514'
+  model: 'claude-sonnet-4-5-20250929'
   timeout: 1800000
   anthropicVersion: '2023-06-01'
   beta:

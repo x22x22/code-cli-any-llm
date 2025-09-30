@@ -217,7 +217,7 @@ export class OpenAIController implements OnApplicationBootstrap {
       return 'gpt-5-codex';
     }
     if (this.useClaudeCodeProvider) {
-      return 'claude-sonnet-4-20250514';
+      return 'claude-sonnet-4-5-20250929';
     }
     return 'gpt-4o-mini';
   }

@@ -401,7 +401,7 @@ export class ClaudeCodeProvider implements OnModuleInit {
     const resolved: ResolvedClaudeCodeConfig = {
       apiKey: rawConfig.apiKey.trim(),
       baseURL: rawConfig.baseURL || 'https://open.bigmodel.cn/api/anthropic',
-      model: rawConfig.model || 'claude-sonnet-4-20250514',
+      model: rawConfig.model || 'claude-sonnet-4-5-20250929',
       timeout: rawConfig.timeout ?? 1800000,
       anthropicVersion: rawConfig.anthropicVersion || '2023-06-01',
       beta: rawConfig.beta,

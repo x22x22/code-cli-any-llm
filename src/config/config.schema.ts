@@ -195,7 +195,7 @@ export class ClaudeCodeConfig {
   @IsString()
   @Transform(
     ({ value }: { value: string }) =>
-      value || process.env.CAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
+      value || process.env.CAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-5-20250929',
   )
   model!: string;
 

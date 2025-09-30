@@ -165,7 +165,7 @@ When `gateway.apiMode` is `openai`, the gateway exposes:
 | Provider | Base URL | Recommended models |
 | --- | --- | --- |
 | Codex | `https://chatgpt.com/backend-api/codex` | `gpt-5-codex` |
-| Claude Code | `https://open.bigmodel.cn/api/anthropic`<br>(or a relay endpoint such as `https://<host>/api`) | `claude-sonnet-4-20250514`, `claude-3.5-sonnet-20241022` |
+| Claude Code | `https://open.bigmodel.cn/api/anthropic`<br>(or a relay endpoint such as `https://<host>/api`) | `claude-sonnet-4-5-20250929`, `claude-3.5-sonnet-20241022` |
 | **ZhipuAI** (default) | `https://open.bigmodel.cn/api/paas/v4` | `glm-4.5` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4`, `gpt-4o` |
 | Qwen | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus`, `qwen-turbo` |
@@ -192,7 +192,7 @@ export CODEX_HOME="$HOME/.custom-codex"           # optional OAuth token directo
 # Claude Code configuration
 export CAL_CLAUDE_CODE_API_KEY="your-claude-code-api-key"
 export CAL_CLAUDE_CODE_BASE_URL="https://open.bigmodel.cn/api/anthropic"
-export CAL_CLAUDE_CODE_MODEL="claude-sonnet-4-20250514"
+export CAL_CLAUDE_CODE_MODEL="claude-sonnet-4-5-20250929"
 export CAL_CLAUDE_CODE_TIMEOUT="1800000"
 export CAL_CLAUDE_CODE_VERSION="2023-06-01"
 export CAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"

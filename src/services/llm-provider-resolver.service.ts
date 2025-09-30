@@ -96,7 +96,7 @@ export class LlmProviderResolverService {
       return 'gpt-5-codex';
     }
     if (context.useClaudeCodeProvider) {
-      return 'claude-sonnet-4-20250514';
+      return 'claude-sonnet-4-5-20250929';
     }
     if (context.gatewayApiMode === 'gemini') {
       return 'glm-4.5';

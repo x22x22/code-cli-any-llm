@@ -162,7 +162,7 @@ paths:
               data:
                 - created_at: '2025-02-19T00:00:00Z'
                   display_name: Claude Sonnet 4
-                  id: claude-sonnet-4-20250514
+                  id: claude-sonnet-4-5-20250929
                   type: model
               first_id: <string>
               has_more: true
@@ -350,7 +350,7 @@ components:
           title: Id
           description: Unique model identifier.
           examples:
-            - claude-sonnet-4-20250514
+            - claude-sonnet-4-5-20250929
         type:
           type: string
           enum:

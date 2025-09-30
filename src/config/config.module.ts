@@ -199,7 +199,7 @@ export class ConfigModule {
                       'https://open.bigmodel.cn/api/anthropic',
                     model:
                       process.env.CAL_CLAUDE_CODE_MODEL ||
-                      'claude-sonnet-4-20250514',
+                      'claude-sonnet-4-5-20250929',
                     timeout:
                       Number(process.env.CAL_CLAUDE_CODE_TIMEOUT) || 1800000,
                     anthropicVersion:

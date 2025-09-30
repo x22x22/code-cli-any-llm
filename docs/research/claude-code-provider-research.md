@@ -42,7 +42,7 @@
 - `src/utils/router.ts` 逻辑说明：
   - 当请求 `req.body.model` 带逗号时直接解析 `provider,model`；否则根据 token 数量、工具使用情况自动切换到 `Router.longContext`、`Router.background`、`Router.think` 等（`claude-code-router/src/utils/router.ts:18-137`）。
   - 对于官方 `claude-3-5-haiku` 这类字符串，会路由到 `Router.background` 指定的模型，提示我们在 provider 层需要把 Claude CLI 输入的模型名映射到后端真实模型列表。
-- 结合抓包日志与 llxprt-code 默认值，当前 Claude Code 原生可选的官方模型至少包含：`claude-3-5-haiku-20241022`、`claude-sonnet-4-20250514`，并支持 `claude-3.7-*` / `claude-4-latest` 等别名（参考 `AnthropicProvider.getModels()` 测试，`AnthropicProvider.test.ts:210-233`）。
+- 结合抓包日志与 llxprt-code 默认值，当前 Claude Code 原生可选的官方模型至少包含：`claude-3-5-haiku-20241022`、`claude-sonnet-4-5-20250929`（原默认 `claude-sonnet-4-20250514`），并支持 `claude-3.7-*` / `claude-4-latest` 等别名（参考 `AnthropicProvider.getModels()` 测试，`AnthropicProvider.test.ts:210-233`）。
 
 ## 5. 本项目 Provider 规范回顾
 
@@ -71,4 +71,3 @@
   - 官方 `anthropic-beta` 标头可能随版本变化，需要在配置中可覆盖。
   - 日志显示请求体巨大（>70KB），需确认 Nest body parser / 超时已覆盖（`TimeoutMiddleware` 默认 60s，可能需调整）。
   - 仅实现 API Key 模式时要确保拒绝 OAuth 配置并给出清晰错误。
-

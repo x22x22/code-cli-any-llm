@@ -132,7 +132,7 @@ export class GlobalConfigService {
               process.env.CAL_CLAUDE_CODE_BASE_URL ||
               'https://open.bigmodel.cn/api/anthropic',
             model:
-              process.env.CAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-20250514',
+              process.env.CAL_CLAUDE_CODE_MODEL || 'claude-sonnet-4-5-20250929',
             timeout: Number(process.env.CAL_CLAUDE_CODE_TIMEOUT) || 1800000,
             anthropicVersion:
               process.env.CAL_CLAUDE_CODE_VERSION || '2023-06-01',
@@ -340,7 +340,7 @@ codex:
 claudeCode:
   apiKey: ""
   baseURL: "https://open.bigmodel.cn/api/anthropic"
-  model: "claude-sonnet-4-20250514"
+  model: "claude-sonnet-4-5-20250929"
   timeout: 1800000
   anthropicVersion: "2023-06-01"
   beta:
@@ -622,7 +622,7 @@ gateway:
         claudeConfig = {
           apiKey: '',
           baseURL: 'https://open.bigmodel.cn/api/anthropic',
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5-20250929',
           timeout: 1800000,
           anthropicVersion: '2023-06-01',
           beta: [
@@ -662,7 +662,7 @@ gateway:
 
       if (!claudeConfig.model) {
         warnings.push('claudeCode.model is not set; using the default value.');
-        claudeConfig.model = 'claude-sonnet-4-20250514';
+        claudeConfig.model = 'claude-sonnet-4-5-20250929';
       }
 
       if (!claudeConfig.timeout) {

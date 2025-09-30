@@ -76,7 +76,7 @@ paths:
                       [models](https://docs.claude.com/en/docs/models-overview)
                       for additional details and options.
                     examples:
-                      - claude-sonnet-4-20250514
+                      - claude-sonnet-4-5-20250929
                     maxLength: 256
                     minLength: 1
                     title: Model
@@ -547,7 +547,7 @@ paths:
               messages:
                 - content: Hello, world
                   role: user
-              model: claude-sonnet-4-20250514
+              model: claude-sonnet-4-5-20250929
         examples:
           example:
             value:
@@ -555,7 +555,7 @@ paths:
               messages:
                 - content: Hello, world
                   role: user
-              model: claude-sonnet-4-20250514
+              model: claude-sonnet-4-5-20250929
     codeSamples:
       - lang: bash
         source: |-
@@ -565,7 +565,7 @@ paths:
                --header "content-type: application/json" \
                --data \
           '{
-              "model": "claude-sonnet-4-20250514",
+              "model": "claude-sonnet-4-5-20250929",
               "max_tokens": 1024,
               "messages": [
                   {"role": "user", "content": "Hello, world"}
@@ -576,7 +576,7 @@ paths:
           import anthropic
 
           anthropic.Anthropic().messages.create(
-              model="claude-sonnet-4-20250514",
+              model="claude-sonnet-4-5-20250929",
               max_tokens=1024,
               messages=[
                   {"role": "user", "content": "Hello, world"}
@@ -589,7 +589,7 @@ paths:
           const anthropic = new Anthropic();
 
           await anthropic.messages.create({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-4-5-20250929",
             max_tokens: 1024,
             messages: [
               {"role": "user", "content": "Hello, world"}
@@ -729,7 +729,7 @@ paths:
                 allOf:
                   - description: The model that handled the request.
                     examples:
-                      - claude-sonnet-4-20250514
+                      - claude-sonnet-4-5-20250929
                     maxLength: 256
                     minLength: 1
                     title: Model
@@ -835,7 +835,7 @@ paths:
                   - text: Hi! My name is Claude.
                     type: text
                 id: msg_013Zva2CMHLNnXjNJJKqJ2EF
-                model: claude-sonnet-4-20250514
+                model: claude-sonnet-4-5-20250929
                 role: assistant
                 stop_reason: end_turn
                 stop_sequence: null
@@ -856,7 +856,7 @@ paths:
             example:
               content: *ref_0
               id: msg_013Zva2CMHLNnXjNJJKqJ2EF
-              model: claude-sonnet-4-20250514
+              model: claude-sonnet-4-5-20250929
               role: assistant
               stop_reason: end_turn
               stop_sequence: null
@@ -869,7 +869,7 @@ paths:
                 - text: Hi! My name is Claude.
                   type: text
               id: msg_013Zva2CMHLNnXjNJJKqJ2EF
-              model: claude-sonnet-4-20250514
+              model: claude-sonnet-4-5-20250929
               role: assistant
               stop_reason: end_turn
               stop_sequence: null
