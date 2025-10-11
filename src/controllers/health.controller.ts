@@ -100,28 +100,54 @@ export class HealthController implements OnApplicationBootstrap {
       version: '1.0.0',
     };
 
+    // Get health check mode from configuration
+    const gatewayConfig =
+      this.configService.get<Record<string, unknown>>('gateway');
+    const healthCheckMode = (
+      gatewayConfig?.healthCheckMode as string | undefined
+    )
+      ?.trim()
+      .toLowerCase();
+    const isDeepCheck = healthCheckMode !== 'simple';
+
+    // Determine config key for provider info
+    const configKey = this.useCodexProvider
+      ? 'codex'
+      : this.useClaudeCodeProvider
+        ? 'claudeCode'
+        : 'openai';
+    const providerConfig =
+      this.configService.get<Record<string, unknown>>(configKey);
+
     try {
-      // Check active provider health
-      const providerHealth = await this.provider.healthCheck();
+      if (isDeepCheck) {
+        // Deep check: Call upstream provider API
+        const providerHealth = await this.provider.healthCheck();
 
-      if (providerHealth.status === 'healthy') {
-        response.provider = providerHealth.details;
+        if (providerHealth.status === 'healthy') {
+          response.provider = providerHealth.details;
 
-        // Add basic config info (without sensitive data)
-        const configKey = this.useCodexProvider
-          ? 'codex'
-          : this.useClaudeCodeProvider
-            ? 'claudeCode'
-            : 'openai';
-        const providerConfig =
-          this.configService.get<Record<string, unknown>>(configKey);
+          // Add basic config info (without sensitive data)
+          response.config = {
+            model: providerConfig?.model as string | undefined,
+            baseURL: providerConfig?.baseURL as string | undefined,
+          };
+        } else {
+          response.status = 'unhealthy';
+          response.provider = providerHealth.details;
+        }
+      } else {
+        // Simple check: No external API calls, just return healthy status
+        response.provider = {
+          mode: 'simple',
+          message: 'Health check without upstream API verification',
+        };
+
+        // Still add basic config info (without sensitive data)
         response.config = {
           model: providerConfig?.model as string | undefined,
           baseURL: providerConfig?.baseURL as string | undefined,
         };
-      } else {
-        response.status = 'unhealthy';
-        response.provider = providerHealth.details;
       }
     } catch (error) {
       response.status = 'unhealthy';
@@ -130,8 +156,6 @@ export class HealthController implements OnApplicationBootstrap {
       };
     }
 
-    const gatewayConfig =
-      this.configService.get<Record<string, unknown>>('gateway');
     const apiModeValue = (gatewayConfig?.apiMode as string | undefined)
       ?.trim()
       .toLowerCase();

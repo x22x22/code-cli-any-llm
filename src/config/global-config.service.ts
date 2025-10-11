@@ -357,6 +357,7 @@ gateway:
   logLevel: "info"
   logDir: "~/.code-cli-any-llm/logs"
   requestTimeout: 3600000
+  healthCheckMode: "deep"
 `;
 
     return {
@@ -717,6 +718,7 @@ gateway:
         apiMode: 'gemini',
         cliMode: 'gemini',
         apiKey: undefined,
+        healthCheckMode: 'deep',
       };
       config.gateway = gatewayConfig;
     }
@@ -767,6 +769,14 @@ gateway:
     } else {
       gatewayConfig.apiKey = undefined;
     }
+
+    // 验证 healthCheckMode 配置
+    const healthCheckModeRaw = (gatewayConfig.healthCheckMode || 'deep')
+      .toString()
+      .trim()
+      .toLowerCase();
+    gatewayConfig.healthCheckMode =
+      healthCheckModeRaw === 'simple' ? 'simple' : 'deep';
 
     const isValid = errors.length === 0;
     const result: ConfigValidationResult = {

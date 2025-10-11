@@ -124,6 +124,7 @@ export class ConfigModule {
                     apiMode: config.gateway.apiMode ?? 'gemini',
                     cliMode: config.gateway.cliMode ?? 'gemini',
                     apiKey: config.gateway.apiKey,
+                    healthCheckMode: config.gateway.healthCheckMode ?? 'deep',
                   },
                   aiProvider: config.aiProvider,
                 };
@@ -250,6 +251,15 @@ export class ConfigModule {
                     return 'gemini';
                   })(),
                   apiKey: process.env.CAL_GATEWAY_API_KEY,
+                  healthCheckMode: (() => {
+                    const raw = (
+                      process.env.CAL_GATEWAY_HEALTH_CHECK_MODE || 'deep'
+                    )
+                      .toString()
+                      .trim()
+                      .toLowerCase();
+                    return raw === 'simple' ? 'simple' : 'deep';
+                  })(),
                 },
                 aiProvider: (
                   process.env.CAL_AI_PROVIDER || 'openai'

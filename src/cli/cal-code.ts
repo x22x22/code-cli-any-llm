@@ -969,6 +969,9 @@ function ask(
   return new Promise((resolve) => {
     const suffix = defaultValue ? ` (${defaultValue})` : '';
 
+    // 暂停readline interface以避免与raw mode冲突导致重复显示
+    rl.pause();
+
     // 启用原始模式以捕获特殊按键
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(true);
@@ -983,6 +986,8 @@ function ask(
         process.stdin.setRawMode(false);
       }
       process.stdin.removeListener('data', handleData);
+      // 恢复readline interface
+      rl.resume();
     };
 
     const finalize = (value: string) => {

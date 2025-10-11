@@ -59,3 +59,4 @@ gateway:
   apiMode: gemini   # 可选 gemini / openai
   cliMode: gemini   # 可选 gemini / opencode / crush / qwencode
   apiKey: ''        # 可选：提供给 CLI 网关的访问密钥
+  healthCheckMode: deep  # 健康检查模式：simple（仅返回健康状态，不调用上游API）/ deep（调用上游API验证连接）

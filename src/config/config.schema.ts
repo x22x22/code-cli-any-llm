@@ -71,6 +71,14 @@ function normalizeCliMode(
   return 'gemini';
 }
 
+function normalizeHealthCheckMode(value?: string): 'simple' | 'deep' {
+  const raw = (value || process.env.CAL_GATEWAY_HEALTH_CHECK_MODE || 'deep')
+    .toString()
+    .trim()
+    .toLowerCase();
+  return raw === 'simple' ? 'simple' : 'deep';
+}
+
 export class OpenAIConfig {
   @IsString()
   @Transform(
@@ -314,6 +322,10 @@ export class GatewayConfigSchema {
       value ?? process.env.CAL_GATEWAY_API_KEY ?? undefined,
   )
   apiKey?: string;
+
+  @IsIn(['simple', 'deep'])
+  @Transform(({ value }: { value: string }) => normalizeHealthCheckMode(value))
+  healthCheckMode!: 'simple' | 'deep';
 }
 
 function parseReasoningConfig(raw: unknown): CodexReasoningConfig | undefined {

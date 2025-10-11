@@ -49,6 +49,7 @@ export interface GatewayConfig {
   apiMode?: 'gemini' | 'openai';
   cliMode?: 'gemini' | 'opencode' | 'crush' | 'qwencode';
   apiKey?: string;
+  healthCheckMode?: 'simple' | 'deep';
 }
 
 export interface GlobalConfig {
