@@ -967,134 +967,83 @@ function ask(
   defaultValue?: string,
 ): Promise<string> {
   return new Promise((resolve) => {
-    const suffix = defaultValue ? ` (${defaultValue})` : '';
+    const inputStream = (rl as unknown as { input?: NodeJS.ReadStream }).input;
+    const isTTY = Boolean(inputStream?.isTTY);
+    const displayPrompt = defaultValue ? `${prompt} (${defaultValue})` : prompt;
+    const hadRawMode =
+      isTTY && inputStream && typeof inputStream.isRaw === 'boolean'
+        ? inputStream.isRaw
+        : undefined;
 
-    // 暂停readline interface以避免与raw mode冲突导致重复显示
-    rl.pause();
+    let keypressHandler: ((str: string, key?: readline.Key) => void) | null =
+      null;
 
-    // 启用原始模式以捕获特殊按键
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
+    function cleanup() {
+      rl.removeListener('SIGINT', handleSigint);
+      if (isTTY && inputStream) {
+        if (keypressHandler) {
+          inputStream.removeListener('keypress', keypressHandler);
+        }
+        if (typeof inputStream.setRawMode === 'function') {
+          inputStream.setRawMode(hadRawMode ?? false);
+        }
+      }
     }
 
-    let inputBuffer = '';
-    let resolved = false;
-    let escapeSequence = '';
-
-    const cleanup = () => {
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode(false);
-      }
-      process.stdin.removeListener('data', handleData);
-      // 恢复readline interface
-      rl.resume();
-    };
-
-    const finalize = (value: string) => {
-      if (resolved) return;
-      resolved = true;
+    function handleSigint() {
       cleanup();
       process.stdout.write('\n');
-      resolve(value);
-    };
+      process.exit(130);
+    }
 
-    const handleData = (chunk: Buffer) => {
-      const key = chunk.toString('utf8');
+    if (isTTY && inputStream) {
+      readline.emitKeypressEvents(inputStream, rl);
+      if (!inputStream.isRaw && typeof inputStream.setRawMode === 'function') {
+        inputStream.setRawMode(true);
+      }
 
-      // Shift+Alt+. 组合键检测
-      // Linux/Windows: Shift+. = >, Alt+> = ESC + > (\x1b>)
-      // macOS: Shift+Option+. = ≥ (U+2265) = \xe2\x89\xa5
-      const isShortcutKey =
-        key === '\x1b>' ||
-        (escapeSequence === '\x1b' && key === '>') ||
-        key === '≥' ||
-        key === '\xe2\x89\xa5';
-
-      if (isShortcutKey) {
-        if (defaultValue) {
-          // 清除当前输入行
-          const clearLength = inputBuffer.length;
-          if (clearLength > 0) {
-            process.stdout.write('\b'.repeat(clearLength));
-            process.stdout.write(' '.repeat(clearLength));
-            process.stdout.write('\b'.repeat(clearLength));
-          }
-          // 显示默认值
-          process.stdout.write(defaultValue);
-          inputBuffer = defaultValue;
+      keypressHandler = (str: string, key?: readline.Key) => {
+        if (!defaultValue) {
+          return;
         }
-        escapeSequence = '';
-        return;
-      }
 
-      // 检测 ESC 键开始的序列
-      if (key === '\x1b') {
-        escapeSequence = key;
-        return;
-      }
+        const sequence = key?.sequence ?? str;
+        const isMacShortcut = sequence === '\u2265' || str === '≥';
+        const isEscGreater = sequence === '\x1b>';
+        const hasAlt = Boolean(
+          (key as { alt?: boolean } | undefined)?.alt ?? false,
+        );
+        const hasMeta = Boolean(key?.meta);
+        const isAltShiftDot =
+          !!key &&
+          key.name === '.' &&
+          !!key.shift &&
+          (hasAlt || hasMeta);
 
-      // 重置 ESC 序列（如果不是目标组合键）
-      if (escapeSequence) {
-        escapeSequence = '';
-      }
-
-      // Enter (0x0D 或 0x0A)
-      if (key === '\r' || key === '\n') {
-        const value = inputBuffer.trim();
-        if (value) {
-          finalize(value);
-        } else if (defaultValue) {
-          finalize(defaultValue);
-        } else {
-          finalize('');
+        if (isMacShortcut || isEscGreater || isAltShiftDot) {
+          rl.write(null, { ctrl: true, name: 'u' });
+          rl.write(defaultValue);
         }
+      };
+
+      inputStream.on('keypress', keypressHandler);
+    }
+
+    rl.once('SIGINT', handleSigint);
+
+    rl.question(`${displayPrompt}: `, (answer) => {
+      cleanup();
+      const trimmed = answer.trim();
+      if (trimmed) {
+        resolve(trimmed);
         return;
       }
-
-      // Backspace (0x7F 或 0x08)
-      if (key === '\x7F' || key === '\b') {
-        if (inputBuffer.length > 0) {
-          inputBuffer = inputBuffer.slice(0, -1);
-          process.stdout.write('\b \b'); // 退格、空格、退格
-        }
+      if (defaultValue) {
+        resolve(defaultValue);
         return;
       }
-
-      // Ctrl+C (ETX, 0x03)
-      if (key === '\x03') {
-        cleanup();
-        process.stdout.write('\n');
-        process.exit(130); // Ctrl+C 的标准退出码
-        return;
-      }
-
-      // Ctrl+U - 清除整行输入
-      if (key === '\x15') {
-        if (inputBuffer.length > 0) {
-          const clearLength = inputBuffer.length;
-          process.stdout.write('\b'.repeat(clearLength));
-          process.stdout.write(' '.repeat(clearLength));
-          process.stdout.write('\b'.repeat(clearLength));
-          inputBuffer = '';
-        }
-        return;
-      }
-
-      // 普通字符（可打印字符）- 支持单字符输入和粘贴多字符输入
-      // 检查是否所有字符都是可打印ASCII字符 (32-126)
-      const allPrintable = key.length > 0 && [...key].every(ch => {
-        const code = ch.charCodeAt(0);
-        return code >= 32 && code < 127;
-      });
-
-      if (allPrintable) {
-        inputBuffer += key;
-        process.stdout.write(key);
-      }
-    };
-
-    process.stdin.on('data', handleData);
-    process.stdout.write(`${prompt}${suffix}: `);
+      resolve('');
+    });
   });
 }
 
