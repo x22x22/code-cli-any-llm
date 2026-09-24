@@ -1,3 +1,5 @@
+
+
 # Code CLI Any LLM
 
 > A unified gateway for the Gemini, opencode, crush, and Qwen Code AI CLIs
@@ -202,7 +204,7 @@ export CAL_CLAUDE_CODE_MODEL="claude-sonnet-4-5-20250929"
 export CAL_CLAUDE_CODE_TIMEOUT="1800000"
 export CAL_CLAUDE_CODE_VERSION="2023-06-01"
 export CAL_CLAUDE_CODE_BETA="claude-code-20250219,interleaved-thinking-2025-05-14"
-export CAL_CLAUDE_CODE_USER_AGENT="claude-cli/1.0.119 (external, cli)"
+export CAL_CLAUDE_CODE_USER_AGENT="claude-cli/2.0.1 (external, cli)"
 export CAL_CLAUDE_CODE_X_APP="cli"
 export CAL_CLAUDE_CODE_DANGEROUS_DIRECT="true"
 export CAL_CLAUDE_CODE_MAX_OUTPUT="64000"
